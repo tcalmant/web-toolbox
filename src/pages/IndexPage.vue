@@ -1,43 +1,28 @@
 <template>
   <q-page class="row items-center justify-evenly">
-    <example-component
-      title="Example component"
-      active
-      :todos="todos"
-      :meta="meta"
-    ></example-component>
+    <FeatureCard v-for="feature in featuresList" :key="feature.title" v-bind="feature" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { Todo, Meta } from 'components/models';
-import ExampleComponent from 'components/ExampleComponent.vue';
+import type { Feature } from 'src/components/FeatureCard.vue';
+import FeatureCard from 'src/components/FeatureCard.vue';
 
-const todos = ref<Todo[]>([
+const featuresList: Feature[] = [
   {
-    id: 1,
-    content: 'ct1'
+    title: 'Timestamp',
+    page: 'timestamp',
+    description: 'A tool to convert between timestamps and dates'
   },
   {
-    id: 2,
-    content: 'ct2'
+    title: 'Fuel Computer',
+    page: 'fuel-computer',
+    description: 'A tool to compute remaining fuel'
   },
   {
-    id: 3,
-    content: 'ct3'
-  },
-  {
-    id: 4,
-    content: 'ct4'
-  },
-  {
-    id: 5,
-    content: 'ct5'
+    title: 'Notam Mapper',
+    page: 'notam-mapper',
+    description: 'A tool to put NOTAM on a map'
   }
-]);
-
-const meta = ref<Meta>({
-  totalCount: 1200
-});
+];
 </script>
