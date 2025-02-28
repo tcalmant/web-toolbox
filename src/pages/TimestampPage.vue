@@ -24,12 +24,13 @@ under the License.
   <q-page padding>
     <q-input v-model="unixTimestamp" label="Unix Timestamp" :hint="unixTimestampUnit" />
     <q-input v-model="dateUTC" label="Date (UTC)" hint="UTC date" />
-    <q-input v-model="dateLocalTZ" label="Local date" hint="Date in local timezone" />
+    <q-input v-model="dateLocalTZ" label="Local date"
+      :hint="`Date in local timezone: UTC ${formatTzOffset(shownDate)}`" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { dateToString, dateToUTCString } from 'src/components/timeUtils';
+import { dateToString, dateToUTCString, formatTzOffset } from 'src/components/timeUtils';
 import { computed, ref } from 'vue';
 
 /**

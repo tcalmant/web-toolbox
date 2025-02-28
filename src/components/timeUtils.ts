@@ -36,19 +36,7 @@ export function dateToString(date: Date, showOffset: boolean = false): string {
   let result = `${year}-${month}-${day} ${hour}:${minute}:${second}`
 
   if (showOffset) {
-    // Handling timezone offset
-    const offsetMinutes = date.getTimezoneOffset()
-    const hoursOffset = Math.abs(offsetMinutes / 60)
-    const minutesOffset = offsetMinutes % 60
-
-    let offsetSign = ''
-    if (offsetMinutes < 0) {
-      offsetSign = '+'
-    } else {
-      offsetSign = '-'
-    }
-
-    result += ` ${offsetSign}${String(hoursOffset).padStart(2, '0')}:${String(minutesOffset).padStart(2, '0')}`
+    result += ` ${formatTzOffset(date)}`
   }
 
   return result
@@ -72,4 +60,24 @@ export function dateToUTCString(date: Date): string {
   const second = String(date.getSeconds()).padStart(2, '0')
 
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+}
+
+/**
+ * Converts a date offset to a string like +01:00 or +00:00 or -00:30
+ * @param date Date representation
+ * @returns String representation of the timezone offset
+ */
+export function formatTzOffset(date: Date): string {
+  const offsetMinutes = date.getTimezoneOffset()
+  const hoursOffset = Math.abs(offsetMinutes / 60)
+  const minutesOffset = offsetMinutes % 60
+
+  let offsetSign = ''
+  if (offsetMinutes < 0) {
+    offsetSign = '+'
+  } else {
+    offsetSign = '-'
+  }
+
+  return `${offsetSign}${String(hoursOffset).padStart(2, '0')}:${String(minutesOffset).padStart(2, '0')}`
 }
