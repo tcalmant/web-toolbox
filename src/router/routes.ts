@@ -22,7 +22,7 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/IndexPage.vue') },
+      { path: '', redirect: 'timestamp' },
       { path: 'timestamp', component: () => import('pages/TimestampPage.vue') },
       { path: 'fuel-computer', component: () => import('src/pages/FuelComputerPage.vue') },
       { path: 'notam-mapper', component: () => import('src/pages/NotamMapperPage.vue') },

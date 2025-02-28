@@ -30,9 +30,15 @@ under the License.
           Tom's toolbox
         </q-toolbar-title>
       </q-toolbar>
+
+      <q-tabs>
+        <q-route-tab label="Timestamp" to="/timestamp" exact />
+        <q-route-tab label="Fuel computer" to="/fuel-computer" exact />
+        <q-route-tab label="NOTAM mapper" to="/notam-mapper" exact />
+      </q-tabs>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
+    <q-drawer v-model="leftDrawerOpen" bordered>
       <q-list>
         <q-item-label header>
           Essential Links
@@ -53,11 +59,6 @@ import { ref } from 'vue';
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
 
 const linksList: EssentialLinkProps[] = [
-  {
-    title: 'Home',
-    caption: '',
-    icon: 'home'
-  },
   {
     title: 'Github',
     caption: 'github.com/tcalmant/boiteaoutils',
