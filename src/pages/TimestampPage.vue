@@ -22,11 +22,117 @@ under the License.
 
 <template>
   <q-page padding>
-    <!-- content -->
-    <h1>Timestamp</h1>
+    <q-input v-model="unixTimestamp" label="Unix Timestamp" :hint="unixTimestampUnit" />
+    <q-input v-model="dateUTC" label="Date (UTC)" hint="UTC date" />
+    <q-input v-model="dateLocalTZ" label="Local date" hint="Date in local timezone" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-//
+import { dateToString, dateToUTCString } from 'src/components/timeUtils';
+import { computed, ref } from 'vue';
+
+/**
+ * Supported timestamp units
+ */
+enum TimestampUnit {
+  SECOND = "s",
+  MILLISECOND = "ms",
+  MICROSECOND = "µs",
+  NANOSECOND = "ns",
+}
+
+/**
+ * Initial date value
+ */
+const shownDate = ref(new Date());
+
+/**
+ * UNIX timestamp
+ */
+const unixTimestamp = computed({
+  get: () => {
+    return shownDate.value.getTime()
+  },
+  set: (newValue: string) => {
+    const newValueNumber = parseInt(newValue);
+    if (newValueNumber !== undefined) {
+      shownDate.value = new Date(ensureMilliSeconds(newValueNumber))
+    }
+  }
+})
+
+/**
+ * UTC date
+ */
+const dateUTC = computed({
+  get: () => {
+    return dateToUTCString(shownDate.value)
+  },
+  set: (newValue: string) => {
+    const date = new Date(newValue);
+    if (date !== undefined) {
+      shownDate.value = date
+    }
+  }
+})
+
+/**
+ * Date in local timezone
+ */
+const dateLocalTZ = computed({
+  get: () => {
+    return dateToString(shownDate.value, false)
+  },
+  set: (newValue: string) => {
+    const date = new Date(newValue);
+    if (date !== undefined) {
+      shownDate.value = date
+    }
+  }
+})
+
+/**
+ * The unit of the timestamp
+ */
+const unixTimestampUnit = computed(() => detectTimestampUnit(unixTimestamp.value));
+
+/**
+ * Compute the unit of the timestamp
+ */
+function detectTimestampUnit(ts: number): TimestampUnit {
+  const nbDigits = Math.floor(Math.log10(ts))
+  if (nbDigits >= 18) {
+    return TimestampUnit.NANOSECOND
+  }
+
+  if (nbDigits >= 15) {
+    return TimestampUnit.MICROSECOND
+  }
+
+  if (nbDigits >= 12) {
+    return TimestampUnit.MILLISECOND
+  }
+
+  return TimestampUnit.SECOND
+}
+
+/**
+ * Ensures that the given timestamp is in milliseconds
+ * @param ts Timestamp to convert
+ * @returns A timestamp in milliseconds
+ */
+function ensureMilliSeconds(ts: number): number {
+  switch (detectTimestampUnit(ts)) {
+    case TimestampUnit.NANOSECOND:
+      return Math.round(ts / 1000000)
+    case TimestampUnit.MICROSECOND:
+      return Math.round(ts / 1000)
+    case TimestampUnit.SECOND:
+      return ts * 1000;
+    case TimestampUnit.MILLISECOND:
+    default:
+      return ts;
+  }
+}
 </script>
