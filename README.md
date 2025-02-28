@@ -1,40 +1,24 @@
-# Boite à outils (boiteaoutils)
+# Boite à outils
 
-La boite à outils de Thomas
+La boite à outils de @tcalmant: petit projet regroupant quelques petits utilitaires basés sur des besoins quotidiens.
 
-## Install the dependencies
-```bash
-yarn
-# or
-npm install
-```
+Ce projet est distribué sous [licence Apache 2.0](./LICENSE).
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
-```bash
-quasar dev
-```
+## Développement
 
-
-### Lint the files
-```bash
-yarn lint
-# or
-npm run lint
-```
-
-
-### Format the files
-```bash
-yarn format
-# or
-npm run format
-```
-
-
-### Build the app for production
-```bash
-quasar build
-```
-
-### Customize the configuration
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+- Installation des dépendances
+  ```bash
+  npm ci
+  ```
+- Démarrage du serveur de développement
+  ```bash
+  quasar dev
+  ```
+- Linting
+  ```bash
+  npm run lint
+  ```
+- Compilation
+  ```bash
+  quasar build
+  ```
