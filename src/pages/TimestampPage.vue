@@ -71,9 +71,11 @@ const dateUTC = computed({
     return dateToUTCString(shownDate.value)
   },
   set: (newValue: string) => {
-    const date = new Date(newValue);
-    if (date !== undefined) {
-      shownDate.value = date
+    const dateInLocalTz = new Date(newValue);
+    if (dateInLocalTz !== undefined) {
+      // The date is parsed as if it was a local time: convert it back to UTC
+      const dateInUTC = new Date(dateInLocalTz.getTime() - dateInLocalTz.getTimezoneOffset() * 60000)
+      shownDate.value = dateInUTC
     }
   }
 })
