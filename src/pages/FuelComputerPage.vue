@@ -22,11 +22,78 @@ under the License.
 
 <template>
   <q-page padding>
-    <!-- content -->
-    <h1>Fuel Computer</h1>
+    <div class="q-gutter-md row">
+      <q-input class="col" v-model="planeIdent" label="Immatriculation" hint="Immatriculation of the plane" />
+      <q-select class="col-1" v-model="fuelUnit" :options="Object.values(FuelUnit)" />
+      <q-input class="col" v-model="fuelPerHour" label="Fuel consumption"
+        :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit}/minute)`" />
+      <q-input class="col" v-model="fuelCapacity" label="Fuel capacity" hint="Total fuel capacity" />
+      <q-input class="col" v-model="fuelConsumable" label="Consumable fuel" hint="Total consumable fuel" />
+    </div>
+    <div class="flex-break q-py-md"></div>
+    <div class="q-gutter-md row">
+      <div class="col">
+        <InputListNumber />
+      </div>
+      <div class="col">
+        <InputListNumber />
+      </div>
+    </div>
+    <div class="flex-break q-py-md"></div>
+    <div class="row">
+      <q-table class="col" title="Result" :rows="resultRows" hide-header hide-pagination />
+    </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-//
+import InputListNumber from 'src/components/InputListNumber.vue';
+import { computed, ref } from 'vue';
+
+enum FuelUnit {
+  LITER = "liters",
+  GALLONS = "gallons",
+}
+
+class ResultRow {
+  label: string
+  value: string
+
+  constructor(label: string, value: string | number | null | undefined) {
+    this.label = label;
+    if (value === null || value === undefined) {
+      this.value = "n/a"
+    } else if (typeof value === "number") {
+      this.value = Math.ceil(value).toString()
+    } else {
+      this.value = value
+    }
+  }
+}
+
+// Plane description
+const planeIdent = ref("");
+const fuelUnit = ref(FuelUnit.LITER)
+const fuelPerHour = ref(25.0)
+const fuelCapacity = ref(110)
+const fuelConsumable = ref(109)
+
+// Informative
+const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
+
+// Fuel computation
+const totalConsumedFuel = ref<number | null>(null)
+const totalAddedFuel = ref<number | null>(null)
+const totalRemainingFuel = ref<number | null>(null)
+const usableRemainingFuel = ref<number | null>(null)
+
+// Result display
+const resultRows = computed((): ResultRow[] => {
+  return [
+    new ResultRow("Total consumed fuel", totalConsumedFuel.value),
+    new ResultRow("Total added fuel", totalAddedFuel.value),
+    new ResultRow("Estimated remaining fuel", totalRemainingFuel.value),
+    new ResultRow("Estimated usable fuel", usableRemainingFuel.value),
+  ]
+})
 </script>
