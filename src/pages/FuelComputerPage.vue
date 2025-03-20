@@ -128,7 +128,12 @@ function updateRemainingFuel() {
     totalAddedFuel.value - totalConsumedFuel.value,
     fuelCapacity.value,
   )
-  usableRemainingFuel.value = Math.min(totalRemainingFuel.value, fuelConsumable.value)
+
+  const nonUsableFuel = fuelCapacity.value - fuelConsumable.value
+  usableRemainingFuel.value = Math.min(
+    totalRemainingFuel.value - nonUsableFuel,
+    fuelConsumable.value,
+  )
   usableRemainingTime.value = new TimePeriod(
     (usableRemainingFuel.value / fuelPerMinutes.value) * 60,
   )
