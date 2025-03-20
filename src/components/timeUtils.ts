@@ -81,3 +81,17 @@ export function formatTzOffset(date: Date): string {
 
   return `${offsetSign}${String(hoursOffset).padStart(2, '0')}:${String(minutesOffset).padStart(2, '0')}`
 }
+
+export class TimePeriod {
+  duration_s: number
+
+  constructor(duration_s: number) {
+    this.duration_s = duration_s
+  }
+
+  toString(): string {
+    return `${Math.floor(this.duration_s / 3600)
+      .toString()
+      .padStart(1, '0')}:${(Math.floor(this.duration_s % 3600) / 60).toString().padStart(2, '0')}`
+  }
+}

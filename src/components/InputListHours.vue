@@ -58,20 +58,7 @@ under the License.
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
-class TimePeriod {
-  duration_s: number
-
-  constructor(duration_s: number) {
-    this.duration_s = duration_s
-  }
-
-  toString(): string {
-    return `${Math.floor(this.duration_s / 3600)
-      .toString()
-      .padStart(1, '0')}:${(Math.floor(this.duration_s % 3600) / 60).toString().padStart(2, '0')}`
-  }
-}
+import { TimePeriod } from './timeUtils'
 
 const emit = defineEmits<{ (e: 'update', duration_s: number): void }>()
 const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
