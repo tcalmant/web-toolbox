@@ -37,7 +37,16 @@ under the License.
         <template #loading></template>
       </q-input>
       <div class="row">
-        <q-input v-model="inputValue" mask="N:NN" fill-mask="0" reverse-fill-mask filled />
+        <q-input
+          v-model="inputValue"
+          mask="N:NN"
+          fill-mask="0"
+          reverse-fill-mask
+          filled
+          :error="errorMessage != null"
+          :error-message="errorMessage ?? undefined"
+          @update:model-value="errorMessage = null"
+        />
         <q-btn icon="add" @click="onAdd" />
       </div>
     </div>
