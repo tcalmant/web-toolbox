@@ -70,6 +70,7 @@ class TimePeriod {
   }
 }
 
+const emit = defineEmits<{ (e: 'update', duration_s: number): void }>()
 const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
 const inputValue = ref('0:30')
 const errorMessage = ref<string | null>(null)
@@ -110,9 +111,13 @@ function recompute(localValues: TimePeriod[]) {
     localValues = [new TimePeriod(0)]
   }
 
+  const totalPeriod = localValues.reduce(
+    (a, b) => new TimePeriod(a.duration_s + b.duration_s),
+    new TimePeriod(0),
+  )
+
   allValues.value = localValues
-  totalValue.value = localValues
-    .reduce((a, b) => new TimePeriod(a.duration_s + b.duration_s), new TimePeriod(0))
-    .toString()
+  totalValue.value = totalPeriod.toString()
+  emit('update', totalPeriod.duration_s)
 }
 </script>
