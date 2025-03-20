@@ -24,9 +24,18 @@ under the License.
   <q-card>
     <div class="column">
       <q-list bordered>
-        <q-item v-for="(value, idx) in allValues" :key="idx">{{ value }}</q-item>
+        <q-item v-for="(value, idx) in allValues" :key="idx">
+          <q-item-section>
+            {{ value }}
+          </q-item-section>
+          <q-item-section side>
+            <q-icon name="delete" color="red" @click="onDelete(idx)" />
+          </q-item-section>
+        </q-item>
       </q-list>
-      <q-input v-model="totalValue" disabled filled label="Total time" />
+      <q-input v-model="totalValue" disabled filled label="Total time">
+        <template #loading></template>
+      </q-input>
       <div class="row">
         <q-input v-model="inputValue" mask="N:NN" fill-mask="0" reverse-fill-mask filled />
         <q-btn icon="add" @click="onAdd" />
@@ -76,6 +85,20 @@ function onAdd() {
     localValues = [new TimePeriod(duration_s)]
   } else {
     localValues = [...allValues.value, new TimePeriod(duration_s)]
+  }
+
+  recompute(localValues)
+}
+
+function onDelete(idx: number) {
+  const currentValues = allValues.value ?? []
+  const newValues = [...currentValues.slice(0, idx), ...currentValues.slice(idx + 1)]
+  recompute(newValues)
+}
+
+function recompute(localValues: TimePeriod[]) {
+  if (localValues.length == 0) {
+    localValues = [new TimePeriod(0)]
   }
 
   allValues.value = localValues
