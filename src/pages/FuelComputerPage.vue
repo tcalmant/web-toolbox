@@ -36,12 +36,9 @@ under the License.
         label="Fuel consumption"
         :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit}/minute)`"
       />
-      <q-input
-        class="col"
-        v-model="fuelCapacity"
-        label="Fuel capacity"
-        hint="Total fuel capacity"
-      />
+      <q-input class="col" v-model="fuelCapacity" label="Fuel capacity" hint="Total fuel capacity">
+        <template #label></template>
+      </q-input>
       <q-input
         class="col"
         v-model="fuelConsumable"
@@ -55,7 +52,7 @@ under the License.
         <InputListHours @update="onDurationUpdate" />
       </div>
       <div class="col">
-        <InputListFuel />
+        <InputListFuel @update="onFuelUpdate" />
       </div>
     </div>
     <div class="flex-break q-py-md"></div>
@@ -70,6 +67,7 @@ import InputListHours from 'src/components/InputListHours.vue'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import { computed, ref } from 'vue'
 import { FuelUnit } from 'src/components/fuelUtils'
+import { TimePeriod } from 'src/components/timeUtils'
 
 class ResultRow {
   label: string
@@ -99,9 +97,10 @@ const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
 
 // Fuel computation
 const totalConsumedFuel = ref<number>(0)
-const totalAddedFuel = ref<number | null>(null)
+const totalAddedFuel = ref<number>(0)
 const totalRemainingFuel = ref<number | null>(null)
 const usableRemainingFuel = ref<number | null>(null)
+const usableRemainingTime = ref<TimePeriod>(new TimePeriod(0))
 
 // Result display
 const resultRows = computed((): ResultRow[] => {
@@ -110,10 +109,29 @@ const resultRows = computed((): ResultRow[] => {
     new ResultRow('Total added fuel', totalAddedFuel.value),
     new ResultRow('Estimated remaining fuel', totalRemainingFuel.value),
     new ResultRow('Estimated usable fuel', usableRemainingFuel.value),
+    new ResultRow('Estimated remaining flight time', usableRemainingTime.value?.toString() || null),
   ]
 })
 
 function onDurationUpdate(duration_s: number): void {
   totalConsumedFuel.value = Math.ceil((fuelPerMinutes.value * duration_s) / 60)
+  updateRemainingFuel()
+}
+
+function onFuelUpdate(addedFuelLiters: number): void {
+  totalAddedFuel.value = Math.floor(addedFuelLiters)
+  updateRemainingFuel()
+}
+
+function updateRemainingFuel() {
+  totalRemainingFuel.value = Math.min(
+    totalAddedFuel.value - totalConsumedFuel.value,
+    fuelCapacity.value,
+  )
+  usableRemainingFuel.value = Math.min(totalRemainingFuel.value, fuelConsumable.value)
+  usableRemainingTime.value = new TimePeriod(
+    (usableRemainingFuel.value / fuelPerMinutes.value) * 60,
+  )
 }
 </script>
+)
