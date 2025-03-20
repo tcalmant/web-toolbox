@@ -55,7 +55,7 @@ under the License.
         <InputListHours @update="onDurationUpdate" />
       </div>
       <div class="col">
-        <InputListNumber />
+        <InputListFuel />
       </div>
     </div>
     <div class="flex-break q-py-md"></div>
@@ -67,13 +67,9 @@ under the License.
 
 <script setup lang="ts">
 import InputListHours from 'src/components/InputListHours.vue'
-import InputListNumber from 'src/components/InputListNumber.vue'
+import InputListFuel from 'src/components/InputListFuel.vue'
 import { computed, ref } from 'vue'
-
-enum FuelUnit {
-  LITER = 'liters',
-  GALLONS = 'gallons',
-}
+import { FuelUnit } from 'src/components/fuelUtils'
 
 class ResultRow {
   label: string
