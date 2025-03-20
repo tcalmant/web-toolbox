@@ -52,7 +52,7 @@ under the License.
     <div class="flex-break q-py-md"></div>
     <div class="q-gutter-md row">
       <div class="col">
-        <InputListHours />
+        <InputListHours @update="onDurationUpdate" />
       </div>
       <div class="col">
         <InputListNumber />
@@ -102,7 +102,7 @@ const fuelConsumable = ref(109)
 const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
 
 // Fuel computation
-const totalConsumedFuel = ref<number | null>(null)
+const totalConsumedFuel = ref<number>(0)
 const totalAddedFuel = ref<number | null>(null)
 const totalRemainingFuel = ref<number | null>(null)
 const usableRemainingFuel = ref<number | null>(null)
@@ -116,4 +116,8 @@ const resultRows = computed((): ResultRow[] => {
     new ResultRow('Estimated usable fuel', usableRemainingFuel.value),
   ]
 })
+
+function onDurationUpdate(duration_s: number): void {
+  totalConsumedFuel.value = Math.ceil((fuelPerMinutes.value * duration_s) / 60)
+}
 </script>
