@@ -21,8 +21,8 @@ under the License.
 -->
 
 <template>
-  <q-card>
-    <div class="column">
+  <q-card class="q-gutter-xs">
+    <div class="column q-gutter-xs">
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
           <q-item-section>
@@ -33,21 +33,23 @@ under the License.
           </q-item-section>
         </q-item>
       </q-list>
-      <q-input v-model="totalValue" disabled filled label="Total time">
-        <template #loading></template>
-      </q-input>
+      <q-input v-model="totalValue" disabled filled label="Total time" />
       <div class="row">
-        <q-input
-          v-model="inputValue"
-          mask="N:NN"
-          fill-mask="0"
-          reverse-fill-mask
-          filled
-          :error="errorMessage != null"
-          :error-message="errorMessage ?? undefined"
-          @update:model-value="errorMessage = null"
-        />
-        <q-btn icon="add" @click="onAdd" />
+        <div class="col-11">
+          <q-input
+            v-model="inputValue"
+            mask="N:NN"
+            fill-mask="0"
+            reverse-fill-mask
+            filled
+            :error="errorMessage != null"
+            :error-message="errorMessage ?? undefined"
+            @update:model-value="errorMessage = null"
+          />
+        </div>
+        <div class="col-1">
+          <q-btn class="fit" icon="add" @click="onAdd" />
+        </div>
       </div>
     </div>
   </q-card>
