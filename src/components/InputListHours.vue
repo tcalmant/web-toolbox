@@ -38,6 +38,7 @@ under the License.
         <div class="col-11">
           <q-input
             v-model="inputValue"
+            inputmode="numeric"
             mask="N:NN"
             fill-mask="0"
             reverse-fill-mask
