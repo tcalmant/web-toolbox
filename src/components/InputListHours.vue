@@ -22,12 +22,15 @@ under the License.
 
 <template>
   <q-card>
-    <q-list bordered>
-      <q-item v-for="(value, idx) in allValues" :key="idx">{{ value }}</q-item>
-    </q-list>
-    <div class="row">
-      <q-input v-model="addedValue" filled />
-      <q-btn icon="add" @click="onAdd" />
+    <div class="column">
+      <q-list bordered>
+        <q-item v-for="(value, idx) in allValues" :key="idx">{{ value }}</q-item>
+      </q-list>
+      <q-input v-model="totalValue" disabled filled label="Total time" />
+      <div class="row">
+        <q-input v-model="inputValue" mask="N:NN" fill-mask="0" reverse-fill-mask filled />
+        <q-btn icon="add" @click="onAdd" />
+      </div>
     </div>
   </q-card>
 </template>
@@ -43,23 +46,41 @@ class TimePeriod {
   }
 
   toString(): string {
-    return `${Math.floor(this.duration_s / 60)
+    return `${Math.floor(this.duration_s / 3600)
       .toString()
-      .padStart(1, '0')}:${(this.duration_s % 60).toString().padStart(2, '0')}`
+      .padStart(1, '0')}:${(Math.floor(this.duration_s % 3600) / 60).toString().padStart(2, '0')}`
   }
 }
 
 const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
-const addedValue = ref('')
+const inputValue = ref('0:30')
+const errorMessage = ref<string | null>(null)
+const totalValue = ref(new TimePeriod(0).toString())
 
 function onAdd() {
+  const [strHours, strMinutes] = (inputValue.value ?? '0').split(':')
+  const hours = parseInt(strHours ?? '0')
+  const minutes = parseInt(strMinutes ?? '0')
+
+  if (minutes < 0 || minutes >= 60) {
+    errorMessage.value = 'Invalid number of minutes'
+    return
+  }
+
+  const duration_s = hours * 3600 + minutes * 60
+  let localValues
   if (
     allValues.value.length == 0 ||
     (allValues.value.length == 1 && allValues.value[0]?.duration_s == 0)
   ) {
-    allValues.value = [new TimePeriod(parseFloat(addedValue.value))]
+    localValues = [new TimePeriod(duration_s)]
   } else {
-    allValues.value = [...allValues.value, new TimePeriod(parseFloat(addedValue.value))]
+    localValues = [...allValues.value, new TimePeriod(duration_s)]
   }
+
+  allValues.value = localValues
+  totalValue.value = localValues
+    .reduce((a, b) => new TimePeriod(a.duration_s + b.duration_s), new TimePeriod(0))
+    .toString()
 }
 </script>
