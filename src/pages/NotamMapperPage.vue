@@ -21,12 +21,57 @@ under the License.
 -->
 
 <template>
-  <q-page padding>
-    <!-- content -->
-    <h1>NOTAM Mapper</h1>
+  <q-page>
+    <div class="row q-gutter-md q-pa-md" style="min-height: inherit">
+      <div class="col-6">
+        <MapView />
+      </div>
+      <div class="col-5 full-height">
+        <q-input v-model="inputText" label="NOTAM entries" filled type="textarea" autogrow />
+      </div>
+    </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-//
+import MapView from 'src/components/MapView.vue'
+import { NOTAM } from 'src/components/notamUtils'
+import { ref, watch } from 'vue'
+
+const inputText = ref('')
+
+watch(inputText, (newValue: string) => handleInput(newValue))
+
+function handleInput(fullText: string): void {
+  const notams = parseNotams(fullText)
+  // TODO: convert notams to GeoJSON
+  // TODO: send GeoJSON to map
+  console.log('Parsed notams:', notams)
+}
+
+function findFirst(text: string, startIdx: number, ...patterns: string[]): number {
+  const foundIndices = patterns.map((p) => text.indexOf(p, startIdx)).filter((idx) => idx != -1)
+  if (foundIndices.length == 0) {
+    return -1
+  } else {
+    return Math.min(...foundIndices)
+  }
+}
+
+function parseNotams(fullText: string): NOTAM[] {
+  let lastEndIdx = 0
+  let notamStartIdx = -1
+  const notams: NOTAM[] = []
+  while ((notamStartIdx = findFirst(fullText, lastEndIdx, 'A)', 'Q)')) != -1) {
+    lastEndIdx = fullText.indexOf('\n\n', notamStartIdx)
+    if (lastEndIdx == -1) {
+      lastEndIdx = fullText.length
+    }
+
+    const notamContent = fullText.substring(notamStartIdx, lastEndIdx)
+    const notam = new NOTAM(notamContent)
+    notams.push(notam)
+  }
+  return notams
+}
 </script>
