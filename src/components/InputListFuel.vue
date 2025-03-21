@@ -27,7 +27,7 @@ under the License.
         <q-item v-for="(value, idx) in allValues" :key="idx">
           <q-item-section> {{ value.quantity }}&nbsp;{{ value.unit }} </q-item-section>
           <q-item-section side> {{ value.toLiters() }}&nbsp;L </q-item-section>
-          <q-item-section side>
+          <q-item-section side class="print-hide">
             <q-icon name="delete" color="red" @click="onDelete(idx)" />
           </q-item-section>
         </q-item>
@@ -36,14 +36,14 @@ under the License.
         <div class="col-10">
           <q-input v-model="totalValue" readonly filled outlined label="Total fuel" />
         </div>
-        <div class="col q-px-md">
+        <div class="col q-px-md print-hide">
           <q-btn @mousedown.prevent @click="onDeleteAll()">
             <q-icon name="delete_forever" color="red" />
             <span>Clear&nbsp;all</span>
           </q-btn>
         </div>
       </div>
-      <q-form class="row" @submit.prevent="onAdd">
+      <q-form class="row print-hide" @submit.prevent="onAdd">
         <div class="col-9">
           <q-input
             ref="fuelInputField"

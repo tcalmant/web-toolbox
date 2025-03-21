@@ -28,7 +28,7 @@ under the License.
           <q-item-section>
             {{ value }}
           </q-item-section>
-          <q-item-section side>
+          <q-item-section side class="print-hide">
             <q-icon name="delete" color="red" @click="onDelete(idx)" />
           </q-item-section>
         </q-item>
@@ -37,14 +37,14 @@ under the License.
         <div class="col-10">
           <q-input v-model="totalValue" readonly filled outlined label="Total time" />
         </div>
-        <div class="col q-px-md">
+        <div class="col q-px-md print-hide">
           <q-btn @mousedown.prevent @click="onDeleteAll()">
             <q-icon name="delete_forever" color="red" />
             <span>Clear&nbsp;all</span>
           </q-btn>
         </div>
       </div>
-      <q-form class="row" @submit.prevent="onAdd">
+      <q-form class="row print-hide" @submit.prevent="onAdd">
         <div class="col-11">
           <q-input
             ref="valueInputField"

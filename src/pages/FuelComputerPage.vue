@@ -60,7 +60,7 @@ under the License.
     </div>
     <div class="flex-break q-py-md"></div>
     <div class="row">
-      <q-table class="col" title="Result" :rows="resultRows" hide-header hide-pagination />
+      <q-table class="col" :rows="resultRows" hide-header hide-pagination />
     </div>
   </q-page>
 </template>
@@ -101,8 +101,8 @@ const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
 // Fuel computation
 const totalConsumedFuel = ref<number>(0)
 const totalAddedFuel = ref<number>(0)
-const totalRemainingFuel = ref<number | null>(null)
-const usableRemainingFuel = ref<number | null>(null)
+const totalRemainingFuel = ref<number>(0)
+const usableRemainingFuel = ref<number>(0)
 const usableRemainingTime = ref<TimePeriod>(new TimePeriod(0))
 
 // Template references
@@ -111,10 +111,10 @@ const fuelList = useTemplateRef('fuelList')
 // Result display
 const resultRows = computed((): ResultRow[] => {
   return [
-    new ResultRow('Total consumed fuel', totalConsumedFuel.value),
-    new ResultRow('Total added fuel', totalAddedFuel.value),
-    new ResultRow('Estimated remaining fuel', totalRemainingFuel.value),
-    new ResultRow('Estimated usable fuel', usableRemainingFuel.value),
+    new ResultRow('Total consumed fuel', `${totalConsumedFuel.value} L`),
+    new ResultRow('Total added fuel', `${totalAddedFuel.value} L`),
+    new ResultRow('Estimated remaining fuel', `${totalRemainingFuel.value} L`),
+    new ResultRow('Estimated usable fuel', `${usableRemainingFuel.value} L`),
     new ResultRow('Estimated remaining flight time', usableRemainingTime.value?.toString() || null),
   ]
 })
@@ -143,9 +143,9 @@ function updateRemainingFuel() {
   )
 
   const nonUsableFuel = fuelCapacity.value - fuelConsumable.value
-  usableRemainingFuel.value = Math.min(
-    totalRemainingFuel.value - nonUsableFuel,
-    fuelConsumable.value,
+  usableRemainingFuel.value = Math.max(
+    0,
+    Math.min(totalRemainingFuel.value - nonUsableFuel, fuelConsumable.value),
   )
   usableRemainingTime.value = new TimePeriod(
     (usableRemainingFuel.value / fuelPerMinutes.value) * 60,
