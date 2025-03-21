@@ -80,24 +80,10 @@ export class NOTAM {
       return null
     }
 
-    const latNumbers = match[1]
-    const latNS = match[2]
-    const lonNumbers = match[3]
-    const lonEW = match[4]
-    if (
-      latNumbers == undefined ||
-      latNS == undefined ||
-      lonNumbers == undefined ||
-      lonEW == undefined
-    ) {
-      console.warn('No center point found in Q section')
+    const center = this.parseLocation(match.slice(1, 5).join(''))
+    if (center == null) {
       return null
     }
-
-    const center = new LatLng(
-      this.parseQAngle(latNumbers, latNS),
-      this.parseQAngle(lonNumbers, lonEW),
-    )
 
     // Check radius
     const rawRadius = match[5]
@@ -110,6 +96,31 @@ export class NOTAM {
       center,
       radius: parseInt(rawRadius),
     }
+  }
+
+  parseLocation(strLocation: string): LatLng | null {
+    const match = /(\d+)(N|S)(\d+)(W|E)/.exec(strLocation)
+    if (match == null) {
+      // No location found in last segment
+      console.log('Invalid location %s', strLocation)
+      return null
+    }
+
+    const latNumbers = match[1]
+    const latNS = match[2]
+    const lonNumbers = match[3]
+    const lonEW = match[4]
+    if (
+      latNumbers == undefined ||
+      latNS == undefined ||
+      lonNumbers == undefined ||
+      lonEW == undefined
+    ) {
+      console.warn('Invalid location %s', strLocation)
+      return null
+    }
+
+    return new LatLng(this.parseQAngle(latNumbers, latNS), this.parseQAngle(lonNumbers, lonEW))
   }
 
   parseQAngle(strAngle: string, hemisphere: string): number {
