@@ -32,7 +32,17 @@ under the License.
           </q-item-section>
         </q-item>
       </q-list>
-      <q-input v-model="totalValue" readonly filled outlined label="Total fuel" />
+      <div class="row items-center">
+        <div class="col-10">
+          <q-input v-model="totalValue" readonly filled outlined label="Total fuel" />
+        </div>
+        <div class="col q-px-md">
+          <q-btn @click="onDeleteAll()">
+            <q-icon name="delete_forever" color="red" />
+            <span>Clear&nbsp;all</span>
+          </q-btn>
+        </div>
+      </div>
       <div class="row">
         <div class="col-9">
           <q-input
@@ -57,9 +67,11 @@ under the License.
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar'
 import { ref } from 'vue'
 import { FuelQuantity, FuelUnit } from './fuelUtils'
 
+const $q = useQuasar()
 const emit = defineEmits<{ (e: 'update', duration_s: number): void }>()
 const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
 const inputValue = ref(0)
@@ -86,6 +98,17 @@ function onDelete(idx: number) {
   const currentValues = allValues.value ?? []
   const newValues = [...currentValues.slice(0, idx), ...currentValues.slice(idx + 1)]
   recompute(newValues)
+}
+
+function onDeleteAll() {
+  $q.dialog({
+    title: 'Confirm',
+    message: 'Delete all entries?',
+    cancel: true,
+    persistent: false,
+  }).onOk(() => {
+    recompute([])
+  })
 }
 
 function recompute(localValues: FuelQuantity[]) {
