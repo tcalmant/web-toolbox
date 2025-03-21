@@ -92,7 +92,7 @@ export class TimePeriod {
   toString(): string {
     return `${Math.floor(this.duration_s / 3600)
       .toString()
-      .padStart(1, '0')}:${Math.floor((this.duration_s % 3600) / 60)
+      .padStart(1, '0')}:${Math.abs(Math.floor((this.duration_s % 3600) / 60))
       .toString()
       .padStart(2, '0')}`
   }
