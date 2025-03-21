@@ -102,4 +102,9 @@ function recompute(localValues: FuelQuantity[]) {
   totalValue.value = totalQuantity.toString()
   emit('update', totalQuantity.quantity)
 }
+
+function setDefaultFuelUnit(newUnit: FuelUnit) {
+  inputUnit.value = newUnit
+}
+defineExpose({ setDefaultFuelUnit })
 </script>

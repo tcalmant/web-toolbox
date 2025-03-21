@@ -36,9 +36,12 @@ under the License.
         label="Fuel consumption"
         :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit}/minute)`"
       />
-      <q-input class="col" v-model="fuelCapacity" label="Fuel capacity" hint="Total fuel capacity">
-        <template #label></template>
-      </q-input>
+      <q-input
+        class="col"
+        v-model="fuelCapacity"
+        label="Fuel capacity"
+        hint="Total fuel capacity"
+      />
       <q-input
         class="col"
         v-model="fuelConsumable"
@@ -52,7 +55,7 @@ under the License.
         <InputListHours @update="onDurationUpdate" />
       </div>
       <div class="col">
-        <InputListFuel @update="onFuelUpdate" />
+        <InputListFuel ref="fuelList" @update="onFuelUpdate" />
       </div>
     </div>
     <div class="flex-break q-py-md"></div>
@@ -65,7 +68,7 @@ under the License.
 <script setup lang="ts">
 import InputListHours from 'src/components/InputListHours.vue'
 import InputListFuel from 'src/components/InputListFuel.vue'
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { FuelUnit } from 'src/components/fuelUtils'
 import { TimePeriod } from 'src/components/timeUtils'
 
@@ -102,6 +105,9 @@ const totalRemainingFuel = ref<number | null>(null)
 const usableRemainingFuel = ref<number | null>(null)
 const usableRemainingTime = ref<TimePeriod>(new TimePeriod(0))
 
+// Template references
+const fuelList = useTemplateRef('fuelList')
+
 // Result display
 const resultRows = computed((): ResultRow[] => {
   return [
@@ -111,6 +117,13 @@ const resultRows = computed((): ResultRow[] => {
     new ResultRow('Estimated usable fuel', usableRemainingFuel.value),
     new ResultRow('Estimated remaining flight time', usableRemainingTime.value?.toString() || null),
   ]
+})
+
+// Propagate fuel unit change
+watch(fuelUnit, (newValue: FuelUnit) => {
+  if (fuelList.value != null) {
+    fuelList.value.setDefaultFuelUnit(newValue)
+  }
 })
 
 function onDurationUpdate(duration_s: number): void {
