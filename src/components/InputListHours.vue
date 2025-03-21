@@ -33,7 +33,7 @@ under the License.
           </q-item-section>
         </q-item>
       </q-list>
-      <q-input v-model="totalValue" disabled filled label="Total time" />
+      <q-input v-model="totalValue" readonly filled outlined label="Total time" />
       <div class="row">
         <div class="col-11">
           <q-input

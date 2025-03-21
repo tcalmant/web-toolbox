@@ -32,7 +32,7 @@ under the License.
           </q-item-section>
         </q-item>
       </q-list>
-      <q-input v-model="totalValue" disabled filled label="Total fuel" />
+      <q-input v-model="totalValue" readonly filled outlined label="Total fuel" />
       <div class="row">
         <div class="col-9">
           <q-input
