@@ -69,7 +69,6 @@ function setNOTAMs(notams: NOTAM[]) {
   layerRef.value?.remove()
 
   const layer = new FeatureGroup()
-
   for (const notam of notams) {
     if (notam.polygon !== null) {
       // Draw a polygon
@@ -81,7 +80,9 @@ function setNOTAMs(notams: NOTAM[]) {
 
   layerRef.value = layer
   layer.addTo(map)
-  map.fitBounds(layer.getBounds(), { maxZoom: 11 })
+  if (layer.getLayers().length != 0) {
+    map.fitBounds(layer.getBounds(), { maxZoom: 11 })
+  }
 }
 defineExpose({ setNOTAMs })
 </script>
