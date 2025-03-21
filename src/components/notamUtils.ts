@@ -21,7 +21,7 @@ export class NOTAM {
   text: string
   sections: Map<string, string>
   center: LatLng | null
-  radius: number | null
+  radiusNM: number | null
   polygon: LatLng[] | null
 
   constructor(fullText: string) {
@@ -29,12 +29,12 @@ export class NOTAM {
     this.sections = this.splitSections(fullText)
     const center = this.extractCenter(this.sections.get('Q'))
     this.center = center != null ? center.center : null
-    this.radius = center != null ? center.radius : null
+    this.radiusNM = center != null ? center.radius : null
     this.polygon = null
   }
 
   toGeoJSON() {
-    if (this.center == null || this.radius == null) {
+    if (this.center == null || this.radiusNM == null) {
       return null
     }
 
@@ -45,8 +45,8 @@ export class NOTAM {
       },
       {} as { [key: string]: string | number | null },
     )
-    properties.radiusNM = this.radius
-    properties.radius = this.radius * 1.852
+    properties.radiusNM = this.radiusNM
+    properties.radius = this.radiusNM * 1.852
 
     return {
       type: 'Feature',

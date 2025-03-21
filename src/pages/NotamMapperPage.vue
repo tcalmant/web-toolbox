@@ -24,7 +24,7 @@ under the License.
   <q-page>
     <div class="row q-gutter-md q-pa-md" style="min-height: inherit">
       <div class="col-6">
-        <MapView />
+        <MapView ref="mapViewRef" />
       </div>
       <div class="col-5 full-height">
         <q-input v-model="inputText" label="NOTAM entries" filled type="textarea" autogrow />
@@ -39,14 +39,12 @@ import { NOTAM } from 'src/components/notamUtils'
 import { ref, watch } from 'vue'
 
 const inputText = ref('')
+const mapViewRef = ref()
 
 watch(inputText, (newValue: string) => handleInput(newValue))
 
 function handleInput(fullText: string): void {
-  const notams = parseNotams(fullText)
-  // TODO: convert notams to GeoJSON
-  // TODO: send GeoJSON to map
-  console.log('Parsed notams:', notams)
+  mapViewRef.value?.setNOTAMs(parseNotams(fullText))
 }
 
 function findFirst(text: string, startIdx: number, ...patterns: string[]): number {
