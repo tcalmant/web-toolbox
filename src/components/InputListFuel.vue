@@ -37,15 +37,16 @@ under the License.
           <q-input v-model="totalValue" readonly filled outlined label="Total fuel" />
         </div>
         <div class="col q-px-md">
-          <q-btn @click="onDeleteAll()">
+          <q-btn @mousedown.prevent @click="onDeleteAll()">
             <q-icon name="delete_forever" color="red" />
             <span>Clear&nbsp;all</span>
           </q-btn>
         </div>
       </div>
-      <div class="row">
+      <q-form class="row" @submit.prevent="onAdd">
         <div class="col-9">
           <q-input
+            ref="fuelInputField"
             v-model.number="inputValue"
             type="number"
             inputmode="numeric"
@@ -59,15 +60,15 @@ under the License.
           <q-select class="fit" v-model="inputUnit" :options="Object.values(FuelUnit)" filled />
         </div>
         <div class="col-1">
-          <q-btn class="fit" icon="add" @click="onAdd" />
+          <q-btn class="fit" icon="add" type="submit" />
         </div>
-      </div>
+      </q-form>
     </div>
   </q-card>
 </template>
 
 <script setup lang="ts">
-import { useQuasar } from 'quasar'
+import { QInput, useQuasar } from 'quasar'
 import { ref } from 'vue'
 import { FuelQuantity, FuelUnit } from './fuelUtils'
 
@@ -78,6 +79,7 @@ const inputValue = ref(0)
 const inputUnit = ref(FuelUnit.LITER)
 const errorMessage = ref<string | null>(null)
 const totalValue = ref(new FuelQuantity(0).toString())
+const fuelInputField = ref<QInput>()
 
 function onAdd() {
   const newValue = new FuelQuantity(inputValue.value, inputUnit.value)
@@ -92,6 +94,7 @@ function onAdd() {
   }
 
   recompute(localValues)
+  fuelInputField.value?.focus()
 }
 
 function onDelete(idx: number) {
@@ -101,14 +104,23 @@ function onDelete(idx: number) {
 }
 
 function onDeleteAll() {
-  $q.dialog({
-    title: 'Confirm',
-    message: 'Delete all entries?',
-    cancel: true,
-    persistent: false,
-  }).onOk(() => {
+  if (allValues.value?.length > 1) {
+    $q.dialog({
+      title: 'Confirm',
+      message: 'Delete all entries?',
+      cancel: true,
+      persistent: false,
+    })
+      .onOk(() => {
+        recompute([])
+      })
+      .onDismiss(() => {
+        fuelInputField.value?.focus()
+      })
+  } else {
     recompute([])
-  })
+    fuelInputField.value?.focus()
+  }
 }
 
 function recompute(localValues: FuelQuantity[]) {
