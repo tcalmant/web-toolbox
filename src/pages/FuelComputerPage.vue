@@ -63,6 +63,9 @@ under the License.
       <q-table class="col" :rows="resultRows" hide-header hide-pagination />
     </div>
   </q-page>
+  <q-footer class="print-only">
+    <p>Edited on {{ new Date().toLocaleString() }}</p>
+  </q-footer>
 </template>
 
 <script setup lang="ts">
