@@ -33,10 +33,21 @@ under the License.
           </q-item-section>
         </q-item>
       </q-list>
-      <q-input v-model="totalValue" readonly filled outlined label="Total time" />
-      <div class="row">
+      <div class="row items-center">
+        <div class="col-10">
+          <q-input v-model="totalValue" readonly filled outlined label="Total time" />
+        </div>
+        <div class="col q-px-md">
+          <q-btn @mousedown.prevent @click="onDeleteAll()">
+            <q-icon name="delete_forever" color="red" />
+            <span>Clear&nbsp;all</span>
+          </q-btn>
+        </div>
+      </div>
+      <q-form class="row" @submit.prevent="onAdd">
         <div class="col-11">
           <q-input
+            ref="valueInputField"
             v-model="inputValue"
             inputmode="numeric"
             mask="N:NN"
@@ -49,20 +60,23 @@ under the License.
           />
         </div>
         <div class="col-1">
-          <q-btn class="fit" icon="add" @click="onAdd" />
+          <q-btn class="fit" icon="add" type="submit" />
         </div>
-      </div>
+      </q-form>
     </div>
   </q-card>
 </template>
 
 <script setup lang="ts">
+import { QInput, useQuasar } from 'quasar'
 import { ref } from 'vue'
 import { TimePeriod } from './timeUtils'
 
+const $q = useQuasar()
 const emit = defineEmits<{ (e: 'update', duration_s: number): void }>()
 const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
 const inputValue = ref('0:30')
+const valueInputField = ref<QInput>()
 const errorMessage = ref<string | null>(null)
 const totalValue = ref(new TimePeriod(0).toString())
 
@@ -88,12 +102,33 @@ function onAdd() {
   }
 
   recompute(localValues)
+  valueInputField.value?.focus()
 }
 
 function onDelete(idx: number) {
   const currentValues = allValues.value ?? []
   const newValues = [...currentValues.slice(0, idx), ...currentValues.slice(idx + 1)]
   recompute(newValues)
+}
+
+function onDeleteAll() {
+  if (allValues.value?.length > 1) {
+    $q.dialog({
+      title: 'Confirm',
+      message: 'Delete all entries?',
+      cancel: true,
+      persistent: false,
+    })
+      .onOk(() => {
+        recompute([])
+      })
+      .onDismiss(() => {
+        valueInputField.value?.focus()
+      })
+  } else {
+    recompute([])
+    valueInputField.value?.focus()
+  }
 }
 
 function recompute(localValues: TimePeriod[]) {
