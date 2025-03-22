@@ -15,14 +15,54 @@
  *   limitations under the License.
  */
 
-import { LatLng } from 'leaflet'
+import type { Layer } from 'leaflet'
+import L, { LatLng } from 'leaflet'
+
+type PositionKind = 'POINT' | 'AVG'
+
+class Position {
+  location: LatLng
+  kind: PositionKind
+  category: string | undefined
+
+  constructor(kind: PositionKind, location: LatLng, category?: string) {
+    this.kind = kind
+    this.location = location
+    this.category = category
+  }
+
+  toLayer(): Layer | null {
+    console.log('Make position point')
+    return this.kind === 'POINT' ? L.circle(this.location, { radius: 50 }) : null
+  }
+}
+
+class Line {
+  locations: LatLng[]
+
+  constructor(locations: LatLng[]) {
+    this.locations = locations
+  }
+
+  toLayer(): Layer | null {
+    if (this.locations.length === 0) {
+      return null
+    } else if (this.locations.length === 1) {
+      console.log('Make line point')
+      return new Position('POINT', this.locations[0] as LatLng).toLayer()
+    } else {
+      console.log('Make polyline')
+      return L.polyline(this.locations)
+    }
+  }
+}
 
 export class NOTAM {
   text: string
   sections: Map<string, string>
   center: LatLng | null
   radiusNM: number | null
-  polygon: LatLng[] | null
+  polygons: Layer[]
 
   constructor(fullText: string) {
     this.text = fullText
@@ -30,32 +70,7 @@ export class NOTAM {
     const center = this.extractCenter(this.sections.get('Q'))
     this.center = center != null ? center.center : null
     this.radiusNM = center != null ? center.radius : null
-    this.polygon = null
-  }
-
-  toGeoJSON() {
-    if (this.center == null || this.radiusNM == null) {
-      return null
-    }
-
-    const properties = Array.from(this.sections).reduce(
-      (acc, [key, value]) => {
-        acc[key] = value
-        return acc
-      },
-      {} as { [key: string]: string | number | null },
-    )
-    properties.radiusNM = this.radiusNM
-    properties.radius = this.radiusNM * 1.852
-
-    return {
-      type: 'Feature',
-      properties,
-      geometry: {
-        type: 'Point',
-        coordinates: [-104.99404, 39.75621],
-      },
-    }
+    this.polygons = this.findPolygons(this.sections.get('E'))
   }
 
   extractCenter(qSection: string | null | undefined): { center: LatLng; radius: number } | null {
@@ -124,9 +139,25 @@ export class NOTAM {
   }
 
   parseQAngle(strAngle: string, hemisphere: string): number {
-    const degrees = parseInt(strAngle.substring(0, strAngle.length - 2))
-    const minutes = parseInt(strAngle.substring(strAngle.length - 2))
-    const angle = degrees + minutes / 60
+    const nbDegreesDigits = 'NS'.includes(hemisphere) ? 2 : 3
+    const degrees = parseInt(strAngle.substring(0, nbDegreesDigits))
+
+    let minutes = 0
+    let seconds = 0
+
+    const nextPart = strAngle.substring(nbDegreesDigits)
+    if (nextPart.length == 2) {
+      // Minutes only
+      minutes = parseInt(nextPart)
+    } else if (nextPart.length == 4) {
+      // Minutes and seconds
+      minutes = parseInt(nextPart.substring(0, 2))
+      seconds = parseInt(nextPart.substring(2))
+    } else {
+      console.warn("Couldn't parse minutes")
+    }
+
+    const angle = degrees + minutes / 60 + seconds / 3600
     return 'SW'.includes(hemisphere) ? -angle : angle
   }
 
@@ -162,5 +193,92 @@ export class NOTAM {
       sections.set(currentSection, currentLine)
     }
     return sections
+  }
+
+  findPolygons(text: string | undefined): Layer[] {
+    if (text === undefined) {
+      // No E section given
+      return []
+    }
+
+    const layers: Layer[] = []
+
+    // Look for PSNs
+    const psnPattern =
+      /(?:(?<psnEn>\w+)\s+)?PSN(?:\s+(?<psnFr>[^:]+))?\s*:\s*(?<lat>\d+)(?<latNS>N|S)\s*(?<lon>\d+)(?<lonEW>E|W)(?:\s*(?<radiusNM>\d+)|.*(?:(?<radius>\d+)\s*(?<radiusUnit>NM|M|KM)))?/g
+
+    let match
+    while ((match = psnPattern.exec(text)) != null) {
+      if (match.groups === undefined) {
+        // Unexpected
+        console.warn('Match but no groups for position %s', match[0])
+        continue
+      }
+
+      const strLat = match.groups['lat']
+      const strLatNS = match.groups['latNS']
+      const strLon = match.groups['lon']
+      const strLonEW = match.groups['lonEW']
+      if (
+        strLat === undefined ||
+        strLatNS === undefined ||
+        strLon === undefined ||
+        strLonEW === undefined
+      ) {
+        continue
+      }
+
+      const lat = this.parseQAngle(strLat, strLatNS)
+      const lon = this.parseQAngle(strLon, strLonEW)
+
+      let kind: PositionKind
+      const strKind = match.groups['psnFr'] ?? match.groups['psnEn']
+      if (strKind !== undefined && ['AVG', 'AVERAGE', 'MOYENNE'].includes(strKind)) {
+        kind = 'AVG'
+      } else {
+        kind = 'POINT'
+      }
+
+      const layer = new Position(kind, new LatLng(lat, lon)).toLayer()
+      if (layer !== null) {
+        layers.push(layer)
+      }
+    }
+
+    // Look for fixing
+    const foundFixingPoints = []
+    const fixingPattern =
+      /(?:(?:ANCRAGE(?:\s+(?<ancrage>\w+))?)|(?:(?<fixing>\w+\s+)?FIXING))(\s+[^:]+)?\s*:\s*(?<lat>\d+)(?<latNS>N|S)\s*(?<lon>\d+)(?<lonEW>E|W)\s*(?:(?:ALTITUDE|ELEV)\s*(?<alt>\d+)\s*(?<altUnit>FT|M))?/g
+    while ((match = fixingPattern.exec(text)) != null) {
+      if (match.groups === undefined) {
+        // Unexpected
+        continue
+      }
+
+      const strLat = match.groups['lat']
+      const strLatNS = match.groups['latNS']
+      const strLon = match.groups['lon']
+      const strLonEW = match.groups['lonEW']
+      if (
+        strLat === undefined ||
+        strLatNS === undefined ||
+        strLon === undefined ||
+        strLonEW === undefined
+      ) {
+        continue
+      }
+
+      const lat = this.parseQAngle(strLat, strLatNS)
+      const lon = this.parseQAngle(strLon, strLonEW)
+      // const strFixingPlace = match.groups['ancrage'] ?? match.groups['fixing']
+      foundFixingPoints.push(new LatLng(lat, lon))
+    }
+
+    const fixingLayer = new Line(foundFixingPoints).toLayer()
+    if (fixingLayer !== null) {
+      layers.push(fixingLayer)
+    }
+
+    return layers
   }
 }

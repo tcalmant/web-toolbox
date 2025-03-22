@@ -109,20 +109,23 @@ function setNOTAMs(notams: NOTAM[]) {
   layerRef.value?.remove()
 
   const groupLayer = new FeatureGroup()
+
+  groupLayer.setStyle({
+    fillColor: 'red',
+    fillOpacity: 0.75,
+  })
+
   for (const notam of notams) {
     let layer: Layer | null = null
-    if (notam.polygon !== null) {
+    if (notam.polygons !== null && notam.polygons.length > 0) {
       // Draw a polygon
-      const subGroup = new FeatureGroup()
-      layer = subGroup
-
+      const group = (layer = new FeatureGroup(notam.polygons))
       if (notam.center !== null && notam.radiusNM !== null) {
-        // Add the circle
-        subGroup.addLayer(L.circle(notam.center, { radius: notam.radiusNM * 1852 }))
+        group.addLayer(L.circle(notam.center, { radius: notam.radiusNM * 1852, fillOpacity: 0.25 }))
       }
     } else if (notam.center !== null && notam.radiusNM !== null) {
       // Draw a circle (convert radius in meters)
-      layer = L.circle(notam.center, { radius: notam.radiusNM * 1852 })
+      layer = L.circle(notam.center, { radius: notam.radiusNM * 1852, fillOpacity: 0.5 })
     }
 
     if (layer !== null) {
@@ -141,7 +144,7 @@ function setNOTAMs(notams: NOTAM[]) {
   layerRef.value = groupLayer
   groupLayer.addTo(map)
   if (groupLayer.getLayers().length != 0) {
-    map.fitBounds(groupLayer.getBounds(), { maxZoom: 11 })
+    map.fitBounds(groupLayer.getBounds(), { maxZoom: 12 })
   }
 }
 defineExpose({ setNOTAMs })
