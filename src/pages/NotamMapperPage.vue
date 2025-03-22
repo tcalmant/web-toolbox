@@ -67,7 +67,7 @@ function parseNotams(fullText: string): NOTAM[] {
       lastEndIdx = fullText.length
     }
 
-    const notamContent = fullText.substring(notamStartIdx, lastEndIdx)
+    const notamContent = fullText.substring(notamStartIdx, lastEndIdx).trim()
     const notam = new NOTAM(notamContent)
     notams.push(notam)
   }
