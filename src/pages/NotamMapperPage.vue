@@ -27,7 +27,14 @@ under the License.
         <MapView ref="mapViewRef" />
       </div>
       <div class="col-5 full-height">
-        <q-input v-model="inputText" label="NOTAM entries" filled type="textarea" autogrow />
+        <q-input
+          v-model="inputText"
+          label="NOTAM entries"
+          filled
+          type="textarea"
+          autofocus
+          autogrow
+        />
       </div>
     </div>
   </q-page>
