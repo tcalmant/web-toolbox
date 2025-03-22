@@ -25,6 +25,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
+import type { Layer } from 'leaflet'
 import L, { FeatureGroup, type LatLngTuple } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { nextTick, onMounted, ref } from 'vue'
@@ -68,21 +69,42 @@ function setNOTAMs(notams: NOTAM[]) {
 
   layerRef.value?.remove()
 
-  const layer = new FeatureGroup()
+  const groupLayer = new FeatureGroup()
   for (const notam of notams) {
+    let layer: Layer | null = null
     if (notam.polygon !== null) {
       // Draw a polygon
     } else if (notam.center !== null && notam.radiusNM !== null) {
       // Draw a circle (convert radius in meters)
-      layer.addLayer(L.circle(notam.center, { radius: notam.radiusNM * 1852 }))
+      layer = L.circle(notam.center, { radius: notam.radiusNM * 1852 })
+    }
+
+    if (layer !== null) {
+      layer.on('click', () => {
+        layer
+          .bindPopup(`<p class="mapViewNotamContent">${notam.text}</p>`, {
+            minWidth: 400,
+            maxWidth: 600,
+          })
+          .openPopup()
+      })
+      groupLayer.addLayer(layer)
     }
   }
 
-  layerRef.value = layer
-  layer.addTo(map)
-  if (layer.getLayers().length != 0) {
-    map.fitBounds(layer.getBounds(), { maxZoom: 11 })
+  layerRef.value = groupLayer
+  groupLayer.addTo(map)
+  if (groupLayer.getLayers().length != 0) {
+    map.fitBounds(groupLayer.getBounds(), { maxZoom: 11 })
   }
 }
 defineExpose({ setNOTAMs })
 </script>
+
+<style lang="css">
+.mapViewNotamContent {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 500;
+  white-space: pre-line;
+}
+</style>
