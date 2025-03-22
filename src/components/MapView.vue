@@ -53,10 +53,49 @@ const initMap = () => {
   })
   mapRef.value = map
 
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }).addTo(map)
+  const baseLayers = {
+    'IGN Plan': L.tileLayer(
+      'https://data.geopf.fr/wmts?' +
+        '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
+        '&STYLE=normal' +
+        '&TILEMATRIXSET=PM' +
+        '&FORMAT=image/png' +
+        '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2' +
+        '&TILEMATRIX={z}' +
+        '&TILEROW={y}' +
+        '&TILECOL={x}',
+      {
+        minZoom: 0,
+        maxZoom: 18,
+        attribution: 'IGN-F/Geoportail',
+        tileSize: 256, // les tuiles du Géooportail font 256x256px
+      },
+    ),
+    'IGN Photo': L.tileLayer(
+      'https://data.geopf.fr/wmts?' +
+        '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
+        '&STYLE=normal' +
+        '&TILEMATRIXSET=PM' +
+        '&FORMAT=image/jpeg' +
+        '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS' +
+        '&TILEMATRIX={z}' +
+        '&TILEROW={y}' +
+        '&TILECOL={x}',
+      {
+        minZoom: 0,
+        maxZoom: 18,
+        attribution: 'IGN-F/Geoportail',
+        tileSize: 256, // les tuiles du Géooportail font 256x256px
+      },
+    ),
+    OpenStreetMap: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }),
+  }
+
+  L.control.layers(baseLayers, {}).addTo(map)
+  Object.values(baseLayers)[0]?.addTo(map)
 
   layerRef.value?.addTo(map)
 }
