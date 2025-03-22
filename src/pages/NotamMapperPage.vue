@@ -37,11 +37,13 @@ under the License.
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
+import { onMounted } from 'vue'
 import { ref, watch } from 'vue'
 
 const inputText = ref('')
 const mapViewRef = ref()
 
+onMounted(() => handleInput(inputText.value))
 watch(inputText, (newValue: string) => handleInput(newValue))
 
 function handleInput(fullText: string): void {
