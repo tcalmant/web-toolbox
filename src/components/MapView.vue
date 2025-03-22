@@ -74,6 +74,13 @@ function setNOTAMs(notams: NOTAM[]) {
     let layer: Layer | null = null
     if (notam.polygon !== null) {
       // Draw a polygon
+      const subGroup = new FeatureGroup()
+      layer = subGroup
+
+      if (notam.center !== null && notam.radiusNM !== null) {
+        // Add the circle
+        subGroup.addLayer(L.circle(notam.center, { radius: notam.radiusNM * 1852 }))
+      }
     } else if (notam.center !== null && notam.radiusNM !== null) {
       // Draw a circle (convert radius in meters)
       layer = L.circle(notam.center, { radius: notam.radiusNM * 1852 })
