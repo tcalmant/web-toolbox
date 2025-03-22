@@ -95,7 +95,7 @@ const initMap = () => {
   }
 
   L.control.layers(baseLayers, {}).addTo(map)
-  Object.values(baseLayers)[0]?.addTo(map)
+  Object.values(baseLayers)[2]?.addTo(map)
 
   layerRef.value?.addTo(map)
 }
