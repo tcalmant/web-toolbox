@@ -36,6 +36,7 @@ under the License.
 <script setup lang="ts">
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
+import { findFirstRegex } from 'src/components/stringUtils'
 import { ref, watch } from 'vue'
 
 const inputText = ref('')
@@ -47,21 +48,21 @@ function handleInput(fullText: string): void {
   mapViewRef.value?.setNOTAMs(parseNotams(fullText))
 }
 
-function findFirst(text: string, startIdx: number, ...patterns: string[]): number {
-  const foundIndices = patterns.map((p) => text.indexOf(p, startIdx)).filter((idx) => idx != -1)
-  if (foundIndices.length == 0) {
-    return -1
-  } else {
-    return Math.min(...foundIndices)
-  }
-}
-
 function parseNotams(fullText: string): NOTAM[] {
-  let lastEndIdx = 0
-  let notamStartIdx = -1
+  let lastEndIdx = -1
+  let sectionStartIdx = -1
   const notams: NOTAM[] = []
-  while ((notamStartIdx = findFirst(fullText, lastEndIdx, 'A)', 'Q)')) != -1) {
-    lastEndIdx = fullText.indexOf('\n\n', notamStartIdx)
+  while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-FQ]\)/)) != -1) {
+    // Look for the "real" start of the NOTAM
+    let notamStartIdx = fullText.lastIndexOf('\n\n', sectionStartIdx)
+    if (notamStartIdx == -1) {
+      notamStartIdx = 0
+    } else if (notamStartIdx < lastEndIdx) {
+      notamStartIdx = lastEndIdx
+    }
+
+    // Look for the end of the NOTAM
+    lastEndIdx = fullText.indexOf('\n\n', sectionStartIdx)
     if (lastEndIdx == -1) {
       lastEndIdx = fullText.length
     }
