@@ -54,7 +54,7 @@ function parseNotams(fullText: string): NOTAM[] {
   let lastEndIdx = -1
   let sectionStartIdx = -1
   const notams: NOTAM[] = []
-  while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-FQ]\)/)) != -1) {
+  while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-GQ]\)/)) != -1) {
     // Look for the "real" start of the NOTAM
     let notamStartIdx = fullText.lastIndexOf('\n\n', sectionStartIdx)
     if (notamStartIdx == -1) {

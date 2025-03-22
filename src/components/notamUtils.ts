@@ -136,15 +136,18 @@ export class NOTAM {
     const sections = new Map<string, string>()
     for (let line of text.split('\n')) {
       line = line.trim()
-      if (line.at(1) == ')' && 'AQBCDEFG'.includes(line.at(0) ?? '')) {
-        // Start of new section
-        if (currentSection != null && currentLine != null) {
-          // Store current section
-          sections.set(currentSection, currentLine)
-          currentLine = null
+      const match = line.match(/^(\W*)(?<section>[A-GQ])\)/)
+      if (match != null && match.groups != null) {
+        const foundSection = match.groups['section']
+        if (foundSection !== undefined) {
+          // Start of new section
+          if (currentSection != null && currentLine != null) {
+            // Store current section
+            sections.set(currentSection, currentLine)
+            currentLine = null
+          }
+          currentSection = foundSection
         }
-
-        currentSection = line.at(0) as string
       }
 
       if (currentLine == null) {
