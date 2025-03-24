@@ -32,8 +32,9 @@ class Position {
   }
 
   toLayer(): Layer | null {
-    console.log('Make position point')
-    return this.kind === 'POINT' ? L.circle(this.location, { radius: 50 }) : null
+    return this.kind === 'POINT'
+      ? L.circle(this.location, { radius: 1, color: 'red', weight: 10 })
+      : null
   }
 }
 
@@ -48,11 +49,9 @@ class Line {
     if (this.locations.length === 0) {
       return null
     } else if (this.locations.length === 1) {
-      console.log('Make line point')
       return new Position('POINT', this.locations[0] as LatLng).toLayer()
     } else {
-      console.log('Make polyline')
-      return L.polyline(this.locations)
+      return L.polyline(this.locations, { color: 'maroon', stroke: true, weight: 5 })
     }
   }
 }
