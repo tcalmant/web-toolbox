@@ -1,8 +1,8 @@
 {
-  "name": "boiteaoutils",
+  "name": "tom-toolbox",
   "version": "0.0.1",
-  "description": "La boite à outils de Thomas",
-  "productName": "Boite à outils",
+  "description": "Various tools useful for its developer",
+  "productName": "Tom's toolbox",
   "author": "Thomas Calmant <thomas.calmant@gmail.com>",
   "type": "module",
   "private": true,

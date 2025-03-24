@@ -1,16 +1,16 @@
-# Boite à outils
+# Tom's web toolbox
 
-La boite à outils de @tcalmant: petit projet regroupant quelques petits utilitaires basés sur des besoins quotidiens.
+A Quasar-based project featuring various tools useful for its developer @tcalmant.
 
-Ce projet est distribué sous [licence Apache 2.0](./LICENSE).
+Project released under the terms of the [Apache 2.0 licence](./LICENSE).
 
-## Développement
+## Command lines
 
-- Installation des dépendances
+- Install dependencies
   ```bash
   npm ci
   ```
-- Démarrage du serveur de développement
+- Start the dev server
   ```bash
   quasar dev
   ```
@@ -18,7 +18,7 @@ Ce projet est distribué sous [licence Apache 2.0](./LICENSE).
   ```bash
   npm run lint
   ```
-- Compilation
+- Building
   ```bash
   quasar build
   ```

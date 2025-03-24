@@ -57,9 +57,9 @@ import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink
 const linksList: EssentialLinkProps[] = [
   {
     title: 'Github',
-    caption: 'github.com/tcalmant/boiteaoutils',
+    caption: 'github.com/tcalmant/web-toolbox',
     icon: 'code',
-    link: 'https://github.com/tcalmant/boiteaoutils',
+    link: 'https://github.com/tcalmant/web-toolbox',
   },
 ]
 
