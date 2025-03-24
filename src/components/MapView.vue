@@ -21,14 +21,14 @@ under the License.
 -->
 
 <template>
-  <div id="map" class="fit">Map</div>
+  <div id="map" class="fit"></div>
 </template>
 
 <script setup lang="ts">
 import type { Layer } from 'leaflet'
 import L, { FeatureGroup, type LatLngTuple } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { nextTick, onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { type NOTAM } from './notamUtils'
 
 export interface MapProps {
@@ -46,46 +46,63 @@ const layerRef = ref<FeatureGroup>()
 
 onMounted(() => nextTick(initMap))
 
+watch(mapRef, (map) => {
+  if (map !== undefined && layerRef.value !== undefined) {
+    layerRef.value.addTo(map)
+    if (layerRef.value.getLayers().length != 0) {
+      map.fitBounds(layerRef.value.getBounds(), { maxZoom: 12 })
+    }
+  }
+})
+
+watch(layerRef, (layers) => {
+  if (mapRef.value !== undefined && layers !== undefined) {
+    layers.addTo(mapRef.value)
+    if (layers.getLayers().length != 0) {
+      mapRef.value.fitBounds(layers.getBounds(), { maxZoom: 12 })
+    }
+  }
+})
+
 const initMap = () => {
   const map = L.map('map', {
     center: props.center,
     zoom: props.zoom,
   })
-  mapRef.value = map
 
   const baseLayers = {
     'IGN Plan': L.tileLayer(
       'https://data.geopf.fr/wmts?' +
-        '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
-        '&STYLE=normal' +
-        '&TILEMATRIXSET=PM' +
-        '&FORMAT=image/png' +
-        '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2' +
-        '&TILEMATRIX={z}' +
-        '&TILEROW={y}' +
-        '&TILECOL={x}',
+      '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
+      '&STYLE=normal' +
+      '&TILEMATRIXSET=PM' +
+      '&FORMAT=image/png' +
+      '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2' +
+      '&TILEMATRIX={z}' +
+      '&TILEROW={y}' +
+      '&TILECOL={x}',
       {
         minZoom: 0,
         maxZoom: 18,
         attribution: 'IGN-F/Geoportail',
-        tileSize: 256, // les tuiles du Géooportail font 256x256px
+        tileSize: 256,
       },
     ),
     'IGN Photo': L.tileLayer(
       'https://data.geopf.fr/wmts?' +
-        '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
-        '&STYLE=normal' +
-        '&TILEMATRIXSET=PM' +
-        '&FORMAT=image/jpeg' +
-        '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS' +
-        '&TILEMATRIX={z}' +
-        '&TILEROW={y}' +
-        '&TILECOL={x}',
+      '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
+      '&STYLE=normal' +
+      '&TILEMATRIXSET=PM' +
+      '&FORMAT=image/jpeg' +
+      '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS' +
+      '&TILEMATRIX={z}' +
+      '&TILEROW={y}' +
+      '&TILECOL={x}',
       {
         minZoom: 0,
         maxZoom: 18,
         attribution: 'IGN-F/Geoportail',
-        tileSize: 256, // les tuiles du Géooportail font 256x256px
+        tileSize: 256,
       },
     ),
     OpenStreetMap: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -97,15 +114,11 @@ const initMap = () => {
   L.control.layers(baseLayers, {}).addTo(map)
   Object.values(baseLayers)[2]?.addTo(map)
 
+  mapRef.value = map
   layerRef.value?.addTo(map)
 }
 
 function setNOTAMs(notams: NOTAM[]) {
-  const map = mapRef.value
-  if (map == null) {
-    return
-  }
-
   layerRef.value?.remove()
 
   const groupLayer = new FeatureGroup()
@@ -119,10 +132,11 @@ function setNOTAMs(notams: NOTAM[]) {
     let layer: Layer | null = null
     if (notam.polygons !== null && notam.polygons.length > 0) {
       // Draw a polygon
-      const group = (layer = new FeatureGroup(notam.polygons))
+      const group = (layer = new FeatureGroup())
       if (notam.center !== null && notam.radiusNM !== null) {
-        group.addLayer(L.circle(notam.center, { radius: notam.radiusNM * 1852, fillOpacity: 0.25 }))
+        group.addLayer(L.circle(notam.center, { radius: notam.radiusNM * 1852, stroke: false, fillOpacity: 0.25 }))
       }
+      notam.polygons.forEach(l => group.addLayer(l))
     } else if (notam.center !== null && notam.radiusNM !== null) {
       // Draw a circle (convert radius in meters)
       layer = L.circle(notam.center, { radius: notam.radiusNM * 1852, fillOpacity: 0.5 })
@@ -142,10 +156,6 @@ function setNOTAMs(notams: NOTAM[]) {
   }
 
   layerRef.value = groupLayer
-  groupLayer.addTo(map)
-  if (groupLayer.getLayers().length != 0) {
-    map.fitBounds(groupLayer.getBounds(), { maxZoom: 12 })
-  }
 }
 defineExpose({ setNOTAMs })
 </script>
