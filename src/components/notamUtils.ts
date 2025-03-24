@@ -141,6 +141,12 @@ export class NOTAM {
     const nbDegreesDigits = 'NS'.includes(hemisphere) ? 2 : 3
     const degrees = parseInt(strAngle.substring(0, nbDegreesDigits))
 
+    // Ignore decimals on ultra-precise locations
+    const dotIdx = strAngle.indexOf('.', nbDegreesDigits)
+    if (dotIdx != -1) {
+      strAngle = strAngle.substring(0, dotIdx)
+    }
+
     let minutes = 0
     let seconds = 0
 
@@ -204,7 +210,7 @@ export class NOTAM {
 
     // Look for PSNs
     const psnPattern =
-      /(?:(?<psnEn>\w+)\s+)?PSN(?:\s+(?<psnFr>[^:]+))?\s*:\s*(?<lat>\d+)(?<latNS>N|S)\s*(?<lon>\d+)(?<lonEW>E|W)(?:\s*(?<radiusNM>\d+)|.*(?:(?<radius>\d+)\s*(?<radiusUnit>NM|M|KM)))?/g
+      /(?:(?<psnEn>\w+)\s+)?PSN(?:\s+(?<psnFr>[^:]+))?\s*:\s*(?<lat>\d+(.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(.\d+)?)(?<lonEW>E|W)(?:\s*(?<radiusNM>\d+)|.*(?:(?<radius>\d+)\s*(?<radiusUnit>NM|M|KM)))?/g
 
     let match
     while ((match = psnPattern.exec(text)) != null) {
