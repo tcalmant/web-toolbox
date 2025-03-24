@@ -34,10 +34,36 @@ under the License.
         <q-separator />
         <q-tab-panels v-model="selectedTab" animated>
           <q-tab-panel name="notamTab">
-            <q-input v-model="inputNOTAMText" label="NOTAM entries" filled type="textarea" autofocus autogrow />
+            <div class="col">
+              <div class="row">
+                <div class="col">
+                  <q-checkbox v-model="ignoreLargeNotams" label="Ignore large NOTAM" />
+                </div>
+                <div class="col-5">
+                  <q-slider v-model="maxNotamRadius" :min="1" :max="999" label switch-label-side
+                    :label-always="ignoreLargeNotams" :label-value="maxNotamRadius + ' NM'" />
+                </div>
+              </div>
+              <div class="row">
+                <q-checkbox v-model="onlyWithPositions" label="Only show NOTAM with located items" />
+              </div>
+              <div class="row">
+                <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
+              </div>
+            </div>
+            <q-separator />
+            <q-input v-model="inputNOTAMText" label="NOTAM entries" filled type="textarea" autofocus autogrow>
+              <template v-slot:append>
+                <q-icon name="close" @click="inputNOTAMText = ''" class="cursor-pointer" />
+              </template>
+            </q-input>
           </q-tab-panel>
           <q-tab-panel name="aipTab">
-            <q-input v-model="inputAIPText" label="AIP entries" filled type="textarea" autofocus autogrow />
+            <q-input v-model="inputAIPText" label="AIP entries" filled type="textarea" autofocus autogrow>
+              <template v-slot:append>
+                <q-icon name="close" @click="inputAIPText = ''" class="cursor-pointer" />
+              </template>
+            </q-input>
           </q-tab-panel>
         </q-tab-panels>
       </div>
@@ -50,13 +76,16 @@ import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
-import { onMounted } from 'vue'
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 const inputNOTAMText = ref('')
 const inputAIPText = ref('')
-const mapViewRef = ref()
+const ignoreLargeNotams = ref<boolean>(true)
+const maxNotamRadius = ref<number>(100)
+const onlyWithPositions = ref<boolean>(true)
+const showAreaOfInfluence = ref<boolean>(true)
 
+const mapViewRef = ref()
 const selectedTab = ref('notamTab')
 
 onMounted(() => {
@@ -64,10 +93,23 @@ onMounted(() => {
   handleAIPInput(inputAIPText.value)
 })
 watch(inputNOTAMText, (newValue: string) => handleNOTAMInput(newValue))
+watch(ignoreLargeNotams, () => handleNOTAMInput(inputNOTAMText.value))
+watch(maxNotamRadius, () => handleNOTAMInput(inputNOTAMText.value))
+watch(onlyWithPositions, () => handleNOTAMInput(inputNOTAMText.value))
+watch(showAreaOfInfluence, () => handleNOTAMInput(inputNOTAMText.value))
 watch(inputAIPText, (newValue: string) => handleAIPInput(newValue))
 
 function handleNOTAMInput(fullText: string): void {
-  mapViewRef.value?.setNOTAMs(parseNotams(fullText))
+  let notams = parseNotams(fullText)
+  if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
+    notams = notams.filter(n => n.radiusNM == null || n.radiusNM <= maxNotamRadius.value)
+  }
+
+  if (onlyWithPositions.value) {
+    notams = notams.filter(n => n.polygons.length != 0)
+  }
+
+  mapViewRef.value?.setNOTAMs(notams, showAreaOfInfluence.value)
 }
 
 function handleAIPInput(fullText: string): void {

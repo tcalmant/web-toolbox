@@ -163,21 +163,16 @@ function setAIP(layers: Layer[], text: string) {
   aipLayerRef.value = groupLayer
 }
 
-function setNOTAMs(notams: NOTAM[]) {
+function setNOTAMs(notams: NOTAM[], showAreaOfInfluence: boolean = true) {
   notamLayerRef.value?.remove()
 
   const groupLayer = new FeatureGroup()
-  groupLayer.setStyle({
-    fillColor: 'red',
-    fillOpacity: 0.75,
-  })
-
   for (const notam of notams) {
     let layer: Layer | null = null
     if (notam.polygons !== null && notam.polygons.length > 0) {
       // Draw a polygon
       const group = (layer = new FeatureGroup())
-      if (notam.center !== null && notam.radiusNM !== null) {
+      if (showAreaOfInfluence && notam.center !== null && notam.radiusNM !== null) {
         group.addLayer(L.circle(notam.center, { radius: notam.radiusNM * 1852, stroke: false, fillOpacity: 0.25 }))
       }
       notam.polygons.forEach(l => group.addLayer(l))
