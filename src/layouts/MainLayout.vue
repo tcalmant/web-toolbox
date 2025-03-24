@@ -29,9 +29,9 @@ under the License.
         <q-toolbar-title> Tom's toolbox </q-toolbar-title>
 
         <q-tabs>
-          <q-route-tab label="Timestamp" to="/timestamp" exact />
-          <q-route-tab label="Fuel computer" to="/fuel-computer" exact />
           <q-route-tab label="NOTAM mapper" to="/notam-mapper" exact />
+          <q-route-tab label="Fuel computer" to="/fuel-computer" exact />
+          <q-route-tab label="Timestamp" to="/timestamp" exact />
         </q-tabs>
       </q-toolbar>
     </q-header>
