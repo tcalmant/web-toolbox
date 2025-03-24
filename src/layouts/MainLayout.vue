@@ -27,13 +27,13 @@ under the License.
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
         <q-toolbar-title> Tom's toolbox </q-toolbar-title>
-      </q-toolbar>
 
-      <q-tabs>
-        <q-route-tab label="Timestamp" to="/timestamp" exact />
-        <q-route-tab label="Fuel computer" to="/fuel-computer" exact />
-        <q-route-tab label="NOTAM mapper" to="/notam-mapper" exact />
-      </q-tabs>
+        <q-tabs>
+          <q-route-tab label="Timestamp" to="/timestamp" exact />
+          <q-route-tab label="Fuel computer" to="/fuel-computer" exact />
+          <q-route-tab label="NOTAM mapper" to="/notam-mapper" exact />
+        </q-tabs>
+      </q-toolbar>
     </q-header>
 
     <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered>
