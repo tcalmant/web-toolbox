@@ -16,45 +16,9 @@
  */
 
 import type { Layer } from 'leaflet'
-import L, { LatLng } from 'leaflet'
-
-type PositionKind = 'POINT' | 'AVG'
-
-class Position {
-  location: LatLng
-  kind: PositionKind
-  category: string | undefined
-
-  constructor(kind: PositionKind, location: LatLng, category?: string) {
-    this.kind = kind
-    this.location = location
-    this.category = category
-  }
-
-  toLayer(): Layer | null {
-    return this.kind === 'POINT'
-      ? L.circle(this.location, { radius: 1, color: 'red', weight: 10 })
-      : null
-  }
-}
-
-class Line {
-  locations: LatLng[]
-
-  constructor(locations: LatLng[]) {
-    this.locations = locations
-  }
-
-  toLayer(): Layer | null {
-    if (this.locations.length === 0) {
-      return null
-    } else if (this.locations.length === 1) {
-      return new Position('POINT', this.locations[0] as LatLng).toLayer()
-    } else {
-      return L.polyline(this.locations, { color: 'maroon', stroke: true, weight: 5 })
-    }
-  }
-}
+import { LatLng } from 'leaflet'
+import type { PositionKind } from './geometry'
+import { Line, Position } from './geometry'
 
 export class NOTAM {
   text: string

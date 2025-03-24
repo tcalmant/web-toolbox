@@ -25,7 +25,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import type { Layer } from 'leaflet'
+import type { LatLngBounds, Layer } from 'leaflet'
 import L, { FeatureGroup, type LatLngTuple } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { nextTick, onMounted, ref, watch } from 'vue'
@@ -42,20 +42,48 @@ const props = withDefaults(defineProps<MapProps>(), {
 })
 
 const mapRef = ref<L.Map>()
-const layerRef = ref<FeatureGroup>()
+const notamLayerRef = ref<FeatureGroup>()
+const aipLayerRef = ref<FeatureGroup>()
 
 onMounted(() => nextTick(initMap))
 
 watch(mapRef, (map) => {
-  if (map !== undefined && layerRef.value !== undefined) {
-    layerRef.value.addTo(map)
-    if (layerRef.value.getLayers().length != 0) {
-      map.fitBounds(layerRef.value.getBounds(), { maxZoom: 12 })
+  if (map !== undefined) {
+    let bounds: LatLngBounds | undefined
+    if (aipLayerRef.value !== undefined) {
+      aipLayerRef.value.addTo(map)
+      if (aipLayerRef.value.getLayers().length != 0) {
+        bounds = aipLayerRef.value.getBounds()
+      }
+    }
+
+    if (notamLayerRef.value !== undefined) {
+      notamLayerRef.value.addTo(map)
+      if (notamLayerRef.value.getLayers().length != 0) {
+        if (bounds !== undefined) {
+          bounds.extend(notamLayerRef.value.getBounds())
+        } else {
+          bounds = notamLayerRef.value.getBounds()
+        }
+      }
+    }
+
+    if (bounds !== undefined) {
+      map.fitBounds(bounds, { maxZoom: 12 })
     }
   }
 })
 
-watch(layerRef, (layers) => {
+watch(aipLayerRef, (layers) => {
+  if (mapRef.value !== undefined && layers !== undefined) {
+    layers.addTo(mapRef.value)
+    if (layers.getLayers().length != 0) {
+      mapRef.value.fitBounds(layers.getBounds(), { maxZoom: 12 })
+    }
+  }
+})
+
+watch(notamLayerRef, (layers) => {
   if (mapRef.value !== undefined && layers !== undefined) {
     layers.addTo(mapRef.value)
     if (layers.getLayers().length != 0) {
@@ -115,14 +143,30 @@ const initMap = () => {
   Object.values(baseLayers)[2]?.addTo(map)
 
   mapRef.value = map
-  layerRef.value?.addTo(map)
+  aipLayerRef.value?.addTo(map)
+  notamLayerRef.value?.addTo(map)
+}
+
+function setAIP(layers: Layer[], text: string) {
+  aipLayerRef.value?.remove()
+
+  const groupLayer = new FeatureGroup(layers)
+  groupLayer.on('click', () => {
+    groupLayer
+      .bindPopup(`<p class="mapViewNotamContent">${text}</p>`, {
+        minWidth: 400,
+        maxWidth: 600,
+      })
+      .openPopup()
+  })
+
+  aipLayerRef.value = groupLayer
 }
 
 function setNOTAMs(notams: NOTAM[]) {
-  layerRef.value?.remove()
+  notamLayerRef.value?.remove()
 
   const groupLayer = new FeatureGroup()
-
   groupLayer.setStyle({
     fillColor: 'red',
     fillOpacity: 0.75,
@@ -155,9 +199,9 @@ function setNOTAMs(notams: NOTAM[]) {
     }
   }
 
-  layerRef.value = groupLayer
+  notamLayerRef.value = groupLayer
 }
-defineExpose({ setNOTAMs })
+defineExpose({ setAIP, setNOTAMs })
 </script>
 
 <style lang="css">

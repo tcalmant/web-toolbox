@@ -27,34 +27,51 @@ under the License.
         <MapView ref="mapViewRef" />
       </div>
       <div class="col-5 full-height">
-        <q-input
-          v-model="inputText"
-          label="NOTAM entries"
-          filled
-          type="textarea"
-          autofocus
-          autogrow
-        />
+        <q-tabs v-model="selectedTab">
+          <q-tab name="notamTab" label="NOTAM" icon="timer" />
+          <q-tab name="aipTab" label="AIP" icon="menu_book" />
+        </q-tabs>
+        <q-separator />
+        <q-tab-panels v-model="selectedTab" animated>
+          <q-tab-panel name="notamTab">
+            <q-input v-model="inputNOTAMText" label="NOTAM entries" filled type="textarea" autofocus autogrow />
+          </q-tab-panel>
+          <q-tab-panel name="aipTab">
+            <q-input v-model="inputAIPText" label="AIP entries" filled type="textarea" autofocus autogrow />
+          </q-tab-panel>
+        </q-tab-panels>
       </div>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
 import { onMounted } from 'vue'
 import { ref, watch } from 'vue'
 
-const inputText = ref('')
+const inputNOTAMText = ref('')
+const inputAIPText = ref('')
 const mapViewRef = ref()
 
-onMounted(() => handleInput(inputText.value))
-watch(inputText, (newValue: string) => handleInput(newValue))
+const selectedTab = ref('notamTab')
 
-function handleInput(fullText: string): void {
+onMounted(() => {
+  handleNOTAMInput(inputNOTAMText.value)
+  handleAIPInput(inputAIPText.value)
+})
+watch(inputNOTAMText, (newValue: string) => handleNOTAMInput(newValue))
+watch(inputAIPText, (newValue: string) => handleAIPInput(newValue))
+
+function handleNOTAMInput(fullText: string): void {
   mapViewRef.value?.setNOTAMs(parseNotams(fullText))
+}
+
+function handleAIPInput(fullText: string): void {
+  mapViewRef.value?.setAIP(new AIP(fullText).polygons ?? [], fullText)
 }
 
 function parseNotams(fullText: string): NOTAM[] {
