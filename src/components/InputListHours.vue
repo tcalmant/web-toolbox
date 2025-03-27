@@ -33,6 +33,7 @@ under the License.
               inputmode="numeric"
               mask="#:##"
               fill-mask="0"
+              maxlength="5"
               reverse-fill-mask
               filled
               @update:model-value="errorMessage = null"
