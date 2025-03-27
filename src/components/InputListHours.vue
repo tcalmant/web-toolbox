@@ -21,48 +21,53 @@ under the License.
 -->
 
 <template>
-  <q-card class="q-gutter-xs">
-    <div class="column q-gutter-xs">
+  <q-card class="q-pa-md">
+    <div class="column q-gutter-md">
+      <span v-if="title" class="text-subtitle1 text-center">{{ title }}</span>
+      <q-form class="print-hide" @submit.prevent="onAdd">
+        <div class="row q-gutter-xs">
+          <div class="col">
+            <q-input
+              ref="valueInputField"
+              v-model="inputValue"
+              inputmode="numeric"
+              mask="#:##"
+              fill-mask="0"
+              maxlength="5"
+              reverse-fill-mask
+              filled
+              @update:model-value="errorMessage = null"
+            />
+            <span v-show="errorMessage" class="text-negative">{{ errorMessage }}</span>
+          </div>
+          <q-separator />
+          <q-btn class="col-1" icon="add" type="submit" />
+          <q-separator />
+          <q-btn class="col-1" @mousedown.prevent @click="onDeleteAll()">
+            <q-icon name="delete_forever" color="negative" />
+          </q-btn>
+        </div>
+      </q-form>
+      <q-input
+        v-if="showTotal"
+        class="col"
+        v-model="totalValue"
+        readonly
+        filled
+        outlined
+        label="Total time"
+      />
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
           <q-item-section>
             {{ value }}
           </q-item-section>
+          <q-item-section side> {{ Math.ceil(value.duration_s / 60) }}&nbsp;min </q-item-section>
           <q-item-section side class="print-hide">
-            <q-icon name="delete" color="red" @click="onDelete(idx)" />
+            <q-icon name="delete" color="negative" @click="onDelete(idx)" />
           </q-item-section>
         </q-item>
       </q-list>
-      <div class="row items-center">
-        <div class="col-10">
-          <q-input v-model="totalValue" readonly filled outlined label="Total time" />
-        </div>
-        <div class="col q-px-md print-hide">
-          <q-btn @mousedown.prevent @click="onDeleteAll()">
-            <q-icon name="delete_forever" color="red" />
-            <span>Clear&nbsp;all</span>
-          </q-btn>
-        </div>
-      </div>
-      <q-form class="row print-hide" @submit.prevent="onAdd">
-        <div class="col-11">
-          <q-input
-            ref="valueInputField"
-            v-model="inputValue"
-            inputmode="numeric"
-            mask="N:NN"
-            fill-mask="0"
-            reverse-fill-mask
-            filled
-            :error="errorMessage != null"
-            :error-message="errorMessage ?? undefined"
-            @update:model-value="errorMessage = null"
-          />
-        </div>
-        <div class="col-1">
-          <q-btn class="fit" icon="add" type="submit" />
-        </div>
-      </q-form>
     </div>
   </q-card>
 </template>
@@ -73,7 +78,9 @@ import { ref } from 'vue'
 import { TimePeriod } from './timeUtils'
 
 const $q = useQuasar()
-const emit = defineEmits<{ (e: 'update', duration_s: number): void }>()
+const totalDuration = defineModel<TimePeriod>()
+withDefaults(defineProps<{ title?: string; showTotal?: boolean }>(), { showTotal: false })
+
 const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
 const inputValue = ref('0:30')
 const valueInputField = ref<QInput>()
@@ -87,22 +94,22 @@ function onAdd() {
 
   if (minutes < 0 || minutes >= 60) {
     errorMessage.value = 'Invalid number of minutes'
-    return
-  }
-
-  const duration_s = hours * 3600 + minutes * 60
-  let localValues
-  if (
-    allValues.value.length == 0 ||
-    (allValues.value.length == 1 && allValues.value[0]?.duration_s == 0)
-  ) {
-    localValues = [new TimePeriod(duration_s)]
   } else {
-    localValues = [...allValues.value, new TimePeriod(duration_s)]
-  }
+    const duration_s = hours * 3600 + minutes * 60
+    let localValues
+    if (
+      allValues.value.length == 0 ||
+      (allValues.value.length == 1 && allValues.value[0]?.duration_s == 0)
+    ) {
+      localValues = [new TimePeriod(duration_s)]
+    } else {
+      localValues = [...allValues.value, new TimePeriod(duration_s)]
+    }
 
-  recompute(localValues)
+    recompute(localValues)
+  }
   valueInputField.value?.focus()
+  valueInputField.value?.select()
 }
 
 function onDelete(idx: number) {
@@ -124,10 +131,12 @@ function onDeleteAll() {
       })
       .onDismiss(() => {
         valueInputField.value?.focus()
+        valueInputField.value?.select()
       })
   } else {
     recompute([])
     valueInputField.value?.focus()
+    valueInputField.value?.select()
   }
 }
 
@@ -143,6 +152,6 @@ function recompute(localValues: TimePeriod[]) {
 
   allValues.value = localValues
   totalValue.value = totalPeriod.toString()
-  emit('update', totalPeriod.duration_s)
+  totalDuration.value = totalPeriod
 }
 </script>

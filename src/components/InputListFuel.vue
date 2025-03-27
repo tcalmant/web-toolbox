@@ -21,86 +21,109 @@ under the License.
 -->
 
 <template>
-  <q-card class="q-gutter-xs">
-    <div class="column q-gutter-xs">
+  <q-card class="q-pa-md">
+    <div class="column q-gutter-md">
+      <span v-if="title" class="text-subtitle1 text-center">{{ title }}</span>
+      <q-form class="print-hide" @submit.prevent="onAdd">
+        <div class="row q-gutter-xs">
+          <div class="col">
+            <q-input
+              ref="fuelInputField"
+              v-model.number="inputValue"
+              type="number"
+              inputmode="numeric"
+              filled
+              @update:model-value="errorMessage = null"
+            />
+            <span v-show="errorMessage" class="text-negative">{{ errorMessage }}</span>
+          </div>
+          <div class="col-2">
+            <q-select class="fit" v-model="inputUnit" :options="FUEL_UNITS" filled />
+          </div>
+          <q-separator />
+          <q-btn class="col-1" icon="add" type="submit" />
+          <q-separator />
+          <q-btn class="col-1" @mousedown.prevent @click="onDeleteAll()">
+            <q-icon name="delete_forever" color="negative" />
+          </q-btn>
+        </div>
+      </q-form>
+      <q-input
+        v-if="showTotal"
+        class="col"
+        v-model="totalValueString"
+        readonly
+        filled
+        outlined
+        label="Total fuel"
+      />
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
           <q-item-section> {{ value }} </q-item-section>
           <q-item-section side> {{ value.toString(LITER) }} </q-item-section>
           <q-item-section side class="print-hide">
-            <q-icon name="delete" color="red" @click="onDelete(idx)" />
+            <q-icon name="delete" color="negative" @click="onDelete(idx)" />
           </q-item-section>
         </q-item>
       </q-list>
-      <div class="row items-center">
-        <div class="col-10">
-          <q-input v-model="totalValueString" readonly filled outlined label="Total fuel" />
-        </div>
-        <div class="col q-px-md print-hide">
-          <q-btn @mousedown.prevent @click="onDeleteAll()">
-            <q-icon name="delete_forever" color="red" />
-            <span>Clear&nbsp;all</span>
-          </q-btn>
-        </div>
-      </div>
-      <q-form class="row print-hide" @submit.prevent="onAdd">
-        <div class="col-9">
-          <q-input
-            ref="fuelInputField"
-            v-model.number="inputValue"
-            type="number"
-            inputmode="numeric"
-            filled
-            :error="errorMessage != null"
-            :error-message="errorMessage ?? undefined"
-            @update:model-value="errorMessage = null"
-          />
-        </div>
-        <div class="col-2">
-          <q-select class="fit" v-model="inputUnit" :options="FUEL_UNITS" filled />
-        </div>
-        <div class="col-1">
-          <q-btn class="fit" icon="add" type="submit" />
-        </div>
-      </q-form>
     </div>
   </q-card>
 </template>
 
 <script setup lang="ts">
 import { QInput, useQuasar } from 'quasar'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { FuelOption } from './fuelUtils'
 import { FUEL_UNITS, FuelQuantity, LITER } from './fuelUtils'
 
 const $q = useQuasar()
-const emit = defineEmits<{ (e: 'update', quantity: FuelQuantity): void }>()
-const props = defineProps<{ globalFuelUnit: FuelOption }>()
+const props = withDefaults(
+  defineProps<{
+    globalFuelUnit: FuelOption
+    fuelCapacity: FuelQuantity
+    title?: string
+    showTotal?: boolean
+  }>(),
+  {
+    showTotal: false,
+  },
+)
+const totalQuantity = defineModel<FuelQuantity>()
 
 const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
 const inputValue = ref(0)
 const inputUnit = ref(LITER)
-const errorMessage = ref<string | null>(null)
-const totalQuantity = ref<FuelQuantity>(new FuelQuantity(0))
 const fuelInputField = ref<QInput>()
-const totalValueString = computed(() =>
-  totalQuantity.value.toString(props.globalFuelUnit ?? inputValue.value),
+const totalValueString = computed(
+  () => totalQuantity.value?.toString(props.globalFuelUnit ?? inputValue.value) ?? 'N/A',
 )
+const errorMessage = ref<string | null>(null)
+
+watch(props, (newProps) => {
+  inputUnit.value = newProps.globalFuelUnit
+})
 
 function onAdd() {
   const newValue = new FuelQuantity(inputValue.value, inputUnit.value)
-  let localValues
-  if (
-    allValues.value.length == 0 ||
-    (allValues.value.length == 1 && allValues.value[0]?.value.scalar == 0)
-  ) {
-    localValues = [newValue]
+
+  if (newValue > props.fuelCapacity) {
+    errorMessage.value = 'Trying to add more fuel than possible'
   } else {
-    localValues = [...allValues.value, newValue]
+    let localValues
+    if (
+      allValues.value.length == 0 ||
+      (allValues.value.length == 1 && allValues.value[0]?.value.scalar == 0)
+    ) {
+      localValues = [newValue]
+    } else {
+      localValues = [...allValues.value, newValue]
+    }
+
+    recompute(localValues)
   }
 
-  recompute(localValues)
   fuelInputField.value?.focus()
+  fuelInputField.value?.select()
 }
 
 function onDelete(idx: number) {
@@ -122,10 +145,12 @@ function onDeleteAll() {
       })
       .onDismiss(() => {
         fuelInputField.value?.focus()
+        fuelInputField.value?.select()
       })
   } else {
     recompute([])
     fuelInputField.value?.focus()
+    fuelInputField.value?.select()
   }
 }
 
@@ -134,13 +159,7 @@ function recompute(localValues: FuelQuantity[]) {
     localValues = [new FuelQuantity(0)]
   }
 
-  totalQuantity.value = localValues.reduce((a, b) => a.add(b), new FuelQuantity(0))
   allValues.value = localValues
-  emit('update', totalQuantity.value)
+  totalQuantity.value = localValues.reduce((a, b) => a.add(b), new FuelQuantity(0))
 }
-
-function setDefaultFuelUnit(newUnit: FuelOption) {
-  inputUnit.value = newUnit
-}
-defineExpose({ setDefaultFuelUnit })
 </script>

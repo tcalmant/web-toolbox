@@ -21,46 +21,85 @@ under the License.
 -->
 
 <template>
-  <q-page padding>
-    <div class="q-gutter-md row">
-      <q-input
-        class="col"
-        v-model="planeIdent"
-        label="Immatriculation"
-        hint="Immatriculation of the plane"
-      />
-      <q-select class="col-1" v-model="fuelUnit" :options="FUEL_UNITS" />
-      <q-input
-        class="col"
-        v-model="fuelPerHour"
-        label="Fuel consumption"
-        :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit.label}/minute)`"
-      />
-      <q-input
-        class="col"
-        v-model="fuelCapacity"
-        label="Fuel capacity"
-        hint="Total fuel capacity"
-      />
-      <q-input
-        class="col"
-        v-model="fuelConsumable"
-        label="Consumable fuel"
-        hint="Total consumable fuel"
-      />
-    </div>
-    <div class="flex-break q-py-md"></div>
-    <div class="q-gutter-md row">
-      <div class="col">
-        <InputListHours @update="onDurationUpdate" />
+  <q-page padding class="col">
+    <div class="q-gutter-md">
+      <div class="row q-gutter-md print-hide">
+        <q-input
+          class="col"
+          v-model="planeIdent"
+          label="Immatriculation"
+          hint="Immatriculation of the plane"
+        />
+        <q-select class="col-1" v-model="fuelUnit" :options="FUEL_UNITS" />
+        <q-input
+          class="col"
+          v-model="fuelPerHour"
+          label="Fuel consumption"
+          :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit.label}/minute)`"
+        />
+        <q-input
+          class="col"
+          v-model="fuelCapacity"
+          label="Fuel capacity"
+          hint="Total fuel capacity"
+        />
+        <q-input
+          class="col"
+          v-model="fuelConsumable"
+          label="Consumable fuel"
+          hint="Total consumable fuel"
+        />
       </div>
-      <div class="col">
-        <InputListFuel ref="fuelList" :global-fuel-unit="fuelUnit" @update="onFuelUpdate" />
+      <div class="row q-gutter-md print-only">
+        <span v-if="planeIdent" class="col-1">{{ planeIdent }}</span>
+        <span class="col"
+          >Fuel Consumption: {{ fuelPerHour }} {{ fuelUnit.label }}/h ({{
+            fuelPerMinutes.toFixed(2)
+          }}
+          {{ fuelUnit.label }}/min)</span
+        >
+        <span class="col">Fuel capacity: {{ fuelCapacity }}&nbsp;{{ fuelUnit.label }}</span>
+        <span class="col">Consumable fuel: {{ fuelConsumable }}&nbsp;{{ fuelUnit.label }}</span>
       </div>
-    </div>
-    <div class="flex-break q-py-md"></div>
-    <div class="row">
-      <q-table class="col" :rows="resultRows" hide-header hide-pagination />
+      <q-separator />
+      <div class="q-gutter-md">
+        <q-table
+          class="col"
+          :rows="resultRows"
+          :rows-per-page-options="[0]"
+          hide-header
+          hide-pagination
+        >
+          <template v-slot:body="props">
+            <q-tr
+              :props="props"
+              class="q-tr--no-hover"
+              :class="{
+                'text-negative': props.row.showAlert,
+                'text-warning': props.row.showWarning,
+                'text-weight-medium': props.row.showAlert || props.row.showWarning,
+              }"
+            >
+              <q-td key="label" :props="props">
+                {{ props.row.label }}
+              </q-td>
+              <q-td key="value" :props="props" class="text-right">{{ props.row.value }} </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </div>
+      <q-separator />
+      <q-checkbox class="print-hide" v-model="printInputTables" label="Print tables" />
+      <div class="row q-gutter-md" :class="{ 'print-hide': !printInputTables }">
+        <InputListHours class="col" v-model="totalFlightDuration" title="Flight times" />
+        <InputListFuel
+          class="col"
+          v-model="totalAddedFuel"
+          :global-fuel-unit="fuelUnit"
+          :fuel-capacity="typedFuelCapacity"
+          title="Added fuel"
+        />
+      </div>
     </div>
   </q-page>
   <q-footer class="print-only">
@@ -69,18 +108,24 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import type { FuelOption } from 'src/components/fuelUtils'
 import { FUEL_UNITS, FuelQuantity, LITER } from 'src/components/fuelUtils'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import InputListHours from 'src/components/InputListHours.vue'
 import { TimePeriod } from 'src/components/timeUtils'
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 class ResultRow {
   label: string
   value: string
+  showWarning: boolean
+  showAlert: boolean
 
-  constructor(label: string, value: string | number | null | undefined) {
+  constructor(
+    label: string,
+    value: string | number | null | undefined,
+    showWarning: boolean = false,
+    showAlert: boolean = false,
+  ) {
     this.label = label
     if (value === null || value === undefined) {
       this.value = 'n/a'
@@ -89,6 +134,9 @@ class ResultRow {
     } else {
       this.value = value.toString()
     }
+
+    this.showAlert = showAlert
+    this.showWarning = !showAlert && showWarning
   }
 }
 
@@ -99,6 +147,7 @@ const fuelPerHour = ref(25.0)
 const fuelCapacity = ref(110)
 const fuelConsumable = ref(109)
 
+// ... typed description
 const typedFuelCapacity = computed(() => new FuelQuantity(fuelCapacity.value, fuelUnit.value))
 const typedFuelConsumable = computed(() => new FuelQuantity(fuelConsumable.value, fuelUnit.value))
 const typedNonUsableFuel = computed(() => typedFuelCapacity.value.sub(typedFuelConsumable.value))
@@ -106,68 +155,70 @@ const typedNonUsableFuel = computed(() => typedFuelCapacity.value.sub(typedFuelC
 // Informative
 const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
 
+// Flight duration
+const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
+
 // Fuel computation
-const totalConsumedFuel = ref<FuelQuantity>(new FuelQuantity(0))
 const totalAddedFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const totalRemainingFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const usableRemainingFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const usableRemainingTime = ref<TimePeriod>(new TimePeriod(0))
-
-// Template references
-const fuelList = useTemplateRef('fuelList')
-
-// Result display
-const resultRows = computed((): ResultRow[] => {
-  return [
-    new ResultRow('Total consumed fuel', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
-    new ResultRow('Total added fuel', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
-    new ResultRow(
-      'Estimated remaining fuel',
-      `${totalRemainingFuel.value.toString(fuelUnit.value)}`,
+const totalConsumedFuel = computed(
+  () =>
+    new FuelQuantity(
+      Math.ceil((fuelPerMinutes.value * totalFlightDuration.value.duration_s) / 60),
+      fuelUnit.value,
     ),
-    new ResultRow('Estimated usable fuel', `${usableRemainingFuel.value.toString(fuelUnit.value)}`),
-    new ResultRow(
-      'Estimated remaining flight time',
-      usableRemainingTime.value.toString()?.toString() || null,
-    ),
-  ]
-})
-
-// Propagate fuel unit change
-watch(fuelUnit, (newValue: FuelOption) => {
-  if (fuelList.value != null) {
-    fuelList.value.setDefaultFuelUnit(newValue)
-  }
-})
-
-function onDurationUpdate(duration_s: number): void {
-  totalConsumedFuel.value = new FuelQuantity(
-    Math.ceil((fuelPerMinutes.value * duration_s) / 60),
-    fuelUnit.value,
-  )
-  updateRemainingFuel()
-}
-
-function onFuelUpdate(addedFuel: FuelQuantity): void {
-  totalAddedFuel.value = addedFuel.floor()
-  updateRemainingFuel()
-}
-
-function updateRemainingFuel() {
-  totalRemainingFuel.value = FuelQuantity.min(
-    totalAddedFuel.value.sub(totalConsumedFuel.value),
-    typedFuelCapacity.value,
-  )
-
-  usableRemainingFuel.value = FuelQuantity.max(
+)
+const totalRemainingFuel = computed(() =>
+  FuelQuantity.min(totalAddedFuel.value.sub(totalConsumedFuel.value), typedFuelCapacity.value),
+)
+const usableRemainingFuel = computed(() =>
+  FuelQuantity.max(
     new FuelQuantity(0),
     FuelQuantity.min(
       totalRemainingFuel.value.sub(typedNonUsableFuel.value),
       typedFuelConsumable.value,
     ),
-  )
-  usableRemainingTime.value = new TimePeriod(
-    (usableRemainingFuel.value.value.scalar / fuelPerMinutes.value) * 60,
-  )
-}
+  ),
+)
+const usableRemainingTime = computed(
+  () => new TimePeriod((usableRemainingFuel.value.value.scalar / fuelPerMinutes.value) * 60),
+)
+
+// Result display
+const resultRows = computed((): ResultRow[] => {
+  // Warning if less than 1h of fuel
+  const fuelLevelWarning = usableRemainingTime.value.duration_s < 3600
+
+  // Danger if less than 30min of fuel
+  const noFuelAlert = usableRemainingTime.value.duration_s < 30 * 60
+
+  return [
+    new ResultRow(
+      'Total flight time',
+      `${totalFlightDuration.value.toString()} (${Math.ceil(totalFlightDuration.value.duration_s / 60)} min)`,
+    ),
+    new ResultRow('Total consumed fuel', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
+    new ResultRow('Total added fuel', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
+    new ResultRow(
+      'Estimated remaining fuel',
+      `${totalRemainingFuel.value.toString(fuelUnit.value)}`,
+      fuelLevelWarning,
+      noFuelAlert,
+    ),
+    new ResultRow(
+      'Estimated usable fuel',
+      `${usableRemainingFuel.value.toString(fuelUnit.value)}`,
+      fuelLevelWarning,
+      noFuelAlert,
+    ),
+    new ResultRow(
+      'Estimated remaining flight time',
+      `${usableRemainingTime.value.toString()} (${Math.floor(usableRemainingTime.value.duration_s / 60)} min)`,
+      fuelLevelWarning,
+      noFuelAlert,
+    ),
+  ]
+})
+
+// Print tables switch
+const printInputTables = ref(false)
 </script>
