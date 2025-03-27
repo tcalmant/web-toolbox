@@ -63,7 +63,13 @@ under the License.
       </div>
       <q-separator />
       <div class="q-gutter-md">
-        <q-table class="col" :rows="resultRows" hide-header hide-pagination />
+        <q-table
+          class="col"
+          :rows="resultRows"
+          :rows-per-page-options="[0]"
+          hide-header
+          hide-pagination
+        />
       </div>
       <q-separator />
       <q-checkbox class="print-hide" v-model="printInputTables" label="Print tables" />
