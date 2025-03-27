@@ -94,21 +94,20 @@ function onAdd() {
 
   if (minutes < 0 || minutes >= 60) {
     errorMessage.value = 'Invalid number of minutes'
-    return
-  }
-
-  const duration_s = hours * 3600 + minutes * 60
-  let localValues
-  if (
-    allValues.value.length == 0 ||
-    (allValues.value.length == 1 && allValues.value[0]?.duration_s == 0)
-  ) {
-    localValues = [new TimePeriod(duration_s)]
   } else {
-    localValues = [...allValues.value, new TimePeriod(duration_s)]
-  }
+    const duration_s = hours * 3600 + minutes * 60
+    let localValues
+    if (
+      allValues.value.length == 0 ||
+      (allValues.value.length == 1 && allValues.value[0]?.duration_s == 0)
+    ) {
+      localValues = [new TimePeriod(duration_s)]
+    } else {
+      localValues = [...allValues.value, new TimePeriod(duration_s)]
+    }
 
-  recompute(localValues)
+    recompute(localValues)
+  }
   valueInputField.value?.focus()
   valueInputField.value?.select()
 }
