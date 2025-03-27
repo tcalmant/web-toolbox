@@ -96,6 +96,7 @@ under the License.
           class="col"
           v-model="totalAddedFuel"
           :global-fuel-unit="fuelUnit"
+          :fuel-capacity="typedFuelCapacity"
           title="Added fuel"
         />
       </div>

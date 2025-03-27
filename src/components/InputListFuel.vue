@@ -33,7 +33,9 @@ under the License.
               type="number"
               inputmode="numeric"
               filled
+              @update:model-value="errorMessage = null"
             />
+            <span v-show="errorMessage" class="text-negative">{{ errorMessage }}</span>
           </div>
           <div class="col-2">
             <q-select class="fit" v-model="inputUnit" :options="FUEL_UNITS" filled />
@@ -76,7 +78,12 @@ import { FUEL_UNITS, FuelQuantity, LITER } from './fuelUtils'
 
 const $q = useQuasar()
 const props = withDefaults(
-  defineProps<{ globalFuelUnit: FuelOption; title?: string; showTotal?: boolean }>(),
+  defineProps<{
+    globalFuelUnit: FuelOption
+    fuelCapacity: FuelQuantity
+    title?: string
+    showTotal?: boolean
+  }>(),
   {
     showTotal: false,
   },
@@ -90,6 +97,7 @@ const fuelInputField = ref<QInput>()
 const totalValueString = computed(
   () => totalQuantity.value?.toString(props.globalFuelUnit ?? inputValue.value) ?? 'N/A',
 )
+const errorMessage = ref<string | null>(null)
 
 watch(props, (newProps) => {
   inputUnit.value = newProps.globalFuelUnit
@@ -97,17 +105,23 @@ watch(props, (newProps) => {
 
 function onAdd() {
   const newValue = new FuelQuantity(inputValue.value, inputUnit.value)
-  let localValues
-  if (
-    allValues.value.length == 0 ||
-    (allValues.value.length == 1 && allValues.value[0]?.value.scalar == 0)
-  ) {
-    localValues = [newValue]
+
+  if (newValue > props.fuelCapacity) {
+    errorMessage.value = 'Trying to add more fuel than possible'
   } else {
-    localValues = [...allValues.value, newValue]
+    let localValues
+    if (
+      allValues.value.length == 0 ||
+      (allValues.value.length == 1 && allValues.value[0]?.value.scalar == 0)
+    ) {
+      localValues = [newValue]
+    } else {
+      localValues = [...allValues.value, newValue]
+    }
+
+    recompute(localValues)
   }
 
-  recompute(localValues)
   fuelInputField.value?.focus()
   fuelInputField.value?.select()
 }

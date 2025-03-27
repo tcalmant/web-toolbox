@@ -66,6 +66,10 @@ export class FuelQuantity {
     }
   }
 
+  valueOf(): number {
+    return this.value.baseScalar
+  }
+
   add(other: FuelQuantity): FuelQuantity {
     return new FuelQuantity(this.value.add(other.value).to(this.unit.value).scalar, this.unit)
   }
