@@ -69,7 +69,24 @@ under the License.
           :rows-per-page-options="[0]"
           hide-header
           hide-pagination
-        />
+        >
+          <template v-slot:body="props">
+            <q-tr
+              :props="props"
+              class="q-tr--no-hover"
+              :class="{
+                'text-negative': props.row.showAlert,
+                'text-warning': props.row.showWarning,
+                'text-weight-medium': props.row.showAlert || props.row.showWarning,
+              }"
+            >
+              <q-td key="label" :props="props">
+                {{ props.row.label }}
+              </q-td>
+              <q-td key="value" :props="props" class="text-right">{{ props.row.value }} </q-td>
+            </q-tr>
+          </template>
+        </q-table>
       </div>
       <q-separator />
       <q-checkbox class="print-hide" v-model="printInputTables" label="Print tables" />
@@ -99,8 +116,15 @@ import { computed, ref } from 'vue'
 class ResultRow {
   label: string
   value: string
+  showWarning: boolean
+  showAlert: boolean
 
-  constructor(label: string, value: string | number | null | undefined) {
+  constructor(
+    label: string,
+    value: string | number | null | undefined,
+    showWarning: boolean = false,
+    showAlert: boolean = false,
+  ) {
     this.label = label
     if (value === null || value === undefined) {
       this.value = 'n/a'
@@ -109,6 +133,9 @@ class ResultRow {
     } else {
       this.value = value.toString()
     }
+
+    this.showAlert = showAlert
+    this.showWarning = !showAlert && showWarning
   }
 }
 
@@ -157,6 +184,12 @@ const usableRemainingTime = computed(
 
 // Result display
 const resultRows = computed((): ResultRow[] => {
+  // Warning if less than 1h of fuel
+  const fuelLevelWarning = usableRemainingTime.value.duration_s < 3600
+
+  // Danger if less than 30min of fuel
+  const noFuelAlert = usableRemainingTime.value.duration_s < 30 * 60
+
   return [
     new ResultRow('Total flight time', `${totalFlightDuration.value.toString()}`),
     new ResultRow('Total consumed fuel', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
@@ -164,11 +197,20 @@ const resultRows = computed((): ResultRow[] => {
     new ResultRow(
       'Estimated remaining fuel',
       `${totalRemainingFuel.value.toString(fuelUnit.value)}`,
+      fuelLevelWarning,
+      noFuelAlert,
     ),
-    new ResultRow('Estimated usable fuel', `${usableRemainingFuel.value.toString(fuelUnit.value)}`),
+    new ResultRow(
+      'Estimated usable fuel',
+      `${usableRemainingFuel.value.toString(fuelUnit.value)}`,
+      fuelLevelWarning,
+      noFuelAlert,
+    ),
     new ResultRow(
       'Estimated remaining flight time',
       usableRemainingTime.value.toString()?.toString() || null,
+      fuelLevelWarning,
+      noFuelAlert,
     ),
   ]
 })
