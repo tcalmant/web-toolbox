@@ -61,6 +61,7 @@ under the License.
           <q-item-section>
             {{ value }}
           </q-item-section>
+          <q-item-section side> {{ Math.ceil(value.duration_s / 60) }}&nbsp;min </q-item-section>
           <q-item-section side class="print-hide">
             <q-icon name="delete" color="negative" @click="onDelete(idx)" />
           </q-item-section>
