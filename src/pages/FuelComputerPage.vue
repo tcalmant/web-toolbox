@@ -191,7 +191,10 @@ const resultRows = computed((): ResultRow[] => {
   const noFuelAlert = usableRemainingTime.value.duration_s < 30 * 60
 
   return [
-    new ResultRow('Total flight time', `${totalFlightDuration.value.toString()}`),
+    new ResultRow(
+      'Total flight time',
+      `${totalFlightDuration.value.toString()} (${Math.ceil(totalFlightDuration.value.duration_s / 60)} min)`,
+    ),
     new ResultRow('Total consumed fuel', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
     new ResultRow('Total added fuel', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
     new ResultRow(
@@ -208,7 +211,7 @@ const resultRows = computed((): ResultRow[] => {
     ),
     new ResultRow(
       'Estimated remaining flight time',
-      usableRemainingTime.value.toString()?.toString() || null,
+      `${usableRemainingTime.value.toString()} (${Math.floor(usableRemainingTime.value.duration_s / 60)} min)`,
       fuelLevelWarning,
       noFuelAlert,
     ),
