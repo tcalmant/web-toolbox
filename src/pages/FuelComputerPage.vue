@@ -65,7 +65,9 @@ under the License.
       <div class="q-gutter-md">
         <q-table class="col" :rows="resultRows" hide-header hide-pagination />
       </div>
-      <div class="row q-gutter-md">
+      <q-separator />
+      <q-checkbox class="print-hide" v-model="printInputTables" label="Print tables" />
+      <div class="row q-gutter-md" :class="{ 'print-hide': !printInputTables }">
         <InputListHours class="col" v-model="totalFlightDuration" title="Flight times" />
         <InputListFuel
           class="col"
@@ -164,4 +166,7 @@ const resultRows = computed((): ResultRow[] => {
     ),
   ]
 })
+
+// Print tables switch
+const printInputTables = ref(false)
 </script>
