@@ -55,8 +55,13 @@ under the License.
         <q-table class="col" :rows="resultRows" hide-header hide-pagination />
       </div>
       <div class="row q-gutter-md">
-        <InputListHours class="col" v-model="totalFlightDuration" />
-        <InputListFuel class="col" v-model="totalAddedFuel" :global-fuel-unit="fuelUnit" />
+        <InputListHours class="col" v-model="totalFlightDuration" title="Flight times" />
+        <InputListFuel
+          class="col"
+          v-model="totalAddedFuel"
+          :global-fuel-unit="fuelUnit"
+          title="Added fuel"
+        />
       </div>
     </div>
   </q-page>

@@ -23,6 +23,7 @@ under the License.
 <template>
   <q-card class="q-pa-md">
     <div class="column q-gutter-md">
+      <span v-if="title" class="text-subtitle1 text-center">{{ title }}</span>
       <q-form class="print-hide" @submit.prevent="onAdd">
         <div class="row q-gutter-xs">
           <div class="col">
@@ -45,7 +46,15 @@ under the License.
           </q-btn>
         </div>
       </q-form>
-      <q-input class="col" v-model="totalValueString" readonly filled outlined label="Total fuel" />
+      <q-input
+        v-if="showTotal"
+        class="col"
+        v-model="totalValueString"
+        readonly
+        filled
+        outlined
+        label="Total fuel"
+      />
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
           <q-item-section> {{ value }} </q-item-section>
@@ -66,7 +75,12 @@ import type { FuelOption } from './fuelUtils'
 import { FUEL_UNITS, FuelQuantity, LITER } from './fuelUtils'
 
 const $q = useQuasar()
-const props = defineProps<{ globalFuelUnit: FuelOption }>()
+const props = withDefaults(
+  defineProps<{ globalFuelUnit: FuelOption; title?: string; showTotal?: boolean }>(),
+  {
+    showTotal: false,
+  },
+)
 const totalQuantity = defineModel<FuelQuantity>()
 
 const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])

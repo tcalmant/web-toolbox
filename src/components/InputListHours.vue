@@ -23,6 +23,7 @@ under the License.
 <template>
   <q-card class="q-pa-md">
     <div class="column q-gutter-md">
+      <span v-if="title" class="text-subtitle1 text-center">{{ title }}</span>
       <q-form class="print-hide" @submit.prevent="onAdd">
         <div class="row q-gutter-xs">
           <div class="col">
@@ -46,7 +47,15 @@ under the License.
           </q-btn>
         </div>
       </q-form>
-      <q-input class="col" v-model="totalValue" readonly filled outlined label="Total time" />
+      <q-input
+        v-if="showTotal"
+        class="col"
+        v-model="totalValue"
+        readonly
+        filled
+        outlined
+        label="Total time"
+      />
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
           <q-item-section>
@@ -68,6 +77,7 @@ import { TimePeriod } from './timeUtils'
 
 const $q = useQuasar()
 const totalDuration = defineModel<TimePeriod>()
+withDefaults(defineProps<{ title?: string; showTotal?: boolean }>(), { showTotal: false })
 
 const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
 const inputValue = ref('0:30')
