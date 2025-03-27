@@ -21,46 +21,48 @@ under the License.
 -->
 
 <template>
-  <q-page padding>
-    <div class="q-gutter-md row">
-      <q-input
-        class="col"
-        v-model="planeIdent"
-        label="Immatriculation"
-        hint="Immatriculation of the plane"
-      />
-      <q-select class="col-1" v-model="fuelUnit" :options="FUEL_UNITS" />
-      <q-input
-        class="col"
-        v-model="fuelPerHour"
-        label="Fuel consumption"
-        :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit.label}/minute)`"
-      />
-      <q-input
-        class="col"
-        v-model="fuelCapacity"
-        label="Fuel capacity"
-        hint="Total fuel capacity"
-      />
-      <q-input
-        class="col"
-        v-model="fuelConsumable"
-        label="Consumable fuel"
-        hint="Total consumable fuel"
-      />
-    </div>
-    <div class="flex-break q-py-md"></div>
-    <div class="q-gutter-md row">
-      <div class="col">
-        <InputListHours @update="onDurationUpdate" />
+  <q-page padding class="col">
+    <div class="q-gutter-md">
+      <div class="row q-gutter-md">
+        <q-input
+          class="col"
+          v-model="planeIdent"
+          label="Immatriculation"
+          hint="Immatriculation of the plane"
+        />
+        <q-select class="col-1" v-model="fuelUnit" :options="FUEL_UNITS" />
+        <q-input
+          class="col"
+          v-model="fuelPerHour"
+          label="Fuel consumption"
+          :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit.label}/minute)`"
+        />
+        <q-input
+          class="col"
+          v-model="fuelCapacity"
+          label="Fuel capacity"
+          hint="Total fuel capacity"
+        />
+        <q-input
+          class="col"
+          v-model="fuelConsumable"
+          label="Consumable fuel"
+          hint="Total consumable fuel"
+        />
       </div>
-      <div class="col">
-        <InputListFuel ref="fuelList" :global-fuel-unit="fuelUnit" @update="onFuelUpdate" />
+      <q-separator />
+      <div class="q-gutter-md">
+        <q-table class="col" :rows="resultRows" hide-header hide-pagination />
       </div>
-    </div>
-    <div class="flex-break q-py-md"></div>
-    <div class="row">
-      <q-table class="col" :rows="resultRows" hide-header hide-pagination />
+      <div class="row q-gutter-md">
+        <InputListHours class="col" @update="onDurationUpdate" />
+        <InputListFuel
+          class="col"
+          ref="fuelList"
+          :global-fuel-unit="fuelUnit"
+          @update="onFuelUpdate"
+        />
+      </div>
     </div>
   </q-page>
   <q-footer class="print-only">
