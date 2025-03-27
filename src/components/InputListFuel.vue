@@ -61,22 +61,25 @@ under the License.
 
 <script setup lang="ts">
 import { QInput, useQuasar } from 'quasar'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { FuelOption } from './fuelUtils'
 import { FUEL_UNITS, FuelQuantity, LITER } from './fuelUtils'
 
 const $q = useQuasar()
-const emit = defineEmits<{ (e: 'update', quantity: FuelQuantity): void }>()
 const props = defineProps<{ globalFuelUnit: FuelOption }>()
+const totalQuantity = defineModel<FuelQuantity>()
 
 const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
 const inputValue = ref(0)
 const inputUnit = ref(LITER)
-const totalQuantity = ref<FuelQuantity>(new FuelQuantity(0))
 const fuelInputField = ref<QInput>()
-const totalValueString = computed(() =>
-  totalQuantity.value.toString(props.globalFuelUnit ?? inputValue.value),
+const totalValueString = computed(
+  () => totalQuantity.value?.toString(props.globalFuelUnit ?? inputValue.value) ?? 'N/A',
 )
+
+watch(props, (newProps) => {
+  inputUnit.value = newProps.globalFuelUnit
+})
 
 function onAdd() {
   const newValue = new FuelQuantity(inputValue.value, inputUnit.value)
@@ -128,13 +131,7 @@ function recompute(localValues: FuelQuantity[]) {
     localValues = [new FuelQuantity(0)]
   }
 
-  totalQuantity.value = localValues.reduce((a, b) => a.add(b), new FuelQuantity(0))
   allValues.value = localValues
-  emit('update', totalQuantity.value)
+  totalQuantity.value = localValues.reduce((a, b) => a.add(b), new FuelQuantity(0))
 }
-
-function setDefaultFuelUnit(newUnit: FuelOption) {
-  inputUnit.value = newUnit
-}
-defineExpose({ setDefaultFuelUnit })
 </script>

@@ -67,7 +67,8 @@ import { ref } from 'vue'
 import { TimePeriod } from './timeUtils'
 
 const $q = useQuasar()
-const emit = defineEmits<{ (e: 'update', duration_s: number): void }>()
+const totalDuration = defineModel<TimePeriod>()
+
 const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
 const inputValue = ref('0:30')
 const valueInputField = ref<QInput>()
@@ -140,6 +141,6 @@ function recompute(localValues: TimePeriod[]) {
 
   allValues.value = localValues
   totalValue.value = totalPeriod.toString()
-  emit('update', totalPeriod.duration_s)
+  totalDuration.value = totalPeriod
 }
 </script>

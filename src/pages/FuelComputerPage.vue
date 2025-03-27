@@ -55,13 +55,8 @@ under the License.
         <q-table class="col" :rows="resultRows" hide-header hide-pagination />
       </div>
       <div class="row q-gutter-md">
-        <InputListHours class="col" @update="onDurationUpdate" />
-        <InputListFuel
-          class="col"
-          ref="fuelList"
-          :global-fuel-unit="fuelUnit"
-          @update="onFuelUpdate"
-        />
+        <InputListHours class="col" v-model="totalFlightDuration" />
+        <InputListFuel class="col" v-model="totalAddedFuel" :global-fuel-unit="fuelUnit" />
       </div>
     </div>
   </q-page>
@@ -71,12 +66,11 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import type { FuelOption } from 'src/components/fuelUtils'
 import { FUEL_UNITS, FuelQuantity, LITER } from 'src/components/fuelUtils'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import InputListHours from 'src/components/InputListHours.vue'
 import { TimePeriod } from 'src/components/timeUtils'
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 class ResultRow {
   label: string
@@ -101,6 +95,7 @@ const fuelPerHour = ref(25.0)
 const fuelCapacity = ref(110)
 const fuelConsumable = ref(109)
 
+// ... typed description
 const typedFuelCapacity = computed(() => new FuelQuantity(fuelCapacity.value, fuelUnit.value))
 const typedFuelConsumable = computed(() => new FuelQuantity(fuelConsumable.value, fuelUnit.value))
 const typedNonUsableFuel = computed(() => typedFuelCapacity.value.sub(typedFuelConsumable.value))
@@ -108,19 +103,38 @@ const typedNonUsableFuel = computed(() => typedFuelCapacity.value.sub(typedFuelC
 // Informative
 const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
 
-// Fuel computation
-const totalConsumedFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const totalAddedFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const totalRemainingFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const usableRemainingFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const usableRemainingTime = ref<TimePeriod>(new TimePeriod(0))
+// Flight duration
+const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
 
-// Template references
-const fuelList = useTemplateRef('fuelList')
+// Fuel computation
+const totalAddedFuel = ref<FuelQuantity>(new FuelQuantity(0))
+const totalConsumedFuel = computed(
+  () =>
+    new FuelQuantity(
+      Math.ceil((fuelPerMinutes.value * totalFlightDuration.value.duration_s) / 60),
+      fuelUnit.value,
+    ),
+)
+const totalRemainingFuel = computed(() =>
+  FuelQuantity.min(totalAddedFuel.value.sub(totalConsumedFuel.value), typedFuelCapacity.value),
+)
+const usableRemainingFuel = computed(() =>
+  FuelQuantity.max(
+    new FuelQuantity(0),
+    FuelQuantity.min(
+      totalRemainingFuel.value.sub(typedNonUsableFuel.value),
+      typedFuelConsumable.value,
+    ),
+  ),
+)
+const usableRemainingTime = computed(
+  () => new TimePeriod((usableRemainingFuel.value.value.scalar / fuelPerMinutes.value) * 60),
+)
 
 // Result display
 const resultRows = computed((): ResultRow[] => {
   return [
+    new ResultRow('Total flight time', `${totalFlightDuration.value.toString()}`),
     new ResultRow('Total consumed fuel', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
     new ResultRow('Total added fuel', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
     new ResultRow(
@@ -134,42 +148,4 @@ const resultRows = computed((): ResultRow[] => {
     ),
   ]
 })
-
-// Propagate fuel unit change
-watch(fuelUnit, (newValue: FuelOption) => {
-  if (fuelList.value != null) {
-    fuelList.value.setDefaultFuelUnit(newValue)
-  }
-})
-
-function onDurationUpdate(duration_s: number): void {
-  totalConsumedFuel.value = new FuelQuantity(
-    Math.ceil((fuelPerMinutes.value * duration_s) / 60),
-    fuelUnit.value,
-  )
-  updateRemainingFuel()
-}
-
-function onFuelUpdate(addedFuel: FuelQuantity): void {
-  totalAddedFuel.value = addedFuel.floor()
-  updateRemainingFuel()
-}
-
-function updateRemainingFuel() {
-  totalRemainingFuel.value = FuelQuantity.min(
-    totalAddedFuel.value.sub(totalConsumedFuel.value),
-    typedFuelCapacity.value,
-  )
-
-  usableRemainingFuel.value = FuelQuantity.max(
-    new FuelQuantity(0),
-    FuelQuantity.min(
-      totalRemainingFuel.value.sub(typedNonUsableFuel.value),
-      typedFuelConsumable.value,
-    ),
-  )
-  usableRemainingTime.value = new TimePeriod(
-    (usableRemainingFuel.value.value.scalar / fuelPerMinutes.value) * 60,
-  )
-}
 </script>
