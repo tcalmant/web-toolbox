@@ -21,48 +21,40 @@ under the License.
 -->
 
 <template>
-  <q-card class="q-gutter-xs">
-    <div class="column q-gutter-xs">
+  <q-card class="q-pa-md">
+    <div class="column q-gutter-md">
+      <q-form class="print-hide" @submit.prevent="onAdd">
+        <div class="row q-gutter-xs">
+          <div class="col">
+            <q-input
+              ref="fuelInputField"
+              v-model.number="inputValue"
+              type="number"
+              inputmode="numeric"
+              filled
+            />
+          </div>
+          <div class="col-2">
+            <q-select class="fit" v-model="inputUnit" :options="FUEL_UNITS" filled />
+          </div>
+          <q-separator />
+          <q-btn class="col-1" icon="add" type="submit" />
+          <q-separator />
+          <q-btn class="col-1" @mousedown.prevent @click="onDeleteAll()">
+            <q-icon name="delete_forever" color="negative" />
+          </q-btn>
+        </div>
+      </q-form>
+      <q-input class="col" v-model="totalValueString" readonly filled outlined label="Total fuel" />
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
           <q-item-section> {{ value }} </q-item-section>
           <q-item-section side> {{ value.toString(LITER) }} </q-item-section>
           <q-item-section side class="print-hide">
-            <q-icon name="delete" color="red" @click="onDelete(idx)" />
+            <q-icon name="delete" color="negative" @click="onDelete(idx)" />
           </q-item-section>
         </q-item>
       </q-list>
-      <div class="row items-center">
-        <div class="col-10">
-          <q-input v-model="totalValueString" readonly filled outlined label="Total fuel" />
-        </div>
-        <div class="col q-px-md print-hide">
-          <q-btn @mousedown.prevent @click="onDeleteAll()">
-            <q-icon name="delete_forever" color="red" />
-            <span>Clear&nbsp;all</span>
-          </q-btn>
-        </div>
-      </div>
-      <q-form class="row print-hide" @submit.prevent="onAdd">
-        <div class="col-9">
-          <q-input
-            ref="fuelInputField"
-            v-model.number="inputValue"
-            type="number"
-            inputmode="numeric"
-            filled
-            :error="errorMessage != null"
-            :error-message="errorMessage ?? undefined"
-            @update:model-value="errorMessage = null"
-          />
-        </div>
-        <div class="col-2">
-          <q-select class="fit" v-model="inputUnit" :options="FUEL_UNITS" filled />
-        </div>
-        <div class="col-1">
-          <q-btn class="fit" icon="add" type="submit" />
-        </div>
-      </q-form>
     </div>
   </q-card>
 </template>
@@ -80,7 +72,6 @@ const props = defineProps<{ globalFuelUnit: FuelOption }>()
 const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
 const inputValue = ref(0)
 const inputUnit = ref(LITER)
-const errorMessage = ref<string | null>(null)
 const totalQuantity = ref<FuelQuantity>(new FuelQuantity(0))
 const fuelInputField = ref<QInput>()
 const totalValueString = computed(() =>
@@ -101,6 +92,7 @@ function onAdd() {
 
   recompute(localValues)
   fuelInputField.value?.focus()
+  fuelInputField.value?.select()
 }
 
 function onDelete(idx: number) {
@@ -122,10 +114,12 @@ function onDeleteAll() {
       })
       .onDismiss(() => {
         fuelInputField.value?.focus()
+        fuelInputField.value?.select()
       })
   } else {
     recompute([])
     fuelInputField.value?.focus()
+    fuelInputField.value?.select()
   }
 }
 
