@@ -23,7 +23,7 @@ under the License.
 <template>
   <q-page padding class="col">
     <div class="q-gutter-md">
-      <div class="row q-gutter-md">
+      <div class="row q-gutter-md print-hide">
         <q-input
           class="col"
           v-model="planeIdent"
@@ -49,6 +49,17 @@ under the License.
           label="Consumable fuel"
           hint="Total consumable fuel"
         />
+      </div>
+      <div class="row q-gutter-md print-only">
+        <span v-if="planeIdent" class="col-1">{{ planeIdent }}</span>
+        <span class="col"
+          >Fuel Consumption: {{ fuelPerHour }} {{ fuelUnit.label }}/h ({{
+            fuelPerMinutes.toFixed(2)
+          }}
+          {{ fuelUnit.label }}/min)</span
+        >
+        <span class="col">Fuel capacity: {{ fuelCapacity }}&nbsp;{{ fuelUnit.label }}</span>
+        <span class="col">Consumable fuel: {{ fuelConsumable }}&nbsp;{{ fuelUnit.label }}</span>
       </div>
       <q-separator />
       <div class="q-gutter-md">
