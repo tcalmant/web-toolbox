@@ -25,8 +25,8 @@ under the License.
     <div class="column q-gutter-xs">
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
-          <q-item-section> {{ value.quantity }}&nbsp;{{ value.unit }} </q-item-section>
-          <q-item-section side> {{ value.toLiters() }}&nbsp;L </q-item-section>
+          <q-item-section> {{ value }} </q-item-section>
+          <q-item-section side> {{ value.toString(LITER) }} </q-item-section>
           <q-item-section side class="print-hide">
             <q-icon name="delete" color="red" @click="onDelete(idx)" />
           </q-item-section>
@@ -34,7 +34,7 @@ under the License.
       </q-list>
       <div class="row items-center">
         <div class="col-10">
-          <q-input v-model="totalValue" readonly filled outlined label="Total fuel" />
+          <q-input v-model="totalValueString" readonly filled outlined label="Total fuel" />
         </div>
         <div class="col q-px-md print-hide">
           <q-btn @mousedown.prevent @click="onDeleteAll()">
@@ -57,7 +57,7 @@ under the License.
           />
         </div>
         <div class="col-2">
-          <q-select class="fit" v-model="inputUnit" :options="Object.values(FuelUnit)" filled />
+          <q-select class="fit" v-model="inputUnit" :options="FUEL_UNITS" filled />
         </div>
         <div class="col-1">
           <q-btn class="fit" icon="add" type="submit" />
@@ -69,24 +69,30 @@ under the License.
 
 <script setup lang="ts">
 import { QInput, useQuasar } from 'quasar'
-import { ref } from 'vue'
-import { FuelQuantity, FuelUnit } from './fuelUtils'
+import { computed, ref } from 'vue'
+import type { FuelOption } from './fuelUtils'
+import { FUEL_UNITS, FuelQuantity, LITER } from './fuelUtils'
 
 const $q = useQuasar()
-const emit = defineEmits<{ (e: 'update', duration_s: number): void }>()
+const emit = defineEmits<{ (e: 'update', quantity: FuelQuantity): void }>()
+const props = defineProps<{ globalFuelUnit: FuelOption }>()
+
 const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
 const inputValue = ref(0)
-const inputUnit = ref(FuelUnit.LITER)
+const inputUnit = ref(LITER)
 const errorMessage = ref<string | null>(null)
-const totalValue = ref(new FuelQuantity(0).toString())
+const totalQuantity = ref<FuelQuantity>(new FuelQuantity(0))
 const fuelInputField = ref<QInput>()
+const totalValueString = computed(() =>
+  totalQuantity.value.toString(props.globalFuelUnit ?? inputValue.value),
+)
 
 function onAdd() {
   const newValue = new FuelQuantity(inputValue.value, inputUnit.value)
   let localValues
   if (
     allValues.value.length == 0 ||
-    (allValues.value.length == 1 && allValues.value[0]?.quantity == 0)
+    (allValues.value.length == 1 && allValues.value[0]?.value.scalar == 0)
   ) {
     localValues = [newValue]
   } else {
@@ -128,17 +134,12 @@ function recompute(localValues: FuelQuantity[]) {
     localValues = [new FuelQuantity(0)]
   }
 
-  const totalQuantity = localValues.reduce(
-    (a, b) => new FuelQuantity(a.toLiters() + b.toLiters(), FuelUnit.LITER),
-    new FuelQuantity(0),
-  )
-
+  totalQuantity.value = localValues.reduce((a, b) => a.add(b), new FuelQuantity(0))
   allValues.value = localValues
-  totalValue.value = totalQuantity.toString()
-  emit('update', totalQuantity.quantity)
+  emit('update', totalQuantity.value)
 }
 
-function setDefaultFuelUnit(newUnit: FuelUnit) {
+function setDefaultFuelUnit(newUnit: FuelOption) {
   inputUnit.value = newUnit
 }
 defineExpose({ setDefaultFuelUnit })

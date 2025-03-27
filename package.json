@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",
+    "@types/js-quantities": "^1.6.6",
+    "js-quantities": "^1.8.0",
     "leaflet": "^1.9.4",
     "pinia": "^3.0.1",
     "quasar": "^2.16.0",
