@@ -31,7 +31,7 @@ under the License.
               ref="valueInputField"
               v-model="inputValue"
               inputmode="numeric"
-              mask="N:NN"
+              mask="#:##"
               fill-mask="0"
               reverse-fill-mask
               filled
