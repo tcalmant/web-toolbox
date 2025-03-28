@@ -20,54 +20,131 @@ import { LatLng } from 'leaflet'
 import type { PositionKind } from './geometry'
 import { Line, Position } from './geometry'
 
-export class NOTAM {
-  text: string
-  sections: Map<string, string>
-  center: LatLng | null
-  radiusNM: number | null
-  polygons: Layer[]
+/**
+ * Parses an angle as seen in the Q section, e.g. 4500N or 00500E
+ *
+ * Also supports longer formats with seconds (450055N or 0050055E) and ignores
+ * additional precision
+ *
+ * @param strAngle String representation of the angle
+ * @param hemisphere Target hemisphere (N, S, E or W)
+ * @returns The value of the parsed angle
+ */
+function parseQAngle(strAngle: string, hemisphere: string): number {
+  const nbDegreesDigits = 'NS'.includes(hemisphere) ? 2 : 3
+  const degrees = parseInt(strAngle.substring(0, nbDegreesDigits))
 
-  constructor(fullText: string) {
-    this.text = fullText
-    this.sections = this.splitSections(fullText)
-    const center = this.extractCenter(this.sections.get('Q'))
-    this.center = center != null ? center.center : null
-    this.radiusNM = center != null ? center.radius : null
-    this.polygons = this.findPolygons(this.sections.get('E'))
+  // Ignore decimals on ultra-precise locations
+  const dotIdx = strAngle.indexOf('.', nbDegreesDigits)
+  if (dotIdx != -1) {
+    strAngle = strAngle.substring(0, dotIdx)
   }
 
-  extractCenter(qSection: string | null | undefined): { center: LatLng; radius: number } | null {
-    if (qSection == null) {
-      // No Q section
-      console.log('No Q section')
-      return null
-    }
+  let minutes = 0
+  let seconds = 0
 
-    const rawLocation = qSection.split('/').at(-1)?.trim()
-    if (rawLocation == undefined) {
-      // Empty Q section
-      console.log('Empty Q section')
-      return null
+  const nextPart = strAngle.substring(nbDegreesDigits)
+  if (nextPart.length == 2) {
+    // Minutes only
+    minutes = parseInt(nextPart)
+  } else if (nextPart.length == 4) {
+    // Minutes and seconds
+    minutes = parseInt(nextPart.substring(0, 2))
+    seconds = parseInt(nextPart.substring(2))
+  } else {
+    console.warn("Couldn't parse minutes")
+  }
+
+  const angle = degrees + minutes / 60 + seconds / 3600
+  return 'SW'.includes(hemisphere) ? -angle : angle
+}
+
+/**
+ * Parses a location, i.e. two angles
+ *
+ * @param strLocation Location as a string
+ * @returns The parsed location or null
+ */
+function parseLocation(strLocation: string): LatLng | null {
+  const match = /(\d+)(N|S)(\d+)(W|E)/.exec(strLocation)
+  if (match == null) {
+    // No location found in last segment
+    console.log('Invalid location %s', strLocation)
+    return null
+  }
+
+  const latNumbers = match[1]
+  const latNS = match[2]
+  const lonNumbers = match[3]
+  const lonEW = match[4]
+  if (!latNumbers || !latNS || !lonNumbers || !lonEW) {
+    console.warn('Invalid location %s', strLocation)
+    return null
+  }
+
+  return new LatLng(parseQAngle(latNumbers, latNS), parseQAngle(lonNumbers, lonEW))
+}
+
+export class SectionA {
+  readonly target: string
+
+  constructor(sectionText: string) {
+    this.target = sectionText.trim()
+  }
+}
+
+export class SectionQ {
+  readonly fir: string
+  readonly qCode: string | null
+  readonly trafic: string | null // 'I' | 'V' | 'IV'
+  readonly object: string | null // 'N' | 'B' | 'O' | 'M'
+  readonly scope: string | null // 'A' | 'E' | 'W' | 'AE' | 'AW'
+  readonly limitLow: string | null
+  readonly limitHigh: string | null
+  readonly center: LatLng | null
+  readonly radiusNM: number | null
+
+  constructor(sectionText: string) {
+    const parts = sectionText.split('/').map((s) => s.trim())
+    this.fir = parts[0] ?? ''
+    this.qCode = parts[1] ?? null
+    this.trafic = parts[2] ?? null
+    this.object = parts[3] ?? null
+    this.scope = parts[4] ?? null
+    this.limitLow = parts[5] ?? null
+    this.limitHigh = parts[6] ?? null
+
+    const { center, radius } = this.extractCenter(parts[7])
+    this.center = center
+    this.radiusNM = radius
+  }
+
+  extractCenter(locationPart: string | null | undefined): {
+    center: LatLng | null
+    radius: number | null
+  } {
+    if (!locationPart) {
+      return { center: null, radius: null }
     }
 
     const pattern = /^(\d+)(N|S)(\d+)(W|E)(\d+)$/
-    const match = pattern.exec(rawLocation)
+    const match = pattern.exec(locationPart)
     if (match == null) {
       // No location found in last segment
-      console.log('No match with location', rawLocation)
-      return null
+      console.log('No match with location', locationPart)
+      return { center: null, radius: null }
     }
 
-    const center = this.parseLocation(match.slice(1, 5).join(''))
+    const center = parseLocation(match.slice(1, 5).join(''))
     if (center == null) {
-      return null
+      return { center: null, radius: null }
     }
 
     // Check radius
     const rawRadius = match[5]
     if (rawRadius == undefined) {
       console.error('No radius found in Q section')
-      return null
+      return { center: null, radius: null }
     }
 
     return {
@@ -75,97 +152,87 @@ export class NOTAM {
       radius: parseInt(rawRadius),
     }
   }
+}
 
-  parseLocation(strLocation: string): LatLng | null {
-    const match = /(\d+)(N|S)(\d+)(W|E)/.exec(strLocation)
-    if (match == null) {
-      // No location found in last segment
-      console.log('Invalid location %s', strLocation)
-      return null
-    }
+export class NOTAM {
+  readonly idx: number
+  readonly id: string
+  readonly text: string
+  readonly rawSections: Map<string, string>
+  readonly polygons: Layer[]
+  readonly sectionA: SectionA | null
+  readonly sectionQ: SectionQ | null
 
-    const latNumbers = match[1]
-    const latNS = match[2]
-    const lonNumbers = match[3]
-    const lonEW = match[4]
-    if (
-      latNumbers == undefined ||
-      latNS == undefined ||
-      lonNumbers == undefined ||
-      lonEW == undefined
-    ) {
-      console.warn('Invalid location %s', strLocation)
-      return null
-    }
+  constructor(fullText: string, idx: number) {
+    this.idx = idx
 
-    return new LatLng(this.parseQAngle(latNumbers, latNS), this.parseQAngle(lonNumbers, lonEW))
-  }
+    // Parse block
+    this.text = fullText
+    this.rawSections = this.splitSections(fullText)
 
-  parseQAngle(strAngle: string, hemisphere: string): number {
-    const nbDegreesDigits = 'NS'.includes(hemisphere) ? 2 : 3
-    const degrees = parseInt(strAngle.substring(0, nbDegreesDigits))
+    // Compute ID
+    this.id = this.extractId(idx, this.rawSections.get('HEADER'))
 
-    // Ignore decimals on ultra-precise locations
-    const dotIdx = strAngle.indexOf('.', nbDegreesDigits)
-    if (dotIdx != -1) {
-      strAngle = strAngle.substring(0, dotIdx)
-    }
+    // Parse sections
+    let sectionContent = this.rawSections.get('A')
+    this.sectionA = sectionContent ? new SectionA(sectionContent) : null
 
-    let minutes = 0
-    let seconds = 0
+    sectionContent = this.rawSections.get('Q')
+    this.sectionQ = sectionContent ? new SectionQ(sectionContent) : null
 
-    const nextPart = strAngle.substring(nbDegreesDigits)
-    if (nextPart.length == 2) {
-      // Minutes only
-      minutes = parseInt(nextPart)
-    } else if (nextPart.length == 4) {
-      // Minutes and seconds
-      minutes = parseInt(nextPart.substring(0, 2))
-      seconds = parseInt(nextPart.substring(2))
-    } else {
-      console.warn("Couldn't parse minutes")
-    }
-
-    const angle = degrees + minutes / 60 + seconds / 3600
-    return 'SW'.includes(hemisphere) ? -angle : angle
+    // Find polygons
+    this.polygons = this.findPolygons(this.rawSections.get('E'))
   }
 
   splitSections(text: string): Map<string, string> {
-    let currentSection: string | null = null
-    let currentLine: string | null = null
+    let currentSection: string = 'HEADER'
+    let currentBlock: string[] = []
     const sections = new Map<string, string>()
     for (let line of text.split('\n')) {
       line = line.trim()
       const match = line.match(/^(\W*)(?<section>[A-GQ])\)/)
-      if (match != null && match.groups != null) {
+      if (match != null && match.groups != null && match.index !== undefined) {
         const foundSection = match.groups['section']
         if (foundSection !== undefined) {
-          // Start of new section
-          if (currentSection != null && currentLine != null) {
-            // Store current section
-            sections.set(currentSection, currentLine)
-            currentLine = null
-          }
+          // Start of new section: update & store the current block
+          currentBlock.push(line.substring(0, match.index).trim())
+          sections.set(currentSection, currentBlock.filter((s) => s.length != 0).join('\n'))
+
+          // Reset content
+          currentBlock = []
           currentSection = foundSection
         }
+
+        line = line.substring(match.index + match[0].length).trim()
       }
 
-      if (currentLine == null) {
-        currentLine = line
-      } else {
-        currentLine = `${currentLine}\n${line}`
-      }
+      currentBlock.push(line)
     }
 
-    if (currentSection != null && currentLine != null) {
+    if (currentBlock.length > 0) {
       // Store last section
-      sections.set(currentSection, currentLine)
+      sections.set(currentSection, currentBlock.filter((s) => s.length != 0).join('\n'))
     }
     return sections
   }
 
+  extractId(idx: number, header: string | undefined): string {
+    if (!header) {
+      return idx.toString()
+    }
+
+    for (let row of header.split('\n')) {
+      row = row.trim()
+      const match = row.match(/^([A-Za-z0-9/-]{4,})$/)
+      if (match != null && match[1]) {
+        return match[1]
+      }
+    }
+    return idx.toString()
+  }
+
   findPolygons(text: string | undefined): Layer[] {
-    if (text === undefined) {
+    if (!text) {
       // No E section given
       return []
     }
@@ -188,17 +255,12 @@ export class NOTAM {
       const strLatNS = match.groups['latNS']
       const strLon = match.groups['lon']
       const strLonEW = match.groups['lonEW']
-      if (
-        strLat === undefined ||
-        strLatNS === undefined ||
-        strLon === undefined ||
-        strLonEW === undefined
-      ) {
+      if (!strLat || !strLatNS || !strLon || !strLonEW) {
         continue
       }
 
-      const lat = this.parseQAngle(strLat, strLatNS)
-      const lon = this.parseQAngle(strLon, strLonEW)
+      const lat = parseQAngle(strLat, strLatNS)
+      const lon = parseQAngle(strLon, strLonEW)
 
       let kind: PositionKind
       const strKind = match.groups['psnFr'] ?? match.groups['psnEn']
@@ -228,17 +290,12 @@ export class NOTAM {
       const strLatNS = match.groups['latNS']
       const strLon = match.groups['lon']
       const strLonEW = match.groups['lonEW']
-      if (
-        strLat === undefined ||
-        strLatNS === undefined ||
-        strLon === undefined ||
-        strLonEW === undefined
-      ) {
+      if (!strLat || !strLatNS || !strLon || !strLonEW) {
         continue
       }
 
-      const lat = this.parseQAngle(strLat, strLatNS)
-      const lon = this.parseQAngle(strLon, strLonEW)
+      const lat = parseQAngle(strLat, strLatNS)
+      const lon = parseQAngle(strLon, strLonEW)
       // const strFixingPlace = match.groups['ancrage'] ?? match.groups['fixing']
       foundFixingPoints.push(new LatLng(lat, lon))
     }
