@@ -40,26 +40,50 @@ under the License.
                   <q-checkbox v-model="ignoreLargeNotams" label="Ignore large NOTAM" />
                 </div>
                 <div class="col-5">
-                  <q-slider v-model="maxNotamRadius" :min="1" :max="999" label switch-label-side
-                    :label-always="ignoreLargeNotams" :label-value="maxNotamRadius + ' NM'" />
+                  <q-slider
+                    v-model="maxNotamRadius"
+                    :min="1"
+                    :max="999"
+                    label
+                    switch-label-side
+                    :label-always="ignoreLargeNotams"
+                    :label-value="maxNotamRadius + ' NM'"
+                  />
                 </div>
               </div>
               <div class="row">
-                <q-checkbox v-model="onlyWithPositions" label="Only show NOTAM with located items" />
+                <q-checkbox
+                  v-model="onlyWithPositions"
+                  label="Only show NOTAM with located items"
+                />
               </div>
               <div class="row">
                 <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
               </div>
             </div>
             <q-separator />
-            <q-input v-model="inputNOTAMText" label="NOTAM entries" filled type="textarea" autofocus autogrow>
+            <q-input
+              v-model="inputNOTAMText"
+              label="NOTAM entries"
+              filled
+              type="textarea"
+              autofocus
+              autogrow
+            >
               <template v-slot:append>
                 <q-icon name="close" @click="inputNOTAMText = ''" class="cursor-pointer" />
               </template>
             </q-input>
           </q-tab-panel>
           <q-tab-panel name="aipTab">
-            <q-input v-model="inputAIPText" label="AIP entries" filled type="textarea" autofocus autogrow>
+            <q-input
+              v-model="inputAIPText"
+              label="AIP entries"
+              filled
+              type="textarea"
+              autofocus
+              autogrow
+            >
               <template v-slot:append>
                 <q-icon name="close" @click="inputAIPText = ''" class="cursor-pointer" />
               </template>
@@ -102,11 +126,11 @@ watch(inputAIPText, (newValue: string) => handleAIPInput(newValue))
 function handleNOTAMInput(fullText: string): void {
   let notams = parseNotams(fullText)
   if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
-    notams = notams.filter(n => n.radiusNM == null || n.radiusNM <= maxNotamRadius.value)
+    notams = notams.filter((n) => n.radiusNM == null || n.radiusNM <= maxNotamRadius.value)
   }
 
   if (onlyWithPositions.value) {
-    notams = notams.filter(n => n.polygons.length != 0)
+    notams = notams.filter((n) => n.polygons.length != 0)
   }
 
   mapViewRef.value?.setNOTAMs(notams, showAreaOfInfluence.value)
