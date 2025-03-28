@@ -22,9 +22,48 @@ under the License.
 
 <template>
   <q-page>
-    <div class="row q-gutter-md q-pa-md" style="min-height: inherit">
+    <div class="row q-gutter-md q-pa-md" style="min-height: inherit; height: 100%">
       <div class="col-6">
-        <MapView ref="mapViewRef" />
+        <MapView ref="mapViewRef" v-show="shownPanel === 'map'" />
+        <q-form
+          v-if="shownPanel === 'notamInput'"
+          class="fit"
+          style="min-height: inherit; height: 100%"
+        >
+          <q-scroll-area class="fit" style="min-height: 100%; height: 100%">
+            <q-input
+              v-model="inputNOTAMText"
+              class="fit"
+              label="NOTAM entries"
+              filled
+              type="textarea"
+              :autofocus="shownPanel === 'notamInput'"
+              autogrow
+            >
+              <template v-slot:append>
+                <div class="fixed-right">
+                  <div style="background: rgba(255, 255, 255, 0.75)">
+                    <q-btn
+                      icon="map"
+                      color="green"
+                      flat
+                      round
+                      unelevated
+                      @click.prevent="shownPanel = 'map'"
+                    />
+                    <q-btn
+                      icon="cancel"
+                      flat
+                      round
+                      unelevated
+                      @click.prevent="inputNOTAMText = ''"
+                    />
+                  </div>
+                </div>
+              </template>
+            </q-input>
+          </q-scroll-area>
+        </q-form>
       </div>
       <div class="col-5 full-height">
         <q-tabs v-model="selectedTab">
@@ -35,12 +74,21 @@ under the License.
         <q-tab-panels v-model="selectedTab" animated>
           <q-tab-panel name="notamTab">
             <div class="col">
-              <div class="row">
-                <div class="col">
-                  <q-checkbox v-model="ignoreLargeNotams" label="Ignore large NOTAM" />
+              <q-form>
+                <div class="row">
+                  <q-btn
+                    class="col"
+                    color="secondary"
+                    icon="edit"
+                    @click.prevent="shownPanel = shownPanel === 'map' ? 'notamInput' : 'map'"
+                    >Set NOTAM</q-btn
+                  >
                 </div>
-                <div class="col-5">
+                <q-separator />
+                <div class="row">
+                  <q-checkbox class="col" v-model="ignoreLargeNotams" label="Ignore large NOTAM" />
                   <q-slider
+                    class="col-5"
                     v-model="maxNotamRadius"
                     :min="1"
                     :max="999"
@@ -50,30 +98,18 @@ under the License.
                     :label-value="maxNotamRadius + ' NM'"
                   />
                 </div>
-              </div>
-              <div class="row">
-                <q-checkbox
-                  v-model="onlyWithPositions"
-                  label="Only show NOTAM with located items"
-                />
-              </div>
-              <div class="row">
-                <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
-              </div>
+                <div class="row">
+                  <q-checkbox
+                    v-model="onlyWithPositions"
+                    label="Only show NOTAM with located items"
+                  />
+                </div>
+                <div class="row">
+                  <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
+                </div>
+                <q-separator />
+              </q-form>
             </div>
-            <q-separator />
-            <q-input
-              v-model="inputNOTAMText"
-              label="NOTAM entries"
-              filled
-              type="textarea"
-              autofocus
-              autogrow
-            >
-              <template v-slot:append>
-                <q-icon name="close" @click="inputNOTAMText = ''" class="cursor-pointer" />
-              </template>
-            </q-input>
           </q-tab-panel>
           <q-tab-panel name="aipTab">
             <q-input
@@ -102,15 +138,22 @@ import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
 import { onMounted, ref, watch } from 'vue'
 
-const inputNOTAMText = ref('')
-const inputAIPText = ref('')
+// Display configuration
+const shownPanel = ref<'map' | 'notamInput' | 'aipInput'>('map')
+const mapViewRef = ref()
+const selectedTab = ref('notamTab')
+
+// NOTAMs
+const parsedNotams = ref<NOTAM[]>([])
+
+const inputNOTAMText = ref()
 const ignoreLargeNotams = ref<boolean>(true)
 const maxNotamRadius = ref<number>(100)
 const onlyWithPositions = ref<boolean>(true)
 const showAreaOfInfluence = ref<boolean>(true)
 
-const mapViewRef = ref()
-const selectedTab = ref('notamTab')
+// AIP
+const inputAIPText = ref('')
 
 onMounted(() => {
   handleNOTAMInput(inputNOTAMText.value)
@@ -124,6 +167,13 @@ watch(showAreaOfInfluence, () => handleNOTAMInput(inputNOTAMText.value))
 watch(inputAIPText, (newValue: string) => handleAIPInput(newValue))
 
 function handleNOTAMInput(fullText: string): void {
+  if (!fullText) {
+    // Text was reset
+    parsedNotams.value = []
+    mapViewRef.value?.setNOTAMs([], showAreaOfInfluence.value)
+    return
+  }
+
   let notams = parseNotams(fullText)
   if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
     notams = notams.filter((n) => n.radiusNM == null || n.radiusNM <= maxNotamRadius.value)
@@ -163,6 +213,8 @@ function parseNotams(fullText: string): NOTAM[] {
     const notam = new NOTAM(notamContent)
     notams.push(notam)
   }
+
+  parsedNotams.value = notams
   return notams
 }
 </script>
