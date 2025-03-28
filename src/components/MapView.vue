@@ -100,6 +100,8 @@ const initMap = () => {
   L.control.layers(baseLayers, {}).addTo(map)
   Object.values(baseLayers)[2]?.addTo(map)
 
+  L.control.scale().addTo(map)
+
   mapRef.value = map
   aipLayer.value.addTo(map)
   notamLayer.value.addTo(map)
