@@ -38,9 +38,12 @@ under the License.
 
     <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered>
       <q-list>
-        <q-item-label header> Essential Links </q-item-label>
-
-        <EssentialLink v-for="link in linksList" :key="link.title" v-bind="link" />
+        <q-item-label header> Aviation links </q-item-label>
+        <EssentialLink v-for="link in aviationLinks" :key="link.title" v-bind="link" />
+      </q-list>
+      <q-list>
+        <q-item-label header> Project links </q-item-label>
+        <EssentialLink v-for="link in projectLinks" :key="link.title" v-bind="link" />
       </q-list>
     </q-drawer>
 
@@ -51,12 +54,39 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue'
+import { ref } from 'vue'
 
-const linksList: EssentialLinkProps[] = [
+const aviationLinks: EssentialLinkProps[] = [
   {
-    title: 'Github',
+    title: "Service de l'Information Aéronautique",
+    caption: 'Source for SUP-AIP and VAC',
+    icon: 'info',
+    link: 'https://www.sia.aviation-civile.gouv.fr/',
+  },
+  {
+    title: 'Sofia Briefing',
+    caption: 'NOTAM and flight plans',
+    icon: 'timer',
+    link: 'https://sofia-briefing.aviation-civile.gouv.fr/',
+  },
+  {
+    title: 'AeroWeb',
+    caption: 'Weather from Météo France',
+    icon: 'cloud',
+    link: 'https://aviation.meteo.fr/',
+  },
+]
+
+const projectLinks: EssentialLinkProps[] = [
+  {
+    title: 'Report issues',
+    caption: 'Tell me if something is wrong',
+    icon: 'feedback',
+    link: 'https://github.com/tcalmant/web-toolbox/issues',
+  },
+  {
+    title: 'Source code',
     caption: 'github.com/tcalmant/web-toolbox',
     icon: 'code',
     link: 'https://github.com/tcalmant/web-toolbox',
