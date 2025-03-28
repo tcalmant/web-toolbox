@@ -123,7 +123,23 @@ under the License.
                   selection="multiple"
                   v-model:selected="selectedNotams"
                   @row-click="(_, row) => (focusedNotam = row)"
-                ></q-table>
+                >
+                  <template v-slot:body="props">
+                    <q-tr :props="props" @click="props.expand = !props.expand">
+                      <q-td>
+                        <q-checkbox v-model="props.selected" />
+                      </q-td>
+                      <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                        {{ col.value }}
+                      </q-td>
+                    </q-tr>
+                    <q-tr v-show="props.expand" :props="props">
+                      <q-td colspan="100%">
+                        <pre>{{ (props.row as NOTAM).text }}</pre>
+                      </q-td>
+                    </q-tr>
+                  </template>
+                </q-table>
               </q-form>
             </div>
           </q-tab-panel>
