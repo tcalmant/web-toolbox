@@ -119,13 +119,20 @@ under the License.
                   row-key="idx"
                   :rows="parsedNotams"
                   :columns="notamColumns"
-                  :table-row-class-fn="(row) => (row.id === focusedNotam?.id ? 'bg-accent' : '')"
                   selection="multiple"
                   v-model:selected="selectedNotams"
-                  @row-click="(_, row) => (focusedNotam = row)"
                 >
                   <template v-slot:body="props">
-                    <q-tr :props="props" @click="props.expand = !props.expand">
+                    <q-tr
+                      :props="props"
+                      @click="
+                        () => {
+                          props.expand = !props.expand
+                          focusedNotam = props.row
+                        }
+                      "
+                      :class="props.row.id === focusedNotam?.id ? 'bg-accent' : ''"
+                    >
                       <q-td>
                         <q-checkbox v-model="props.selected" />
                       </q-td>
