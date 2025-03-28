@@ -24,7 +24,12 @@ under the License.
   <q-page>
     <div class="row q-gutter-md q-pa-md" style="min-height: inherit; height: 100%">
       <div class="col-6">
-        <MapView ref="mapViewRef" v-show="shownPanel === 'map'" />
+        <MapView
+          v-show="shownPanel === 'map'"
+          v-model:notam-list="shownNotams"
+          v-model:aip="parsedAIP"
+          v-model:show-area-of-influence="showAreaOfInfluence"
+        />
         <q-form
           v-if="shownPanel === 'notamInput'"
           class="fit"
@@ -108,6 +113,14 @@ under the License.
                   <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
                 </div>
                 <q-separator />
+                <q-table
+                  class="col"
+                  row-key="idx"
+                  :rows="parsedNotams"
+                  :columns="notamColumns"
+                  selection="multiple"
+                  v-model:selected="selectedNotams"
+                ></q-table>
               </q-form>
             </div>
           </q-tab-panel>
@@ -136,15 +149,19 @@ import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 // Display configuration
 const shownPanel = ref<'map' | 'notamInput' | 'aipInput'>('map')
-const mapViewRef = ref()
 const selectedTab = ref('notamTab')
+
+// AIP
+const inputAIPText = ref('')
+const parsedAIP = ref<AIP>()
 
 // NOTAMs
 const parsedNotams = ref<NOTAM[]>([])
+const selectedNotams = ref<Array<NOTAM>>([])
 
 const inputNOTAMText = ref()
 const ignoreLargeNotams = ref<boolean>(true)
@@ -152,48 +169,107 @@ const maxNotamRadius = ref<number>(100)
 const onlyWithPositions = ref<boolean>(true)
 const showAreaOfInfluence = ref<boolean>(true)
 
-// AIP
-const inputAIPText = ref('')
+// ... table
+const notamColumns = [
+  {
+    name: 'index',
+    label: 'N°',
+    field: (r: NOTAM) => r.idx,
+    required: true,
+  },
+  {
+    name: 'fir',
+    label: 'FIR',
+    field: (r: NOTAM) => r.sectionQ?.fir,
+    required: true,
+  },
+  {
+    name: 'qcode',
+    label: 'QCode',
+    field: (r: NOTAM) => r.sectionQ?.qCode,
+    required: true,
+  },
+  {
+    name: 'trafic',
+    label: 'Trafic',
+    field: (r: NOTAM) => r.sectionQ?.trafic,
+  },
+  {
+    name: 'object',
+    label: 'Object',
+    field: (r: NOTAM) => r.sectionQ?.object,
+  },
+  {
+    name: 'scope',
+    label: 'Scope',
+    field: (r: NOTAM) => r.sectionQ?.scope,
+  },
+  {
+    name: 'limitLow',
+    label: 'LOW',
+    field: (r: NOTAM) => r.sectionQ?.limitLow,
+  },
+  {
+    name: 'limitHigh',
+    label: 'HIGH',
+    field: (r: NOTAM) => r.sectionQ?.limitHigh,
+  },
+  {
+    name: 'radius',
+    label: 'Radius (NM)',
+    field: (r: NOTAM) => r.sectionQ?.radiusNM,
+  },
+]
 
+// Handle updates
 onMounted(() => {
-  handleNOTAMInput(inputNOTAMText.value)
   handleAIPInput(inputAIPText.value)
+  handleNOTAMInput(inputNOTAMText.value)
 })
-watch(inputNOTAMText, (newValue: string) => handleNOTAMInput(newValue))
-watch(ignoreLargeNotams, () => handleNOTAMInput(inputNOTAMText.value))
-watch(maxNotamRadius, () => handleNOTAMInput(inputNOTAMText.value))
-watch(onlyWithPositions, () => handleNOTAMInput(inputNOTAMText.value))
-watch(showAreaOfInfluence, () => handleNOTAMInput(inputNOTAMText.value))
 watch(inputAIPText, (newValue: string) => handleAIPInput(newValue))
+watch(inputNOTAMText, (newValue: string) => handleNOTAMInput(newValue))
+
+function handleAIPInput(fullText: string): void {
+  parsedAIP.value = fullText ? new AIP(fullText) : undefined
+}
 
 function handleNOTAMInput(fullText: string): void {
-  if (!fullText) {
-    // Text was reset
-    parsedNotams.value = []
-    mapViewRef.value?.setNOTAMs([], showAreaOfInfluence.value)
-    return
-  }
+  let notams = (parsedNotams.value = fullText ? parseNotams(fullText) : [])
 
-  let notams = parseNotams(fullText)
   if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
-    notams = notams.filter((n) => n.radiusNM == null || n.radiusNM <= maxNotamRadius.value)
+    notams = notams.filter(
+      (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
+    )
   }
 
   if (onlyWithPositions.value) {
     notams = notams.filter((n) => n.polygons.length != 0)
   }
 
-  mapViewRef.value?.setNOTAMs(notams, showAreaOfInfluence.value)
+  selectedNotams.value = notams
 }
 
-function handleAIPInput(fullText: string): void {
-  mapViewRef.value?.setAIP(new AIP(fullText).polygons ?? [], fullText)
-}
+const shownNotams = computed<NOTAM[]>(() => {
+  let notams = selectedNotams.value as NOTAM[]
+  console.log('Update shownNotams')
+  if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
+    notams = notams.filter(
+      (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
+    )
+  }
+
+  if (onlyWithPositions.value) {
+    notams = notams.filter((n) => n.polygons.length != 0)
+  }
+
+  return notams
+})
 
 function parseNotams(fullText: string): NOTAM[] {
   let lastEndIdx = -1
   let sectionStartIdx = -1
   const notams: NOTAM[] = []
+  let notamIdx = 0
   while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-GQ]\)/)) != -1) {
     // Look for the "real" start of the NOTAM
     let notamStartIdx = fullText.lastIndexOf('\n\n', sectionStartIdx)
@@ -210,7 +286,7 @@ function parseNotams(fullText: string): NOTAM[] {
     }
 
     const notamContent = fullText.substring(notamStartIdx, lastEndIdx).trim()
-    const notam = new NOTAM(notamContent)
+    const notam = new NOTAM(notamContent, ++notamIdx)
     notams.push(notam)
   }
 
