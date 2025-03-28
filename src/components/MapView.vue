@@ -219,7 +219,9 @@ watch([mapRef, aipLayer, notamLayer], () => {
     }
   }
 
-  map.fitBounds(bounds, { maxZoom: 12 })
+  if (bounds && bounds.isValid()) {
+    map.fitBounds(bounds, { maxZoom: 12 })
+  }
 })
 
 watch(focusedNotam, (newFocus) => {
