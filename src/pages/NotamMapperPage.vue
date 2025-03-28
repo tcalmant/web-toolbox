@@ -27,6 +27,7 @@ under the License.
         <MapView
           v-show="shownPanel === 'map'"
           v-model:notam-list="shownNotams"
+          v-model:notam-focus="focusedNotam"
           v-model:aip="parsedAIP"
           v-model:show-area-of-influence="showAreaOfInfluence"
         />
@@ -120,6 +121,7 @@ under the License.
                   :columns="notamColumns"
                   selection="multiple"
                   v-model:selected="selectedNotams"
+                  @row-click="(_, row) => (focusedNotam = row)"
                 ></q-table>
               </q-form>
             </div>
@@ -162,6 +164,7 @@ const parsedAIP = ref<AIP>()
 // NOTAMs
 const parsedNotams = ref<NOTAM[]>([])
 const selectedNotams = ref<Array<NOTAM>>([])
+const focusedNotam = ref<NOTAM>()
 
 const inputNOTAMText = ref()
 const ignoreLargeNotams = ref<boolean>(true)

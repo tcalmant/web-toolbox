@@ -25,7 +25,6 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import type { Layer } from 'leaflet'
 import L, { FeatureGroup, type LatLngTuple } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -38,6 +37,7 @@ export interface MapProps {
 }
 
 const notamList = defineModel<NOTAM[]>('notam-list', { default: [] })
+const focusedNotam = defineModel<NOTAM | undefined>('notam-focus')
 const aip = defineModel<AIP | undefined>('aip')
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence')
 
@@ -131,21 +131,20 @@ watch(aipLayer, (newLayer, oldLayer) => {
   }
 })
 
-const notamLayer = computed<FeatureGroup>(() => {
-  const groupLayer = new FeatureGroup()
+const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
+  const layers = new Map<string, FeatureGroup>()
   for (const notam of notamList.value ?? []) {
-    let layer: Layer | null = null
+    const layer: FeatureGroup = new FeatureGroup()
     const qSection = notam.sectionQ
     if (notam.polygons !== null && notam.polygons.length > 0) {
       // Draw a polygon
-      const group = (layer = new FeatureGroup())
       if (
         showAreaOfInfluence.value &&
         qSection &&
         qSection.center !== null &&
         qSection.radiusNM !== null
       ) {
-        group.addLayer(
+        layer.addLayer(
           L.circle(qSection.center, {
             radius: qSection.radiusNM * 1852,
             stroke: false,
@@ -153,13 +152,15 @@ const notamLayer = computed<FeatureGroup>(() => {
           }),
         )
       }
-      notam.polygons.forEach((l) => group.addLayer(l))
+      notam.polygons.forEach((l) => layer.addLayer(l))
     } else if (qSection && qSection.center !== null && qSection.radiusNM !== null) {
       // Draw a circle (convert radius in meters)
-      layer = L.circle(qSection.center, { radius: qSection.radiusNM * 1852, fillOpacity: 0.5 })
+      layer.addLayer(
+        L.circle(qSection.center, { radius: qSection.radiusNM * 1852, fillOpacity: 0.5 }),
+      )
     }
 
-    if (layer !== null) {
+    if (layer.getLayers().length != 0) {
       layer.on('click', () => {
         layer
           .bindPopup(`<p class="mapViewNotamContent">${notam.text}</p>`, {
@@ -168,12 +169,17 @@ const notamLayer = computed<FeatureGroup>(() => {
           })
           .openPopup()
       })
-      groupLayer.addLayer(layer)
+
+      layers.set(notam.id, layer)
     }
   }
 
-  return groupLayer
+  return layers
 })
+
+const notamLayer = computed<FeatureGroup>(
+  () => new FeatureGroup(Array.from(notamLayerDict.value.values())),
+)
 
 watch(notamLayer, (newLayer, oldLayer) => {
   oldLayer?.remove()
@@ -190,6 +196,16 @@ watch([mapRef, aipLayer, notamLayer], () => {
     return
   }
 
+  // Stay on the focused NOTAM
+  const focused = focusedNotam.value
+  if (focused) {
+    const focusedLayer = notamLayerDict.value.get(focused.id)
+    if (focusedLayer) {
+      map.fitBounds(focusedLayer.getBounds())
+      return
+    }
+  }
+
   const aipBounds = aipLayer.value.getBounds()
   const notamBounds = notamLayer.value.getBounds()
 
@@ -203,6 +219,18 @@ watch([mapRef, aipLayer, notamLayer], () => {
   }
 
   map.fitBounds(bounds, { maxZoom: 12 })
+})
+
+watch(focusedNotam, (newFocus) => {
+  if (newFocus) {
+    const focusedLayer = notamLayerDict.value.get(newFocus.id)
+    if (focusedLayer) {
+      const map = mapRef.value
+      if (map) {
+        map.fitBounds(focusedLayer.getBounds())
+      }
+    }
+  }
 })
 </script>
 
