@@ -122,6 +122,17 @@ under the License.
                   selection="multiple"
                   v-model:selected="selectedNotams"
                 >
+                  <template v-slot:header="props">
+                    <q-tr :props="props">
+                      <q-th>
+                        <q-checkbox indeterminate-value="null" v-model="notamSelectAll" />
+                      </q-th>
+                      <q-th></q-th>
+                      <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                        {{ col.label }}
+                      </q-th>
+                    </q-tr>
+                  </template>
                   <template v-slot:body="props">
                     <q-tr
                       :props="props"
@@ -203,6 +214,25 @@ const parsedAIP = ref<AIP>()
 const parsedNotams = ref<NOTAM[]>([])
 const selectedNotams = ref<Array<NOTAM>>([])
 const focusedNotam = ref<NOTAM>()
+const notamSelectAll = ref<boolean | null>(true)
+
+watch(notamSelectAll, (newState, oldState) => {
+  if (newState === true && oldState !== true) {
+    selectedNotams.value = parsedNotams.value
+  } else if (newState === false && oldState !== false) {
+    selectedNotams.value = []
+  }
+})
+
+watch(selectedNotams, (newSelection) => {
+  if (newSelection.length === parsedNotams.value.length) {
+    notamSelectAll.value = true
+  } else if (newSelection.length === 0) {
+    notamSelectAll.value = false
+  } else {
+    notamSelectAll.value = null
+  }
+})
 
 const inputNOTAMText = ref()
 const ignoreLargeNotams = ref<boolean>(true)
