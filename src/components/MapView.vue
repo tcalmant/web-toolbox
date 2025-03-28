@@ -36,7 +36,7 @@ export interface MapProps {
   zoom?: number
 }
 
-const notamList = defineModel<NOTAM[]>('notam-list', { default: [] })
+const notamList = defineModel<NOTAM[] | undefined>('notam-list')
 const focusedNotam = defineModel<NOTAM | undefined>('notam-focus')
 const aip = defineModel<AIP | undefined>('aip')
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence')

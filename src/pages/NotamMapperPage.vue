@@ -26,7 +26,7 @@ under the License.
       <div class="col-6">
         <MapView
           v-show="shownPanel === 'map'"
-          v-model:notam-list="shownNotams"
+          v-model:notam-list="selectedNotams as NOTAM[] | undefined"
           v-model:notam-focus="focusedNotam"
           v-model:aip="parsedAIP"
           v-model:show-area-of-influence="showAreaOfInfluence"
@@ -200,7 +200,7 @@ import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 // Display configuration
 const shownPanel = ref<'map' | 'notamInput' | 'aipInput'>('map')
@@ -212,15 +212,17 @@ const parsedAIP = ref<AIP>()
 
 // NOTAMs
 const parsedNotams = ref<NOTAM[]>([])
-const selectedNotams = ref<Array<NOTAM>>([])
+const selectedNotams = ref<NOTAM[]>([])
 const focusedNotam = ref<NOTAM>()
 const notamSelectAll = ref<boolean | null>(true)
 
 watch(notamSelectAll, (newState, oldState) => {
   if (newState === true && oldState !== true) {
     selectedNotams.value = parsedNotams.value
+    focusedNotam.value = undefined
   } else if (newState === false && oldState !== false) {
     selectedNotams.value = []
+    focusedNotam.value = undefined
   }
 })
 
@@ -328,21 +330,6 @@ function handleNOTAMInput(fullText: string): void {
 
   selectedNotams.value = notams
 }
-
-const shownNotams = computed<NOTAM[]>(() => {
-  let notams = selectedNotams.value as NOTAM[]
-  if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
-    notams = notams.filter(
-      (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
-    )
-  }
-
-  if (onlyWithPositions.value) {
-    notams = notams.filter((n) => n.polygons.length != 0)
-  }
-
-  return notams
-})
 
 function parseNotams(fullText: string): NOTAM[] {
   let lastEndIdx = -1
