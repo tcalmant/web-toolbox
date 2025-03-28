@@ -193,7 +193,7 @@ watch(notamLayer, (newLayer, oldLayer) => {
   }
 })
 
-watch([mapRef, aipLayer, notamLayer], () => {
+watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
   const map = mapRef.value
   if (!map) {
     return
@@ -223,18 +223,6 @@ watch([mapRef, aipLayer, notamLayer], () => {
 
   if (bounds && bounds.isValid()) {
     map.fitBounds(bounds, { maxZoom: 12 })
-  }
-})
-
-watch(focusedNotam, (newFocus) => {
-  if (newFocus) {
-    const focusedLayer = notamLayerDict.value.get(newFocus.id)
-    if (focusedLayer) {
-      const map = mapRef.value
-      if (map) {
-        map.fitBounds(focusedLayer.getBounds())
-      }
-    }
   }
 })
 </script>
