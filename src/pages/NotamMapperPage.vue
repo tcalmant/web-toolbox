@@ -144,7 +144,11 @@ under the License.
                         v-for="col in props.cols"
                         :key="col.name"
                         :props="props"
-                        @click="focusedNotam = props.row"
+                        @click="
+                          focusedNotam?.id === props.row.id
+                            ? (focusedNotam = undefined)
+                            : (focusedNotam = props.row)
+                        "
                       >
                         {{ col.value }}
                       </q-td>
