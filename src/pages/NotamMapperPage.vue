@@ -119,6 +119,7 @@ under the License.
                   row-key="idx"
                   :rows="parsedNotams"
                   :columns="notamColumns"
+                  :table-row-class-fn="(row) => (row.id === focusedNotam?.id ? 'bg-accent' : '')"
                   selection="multiple"
                   v-model:selected="selectedNotams"
                   @row-click="(_, row) => (focusedNotam = row)"
@@ -147,6 +148,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
+import type { QTableColumn } from 'quasar'
 import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
@@ -173,54 +175,63 @@ const onlyWithPositions = ref<boolean>(true)
 const showAreaOfInfluence = ref<boolean>(true)
 
 // ... table
-const notamColumns = [
+const notamColumns: QTableColumn[] = [
   {
     name: 'id',
     label: 'N°',
     field: (r: NOTAM) => r.id,
     required: true,
+    sortable: true,
   },
   {
     name: 'fir',
     label: 'FIR',
     field: (r: NOTAM) => r.sectionQ?.fir,
     required: true,
+    sortable: true,
   },
   {
     name: 'qcode',
     label: 'QCode',
     field: (r: NOTAM) => r.sectionQ?.qCode,
     required: true,
+    sortable: true,
   },
   {
     name: 'trafic',
     label: 'Trafic',
     field: (r: NOTAM) => r.sectionQ?.trafic,
+    sortable: true,
   },
   {
     name: 'object',
     label: 'Object',
     field: (r: NOTAM) => r.sectionQ?.object,
+    sortable: true,
   },
   {
     name: 'scope',
     label: 'Scope',
     field: (r: NOTAM) => r.sectionQ?.scope,
+    sortable: true,
   },
   {
     name: 'limitLow',
     label: 'LOW',
     field: (r: NOTAM) => r.sectionQ?.limitLow,
+    sortable: true,
   },
   {
     name: 'limitHigh',
     label: 'HIGH',
     field: (r: NOTAM) => r.sectionQ?.limitHigh,
+    sortable: true,
   },
   {
     name: 'radius',
     label: 'Radius (NM)',
     field: (r: NOTAM) => r.sectionQ?.radiusNM,
+    sortable: true,
   },
 ]
 
