@@ -172,9 +172,9 @@ const showAreaOfInfluence = ref<boolean>(true)
 // ... table
 const notamColumns = [
   {
-    name: 'index',
+    name: 'id',
     label: 'N°',
-    field: (r: NOTAM) => r.idx,
+    field: (r: NOTAM) => r.id,
     required: true,
   },
   {
@@ -251,7 +251,6 @@ function handleNOTAMInput(fullText: string): void {
 
 const shownNotams = computed<NOTAM[]>(() => {
   let notams = selectedNotams.value as NOTAM[]
-  console.log('Update shownNotams')
   if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
     notams = notams.filter(
       (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,

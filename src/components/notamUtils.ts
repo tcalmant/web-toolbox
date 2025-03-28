@@ -156,6 +156,7 @@ export class SectionQ {
 
 export class NOTAM {
   readonly idx: number
+  readonly id: string
   readonly text: string
   readonly rawSections: Map<string, string>
   readonly polygons: Layer[]
@@ -169,6 +170,9 @@ export class NOTAM {
     this.text = fullText
     this.rawSections = this.splitSections(fullText)
 
+    // Compute ID
+    this.id = this.extractId(idx, this.rawSections.get('HEADER'))
+
     // Parse sections
     let sectionContent = this.rawSections.get('A')
     this.sectionA = sectionContent ? new SectionA(sectionContent) : null
@@ -181,8 +185,8 @@ export class NOTAM {
   }
 
   splitSections(text: string): Map<string, string> {
-    let currentSection: string | null = null
-    let currentLine: string | null = null
+    let currentSection: string = 'HEADER'
+    let currentBlock: string[] = []
     const sections = new Map<string, string>()
     for (let line of text.split('\n')) {
       line = line.trim()
@@ -190,30 +194,41 @@ export class NOTAM {
       if (match != null && match.groups != null && match.index !== undefined) {
         const foundSection = match.groups['section']
         if (foundSection !== undefined) {
-          // Start of new section
-          if (currentSection != null && currentLine != null) {
-            // Store current section
-            sections.set(currentSection, currentLine)
-            currentLine = null
-          }
+          // Start of new section: update & store the current block
+          currentBlock.push(line.substring(0, match.index).trim())
+          sections.set(currentSection, currentBlock.filter((s) => s.length != 0).join('\n'))
+
+          // Reset content
+          currentBlock = []
           currentSection = foundSection
         }
 
         line = line.substring(match.index + match[0].length).trim()
       }
 
-      if (currentLine == null) {
-        currentLine = line
-      } else {
-        currentLine = `${currentLine}\n${line}`
-      }
+      currentBlock.push(line)
     }
 
-    if (currentSection != null && currentLine != null) {
+    if (currentBlock.length > 0) {
       // Store last section
-      sections.set(currentSection, currentLine)
+      sections.set(currentSection, currentBlock.filter((s) => s.length != 0).join('\n'))
     }
     return sections
+  }
+
+  extractId(idx: number, header: string | undefined): string {
+    if (!header) {
+      return idx.toString()
+    }
+
+    for (let row of header.split('\n')) {
+      row = row.trim()
+      const match = row.match(/^([A-Za-z0-9/-]{4,})$/)
+      if (match != null && match[1]) {
+        return match[1]
+      }
+    }
+    return idx.toString()
   }
 
   findPolygons(text: string | undefined): Layer[] {
