@@ -168,6 +168,7 @@ const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
             maxWidth: 600,
           })
           .openPopup()
+        focusedNotam.value = notam
       })
 
       layers.set(notam.id, layer)
