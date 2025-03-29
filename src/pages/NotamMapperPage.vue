@@ -197,37 +197,6 @@ const parsedNotams = ref<NOTAM[]>([])
 const selectedNotams = ref<NOTAM[]>([])
 const focusedNotam = ref<NOTAM>()
 const notamSelectAll = ref<boolean | null>(true)
-
-watch(notamSelectAll, (newState, oldState) => {
-  if (newState === true && oldState !== true) {
-    selectedNotams.value = parsedNotams.value
-    focusedNotam.value = undefined
-  } else if (newState === false && oldState !== false) {
-    selectedNotams.value = []
-    focusedNotam.value = undefined
-  }
-})
-
-watch(selectedNotams, (newSelection) => {
-  if (newSelection.length === parsedNotams.value.length) {
-    notamSelectAll.value = true
-  } else if (newSelection.length === 0) {
-    notamSelectAll.value = false
-  } else {
-    notamSelectAll.value = null
-  }
-})
-
-watch(focusedNotam, (newSelection) => {
-  const table = tableRef.value
-  if (newSelection && table) {
-    const sortedIdx = table.computedRows.findIndex((r: NOTAM) => r.idx === newSelection.idx)
-    if (sortedIdx != -1) {
-      table.scrollTo(sortedIdx, 'center')
-    }
-  }
-})
-
 const inputNOTAMText = ref()
 const ignoreLargeNotams = ref<boolean>(true)
 const maxNotamRadius = ref<number>(100)
@@ -303,12 +272,63 @@ onMounted(() => {
 watch(inputAIPText, (newValue: string) => handleAIPInput(newValue))
 watch(inputNOTAMText, (newValue: string) => handleNOTAMInput(newValue))
 
+watch(notamSelectAll, (newState, oldState) => {
+  if (newState === true && oldState !== true) {
+    selectedNotams.value = parsedNotams.value
+    focusedNotam.value = undefined
+  } else if (newState === false && oldState !== false) {
+    selectedNotams.value = []
+    focusedNotam.value = undefined
+  }
+})
+
+watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
+
+watch(selectedNotams, (newSelection) => {
+  if (newSelection.length === parsedNotams.value.length) {
+    notamSelectAll.value = true
+  } else if (newSelection.length === 0) {
+    notamSelectAll.value = false
+  } else {
+    notamSelectAll.value = null
+  }
+})
+
+watch(focusedNotam, (newSelection) => {
+  const table = tableRef.value
+  if (newSelection && table) {
+    const sortedIdx = table.computedRows.findIndex((r: NOTAM) => r.idx === newSelection.idx)
+    if (sortedIdx != -1) {
+      table.scrollTo(sortedIdx, 'center')
+    }
+  }
+})
+
 function handleAIPInput(fullText: string): void {
   parsedAIP.value = fullText ? new AIP(fullText) : undefined
 }
 
 function handleNOTAMInput(fullText: string): void {
   let notams = (parsedNotams.value = fullText ? parseNotams(fullText) : [])
+
+  if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
+    notams = notams.filter(
+      (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
+    )
+  }
+
+  if (onlyWithPositions.value) {
+    notams = notams.filter((n) => n.polygons.length != 0)
+  }
+
+  selectedNotams.value = notams
+}
+
+function updateSelectedNotams() {
+  let notams = parsedNotams.value
+  if (!notams) {
+    selectedNotams.value = []
+  }
 
   if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
     notams = notams.filter(
