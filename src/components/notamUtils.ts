@@ -18,7 +18,7 @@
 import type { Layer } from 'leaflet'
 import { LatLng } from 'leaflet'
 import type { PositionKind } from './geometry'
-import { Line, Position } from './geometry'
+import { Line, Polygon, Position } from './geometry'
 
 /**
  * Parses an angle as seen in the Q section, e.g. 4500N or 00500E
@@ -244,6 +244,8 @@ export class NOTAM {
       /(?:(?<psnEn>\w+)\s+)?PSN(?:\s+(?<psnFr>[^:]+))?\s*:\s*(?<lat>\d+(.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(.\d+)?)(?<lonEW>E|W)(?:\s*(?<radiusNM>\d+)|.*(?:(?<radius>\d+)\s*(?<radiusUnit>NM|M|KM)))?/g
 
     let match
+
+    const foundPSNPoints: LatLng[] = []
     while ((match = psnPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
@@ -270,14 +272,17 @@ export class NOTAM {
         kind = 'POINT'
       }
 
-      const layer = new Position(kind, new LatLng(lat, lon)).toLayer()
+      const psn = new LatLng(lat, lon)
+      foundPSNPoints.push(psn)
+
+      const layer = new Position(kind, psn).toLayer()
       if (layer !== null) {
         layers.push(layer)
       }
     }
 
     // Look for fixing
-    const foundFixingPoints = []
+    const foundFixingPoints: LatLng[] = []
     const fixingPattern =
       /(?:(?:ANCRAGE(?:\s+(?<ancrage>\w+))?)|(?:(?<fixing>\w+\s+)?FIXING))(\s+[^:]+)?\s*:\s*(?<lat>\d+)(?<latNS>N|S)\s*(?<lon>\d+)(?<lonEW>E|W)\s*(?:(?:ALTITUDE|ELEV)\s*(?<alt>\d+)\s*(?<altUnit>FT|M))?/g
     while ((match = fixingPattern.exec(text)) != null) {
@@ -296,13 +301,67 @@ export class NOTAM {
 
       const lat = parseQAngle(strLat, strLatNS)
       const lon = parseQAngle(strLon, strLonEW)
-      // const strFixingPlace = match.groups['ancrage'] ?? match.groups['fixing']
       foundFixingPoints.push(new LatLng(lat, lon))
     }
 
     const fixingLayer = new Line(foundFixingPoints).toLayer()
     if (fixingLayer !== null) {
       layers.push(fixingLayer)
+    }
+
+    // Look for other locations
+    const latLngPattern =
+      /(?<lat>\d{4,6}(?:.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:.\d*)?)(?<lonEW>E|W)/g
+
+    let currentList: LatLng[] = []
+    let lastEndIdx = 0
+    while ((match = latLngPattern.exec(text)) != null) {
+      if (match.groups === undefined) {
+        // Unexpected
+        continue
+      }
+
+      const strLat = match.groups['lat']
+      const strLatNS = match.groups['latNS']
+      const strLon = match.groups['lon']
+      const strLonEW = match.groups['lonEW']
+      if (!strLat || !strLatNS || !strLon || !strLonEW) {
+        continue
+      }
+
+      const lat = parseQAngle(strLat, strLatNS)
+      const lon = parseQAngle(strLon, strLonEW)
+      const latLng = new LatLng(lat, lon)
+
+      if (foundPSNPoints.includes(latLng) || foundFixingPoints.includes(latLng)) {
+        // Ignore known points
+        continue
+      }
+
+      // Store the new point
+      currentList.push(latLng)
+
+      const separator = text.substring(lastEndIdx, match.index - 1).trim()
+      // Consider spaces, commas and "TO" as polygon separators
+      if (separator.length != 0 && !separator.match(/\s*(?:AS|FROM|TO|AT|,|;)\s*$/)) {
+        // Found text between previous and current number
+        const layer = new Polygon(currentList).toLayer()
+        if (layer !== null) {
+          layers.push(layer)
+        }
+
+        currentList = []
+      }
+
+      lastEndIdx = match.index + match[0].length
+    }
+
+    // Handle what's left
+    if (currentList.length != 0) {
+      const layer = new Polygon(currentList).toLayer()
+      if (layer !== null) {
+        layers.push(layer)
+      }
     }
 
     return layers

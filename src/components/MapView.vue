@@ -40,6 +40,7 @@ const notamList = defineModel<NOTAM[] | undefined>('notam-list')
 const focusedNotam = defineModel<NOTAM | undefined>('notam-focus')
 const aip = defineModel<AIP | undefined>('aip')
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence')
+const hoveredNotam = defineModel<NOTAM | undefined>('hoveredNotam')
 
 const props = withDefaults(defineProps<MapProps>(), {
   center: () => [46.45, 2.21],
@@ -94,6 +95,11 @@ const initMap = () => {
     OpenStreetMap: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }),
+    OpenTopoMap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 15,
+      attribution:
+        'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
     }),
   }
 
@@ -172,6 +178,16 @@ const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
           .openPopup()
         focusedNotam.value = notam
       })
+      layer.on('mouseover', () => {
+        if (hoveredNotam.value === undefined) {
+          hoveredNotam.value = notam
+        }
+      })
+      layer.on('mouseout', () => {
+        if (notam == hoveredNotam.value) {
+          hoveredNotam.value = undefined
+        }
+      })
 
       layers.set(notam.id, layer)
     }
@@ -204,7 +220,7 @@ watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
   if (focused) {
     const focusedLayer = notamLayerDict.value.get(focused.id)
     if (focusedLayer) {
-      map.fitBounds(focusedLayer.getBounds())
+      map.fitBounds(focusedLayer.getBounds(), { maxZoom: 18 })
       return
     }
   }
