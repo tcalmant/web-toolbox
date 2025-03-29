@@ -95,7 +95,9 @@ under the License.
             <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
           </div>
           <q-table
+            ref="tableRef"
             class="col notam-table"
+            virtual-scroll
             row-key="idx"
             :rows="parsedNotams"
             :columns="notamColumns"
@@ -142,7 +144,7 @@ under the License.
                   {{ col.value }}
                 </q-td>
               </q-tr>
-              <q-tr v-show="props.expand" :props="props">
+              <q-tr v-if="props.expand" :props="props">
                 <q-td colspan="100%">
                   <pre>{{ (props.row as NOTAM).text }}</pre>
                 </q-td>
@@ -170,7 +172,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import type { QTableColumn } from 'quasar'
+import type { QTable, QTableColumn } from 'quasar'
 import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
@@ -190,6 +192,7 @@ const inputAIPText = ref('')
 const parsedAIP = ref<AIP>()
 
 // NOTAMs
+const tableRef = ref<QTable>()
 const parsedNotams = ref<NOTAM[]>([])
 const selectedNotams = ref<NOTAM[]>([])
 const focusedNotam = ref<NOTAM>()
@@ -212,6 +215,16 @@ watch(selectedNotams, (newSelection) => {
     notamSelectAll.value = false
   } else {
     notamSelectAll.value = null
+  }
+})
+
+watch(focusedNotam, (newSelection) => {
+  const table = tableRef.value
+  if (newSelection && table) {
+    const sortedIdx = table.computedRows.findIndex((r: NOTAM) => r.idx === newSelection.idx)
+    if (sortedIdx != -1) {
+      table.scrollTo(sortedIdx, 'center')
+    }
   }
 })
 
