@@ -314,7 +314,7 @@ export class NOTAM {
       /(?<lat>\d{4,6}(?:.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:.\d*)?)(?<lonEW>E|W)/g
 
     let currentList: LatLng[] = []
-    const lastEndIdx = 0
+    let lastEndIdx = 0
     while ((match = latLngPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
@@ -352,6 +352,8 @@ export class NOTAM {
 
         currentList = []
       }
+
+      lastEndIdx = match.index + match[0].length
     }
 
     // Handle what's left
