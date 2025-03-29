@@ -18,7 +18,7 @@
 import type { Layer } from 'leaflet'
 import { LatLng } from 'leaflet'
 import type { PositionKind } from './geometry'
-import { Line, Position } from './geometry'
+import { Line, Polygon, Position } from './geometry'
 
 /**
  * Parses an angle as seen in the Q section, e.g. 4500N or 00500E
@@ -332,8 +332,6 @@ export class NOTAM {
       const lon = parseQAngle(strLon, strLonEW)
       const latLng = new LatLng(lat, lon)
 
-      console.log('Found point:', match[0], latLng)
-
       if (!foundPSNPoints.includes(latLng) && !foundFixingPoints.includes(latLng)) {
         // Found a new point
         otherPoints.push(latLng)
@@ -341,7 +339,7 @@ export class NOTAM {
     }
 
     if (otherPoints.length !== 0) {
-      const otherPointsLayer = new Line(otherPoints).toLayer()
+      const otherPointsLayer = new Polygon(otherPoints).toLayer()
       if (otherPointsLayer !== null) {
         layers.push(otherPointsLayer)
       }
