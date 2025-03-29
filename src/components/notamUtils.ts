@@ -313,7 +313,8 @@ export class NOTAM {
     const latLngPattern =
       /(?<lat>\d{4,6}(?:.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:.\d*)?)(?<lonEW>E|W)/g
 
-    const otherPoints: LatLng[] = []
+    let currentList: LatLng[] = []
+    const lastEndIdx = 0
     while ((match = latLngPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
@@ -332,16 +333,32 @@ export class NOTAM {
       const lon = parseQAngle(strLon, strLonEW)
       const latLng = new LatLng(lat, lon)
 
-      if (!foundPSNPoints.includes(latLng) && !foundFixingPoints.includes(latLng)) {
-        // Found a new point
-        otherPoints.push(latLng)
+      if (foundPSNPoints.includes(latLng) || foundFixingPoints.includes(latLng)) {
+        // Ignore known points
+        continue
+      }
+
+      // Store the new point
+      currentList.push(latLng)
+
+      const separator = text.substring(lastEndIdx, match.index - 1).trim()
+      // Consider spaces, commas and "TO" as polygon separators
+      if (separator.length != 0 && !separator.match(/\s*(?:AS|FROM|TO|AT|,|;)\s*$/)) {
+        // Found text between previous and current number
+        const layer = new Polygon(currentList).toLayer()
+        if (layer !== null) {
+          layers.push(layer)
+        }
+
+        currentList = []
       }
     }
 
-    if (otherPoints.length !== 0) {
-      const otherPointsLayer = new Polygon(otherPoints).toLayer()
-      if (otherPointsLayer !== null) {
-        layers.push(otherPointsLayer)
+    // Handle what's left
+    if (currentList.length != 0) {
+      const layer = new Polygon(currentList).toLayer()
+      if (layer !== null) {
+        layers.push(layer)
       }
     }
 
