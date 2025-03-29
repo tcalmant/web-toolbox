@@ -21,175 +21,150 @@ under the License.
 -->
 
 <template>
-  <q-page>
-    <div class="row q-gutter-md q-pa-md" style="min-height: inherit; height: 100%">
-      <div class="col-6">
-        <MapView
-          v-show="shownPanel === 'map'"
-          v-model:notam-list="selectedNotams as NOTAM[] | undefined"
-          v-model:notam-focus="focusedNotam"
-          v-model:aip="parsedAIP"
-          v-model:show-area-of-influence="showAreaOfInfluence"
-        />
-        <q-form
-          v-if="shownPanel === 'notamInput'"
-          class="fit"
-          style="min-height: inherit; height: 100%"
-        >
-          <q-scroll-area class="fit" style="min-height: 100%; height: 100%">
-            <q-input
-              v-model="inputNOTAMText"
-              class="fit"
-              label="NOTAM entries"
-              filled
-              type="textarea"
-              :autofocus="shownPanel === 'notamInput'"
-              autogrow
-            >
-              <template v-slot:append>
-                <div class="fixed-right">
-                  <div style="background: rgba(255, 255, 255, 0.75)">
-                    <q-btn
-                      icon="map"
-                      color="green"
-                      flat
-                      round
-                      unelevated
-                      @click.prevent="shownPanel = 'map'"
-                    />
-                    <q-btn
-                      icon="cancel"
-                      flat
-                      round
-                      unelevated
-                      @click.prevent="inputNOTAMText = ''"
-                    />
-                  </div>
-                </div>
-              </template>
-            </q-input>
-          </q-scroll-area>
-        </q-form>
-      </div>
-      <div class="col-5 full-height">
-        <q-tabs v-model="selectedTab">
-          <q-tab name="notamTab" label="NOTAM" icon="timer" />
-          <q-tab name="aipTab" label="AIP" icon="menu_book" />
-        </q-tabs>
-        <q-separator />
-        <q-tab-panels v-model="selectedTab" animated>
-          <q-tab-panel name="notamTab">
-            <div class="col">
-              <q-form>
-                <div class="row">
+  <q-page class="row q-gutter-md q-pa-md no-wrap" :style-fn="pageStyleFn">
+    <div class="col-6">
+      <MapView
+        v-show="shownPanel === 'map'"
+        v-model:notam-list="selectedNotams as NOTAM[] | undefined"
+        v-model:notam-focus="focusedNotam"
+        v-model:aip="parsedAIP"
+        v-model:show-area-of-influence="showAreaOfInfluence"
+      />
+      <q-form v-if="shownPanel === 'notamInput'" class="fit">
+        <q-scroll-area class="fit">
+          <q-input
+            v-model="inputNOTAMText"
+            label="NOTAM entries"
+            filled
+            type="textarea"
+            :autofocus="shownPanel === 'notamInput'"
+            autogrow
+          >
+            <template v-slot:append>
+              <div class="fixed-right">
+                <div style="background: rgba(255, 255, 255, 0.75)">
                   <q-btn
-                    class="col"
-                    color="secondary"
-                    icon="edit"
-                    @click.prevent="shownPanel = shownPanel === 'map' ? 'notamInput' : 'map'"
-                    >Set NOTAM</q-btn
-                  >
-                </div>
-                <q-separator />
-                <div class="row">
-                  <q-checkbox class="col" v-model="ignoreLargeNotams" label="Ignore large NOTAM" />
-                  <q-slider
-                    class="col-5"
-                    v-model="maxNotamRadius"
-                    :min="1"
-                    :max="999"
-                    label
-                    switch-label-side
-                    :label-always="ignoreLargeNotams"
-                    :label-value="maxNotamRadius + ' NM'"
+                    icon="map"
+                    color="green"
+                    flat
+                    round
+                    unelevated
+                    @click.prevent="shownPanel = 'map'"
                   />
+                  <q-btn icon="cancel" flat round unelevated @click.prevent="inputNOTAMText = ''" />
                 </div>
-                <div class="row">
-                  <q-checkbox
-                    v-model="onlyWithPositions"
-                    label="Only show NOTAM with located items"
-                  />
-                </div>
-                <div class="row">
-                  <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
-                </div>
-                <q-separator />
-                <q-table
-                  class="col"
-                  row-key="idx"
-                  :rows="parsedNotams"
-                  :columns="notamColumns"
-                  selection="multiple"
-                  v-model:selected="selectedNotams"
-                >
-                  <template v-slot:header="props">
-                    <q-tr :props="props">
-                      <q-th>
-                        <q-checkbox indeterminate-value="null" v-model="notamSelectAll" />
-                      </q-th>
-                      <q-th></q-th>
-                      <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                        {{ col.label }}
-                      </q-th>
-                    </q-tr>
-                  </template>
-                  <template v-slot:body="props">
-                    <q-tr
-                      :props="props"
-                      :class="props.row.id === focusedNotam?.id ? 'bg-accent' : ''"
-                    >
-                      <q-td>
-                        <q-checkbox v-model="props.selected" />
-                      </q-td>
-                      <q-td auto-width>
-                        <q-btn
-                          size="sm"
-                          color="primary"
-                          round
-                          dense
-                          @click="props.expand = !props.expand"
-                          :icon="props.expand ? 'remove' : 'add'"
-                        />
-                      </q-td>
-                      <q-td
-                        v-for="col in props.cols"
-                        :key="col.name"
-                        :props="props"
-                        @click="
-                          focusedNotam?.id === props.row.id
-                            ? (focusedNotam = undefined)
-                            : (focusedNotam = props.row)
-                        "
-                      >
-                        {{ col.value }}
-                      </q-td>
-                    </q-tr>
-                    <q-tr v-show="props.expand" :props="props">
-                      <q-td colspan="100%">
-                        <pre>{{ (props.row as NOTAM).text }}</pre>
-                      </q-td>
-                    </q-tr>
-                  </template>
-                </q-table>
-              </q-form>
-            </div>
-          </q-tab-panel>
-          <q-tab-panel name="aipTab">
-            <q-input
-              v-model="inputAIPText"
-              label="AIP entries"
-              filled
-              type="textarea"
-              autofocus
-              autogrow
+              </div>
+            </template>
+          </q-input>
+        </q-scroll-area>
+      </q-form>
+    </div>
+    <div class="col-5 col column no-wrap">
+      <q-tabs v-model="selectedTab">
+        <q-tab name="notamTab" label="NOTAM" icon="timer" />
+        <q-tab name="aipTab" label="AIP" icon="menu_book" />
+      </q-tabs>
+      <q-tab-panels v-model="selectedTab" animated>
+        <q-tab-panel name="notamTab" class="q-pa-md col column no-wrap">
+          <div class="row">
+            <q-btn
+              class="col"
+              color="secondary"
+              icon="edit"
+              @click.prevent="shownPanel = shownPanel === 'map' ? 'notamInput' : 'map'"
+              >Set NOTAM</q-btn
             >
-              <template v-slot:append>
-                <q-icon name="close" @click="inputAIPText = ''" class="cursor-pointer" />
-              </template>
-            </q-input>
-          </q-tab-panel>
-        </q-tab-panels>
-      </div>
+          </div>
+          <div class="row">
+            <q-checkbox class="col" v-model="ignoreLargeNotams" label="Ignore large NOTAM" />
+            <q-slider
+              class="col-5"
+              v-model="maxNotamRadius"
+              :min="1"
+              :max="999"
+              label
+              switch-label-side
+              :label-always="ignoreLargeNotams"
+              :label-value="maxNotamRadius + ' NM'"
+            />
+          </div>
+          <div class="row">
+            <q-checkbox v-model="onlyWithPositions" label="Only show NOTAM with located items" />
+          </div>
+          <div class="row">
+            <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
+          </div>
+          <q-table
+            class="col notam-table"
+            row-key="idx"
+            :rows="parsedNotams"
+            :columns="notamColumns"
+            selection="multiple"
+            v-model:selected="selectedNotams"
+            :rows-per-page-options="[0]"
+          >
+            <template v-slot:header="props">
+              <q-tr :props="props">
+                <q-th>
+                  <q-checkbox indeterminate-value="null" v-model="notamSelectAll" />
+                </q-th>
+                <q-th></q-th>
+                <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                  {{ col.label }}
+                </q-th>
+              </q-tr>
+            </template>
+            <template v-slot:body="props">
+              <q-tr :props="props" :class="props.row.id === focusedNotam?.id ? 'bg-accent' : ''">
+                <q-td>
+                  <q-checkbox v-model="props.selected" />
+                </q-td>
+                <q-td auto-width>
+                  <q-btn
+                    size="sm"
+                    color="primary"
+                    round
+                    dense
+                    @click="props.expand = !props.expand"
+                    :icon="props.expand ? 'remove' : 'add'"
+                  />
+                </q-td>
+                <q-td
+                  v-for="col in props.cols"
+                  :key="col.name"
+                  :props="props"
+                  @click="
+                    focusedNotam?.id === props.row.id
+                      ? (focusedNotam = undefined)
+                      : (focusedNotam = props.row)
+                  "
+                >
+                  {{ col.value }}
+                </q-td>
+              </q-tr>
+              <q-tr v-show="props.expand" :props="props">
+                <q-td colspan="100%">
+                  <pre>{{ (props.row as NOTAM).text }}</pre>
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-tab-panel>
+        <q-tab-panel name="aipTab">
+          <q-input
+            v-model="inputAIPText"
+            label="AIP entries"
+            filled
+            type="textarea"
+            autofocus
+            autogrow
+          >
+            <template v-slot:append>
+              <q-icon name="close" @click="inputAIPText = ''" class="cursor-pointer" />
+            </template>
+          </q-input>
+        </q-tab-panel>
+      </q-tab-panels>
     </div>
   </q-page>
 </template>
@@ -201,6 +176,10 @@ import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
 import { onMounted, ref, watch } from 'vue'
+
+function pageStyleFn(offset: number, height: number) {
+  return { height: `${height - offset}px` }
+}
 
 // Display configuration
 const shownPanel = ref<'map' | 'notamInput' | 'aipInput'>('map')
@@ -362,3 +341,20 @@ function parseNotams(fullText: string): NOTAM[] {
   return notams
 }
 </script>
+
+<style lang="sass">
+.notam-table
+  overflow: auto
+
+  .q-table__top,
+  .q-table__bottom,
+  thead tr:first-child th
+    /* bg color is important for th; just specify one */
+    background-color: #ffffff
+
+  thead tr th
+    position: sticky
+    z-index: 1
+  thead tr:first-child th
+    top: 0
+</style>
