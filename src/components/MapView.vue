@@ -40,6 +40,7 @@ const notamList = defineModel<NOTAM[] | undefined>('notam-list')
 const focusedNotam = defineModel<NOTAM | undefined>('notam-focus')
 const aip = defineModel<AIP | undefined>('aip')
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence')
+const hoveredNotam = defineModel<NOTAM | undefined>('hoveredNotam')
 
 const props = withDefaults(defineProps<MapProps>(), {
   center: () => [46.45, 2.21],
@@ -176,6 +177,16 @@ const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
           })
           .openPopup()
         focusedNotam.value = notam
+      })
+      layer.on('mouseover', () => {
+        if (hoveredNotam.value === undefined) {
+          hoveredNotam.value = notam
+        }
+      })
+      layer.on('mouseout', () => {
+        if (notam == hoveredNotam.value) {
+          hoveredNotam.value = undefined
+        }
       })
 
       layers.set(notam.id, layer)

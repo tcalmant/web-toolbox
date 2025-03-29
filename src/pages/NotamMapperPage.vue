@@ -29,6 +29,7 @@ under the License.
         v-model:notam-focus="focusedNotam"
         v-model:aip="parsedAIP"
         v-model:show-area-of-influence="showAreaOfInfluence"
+        v-model:hovered-notam="hoveredNotam"
       />
       <q-form v-if="shownPanel === 'notamInput'" class="fit">
         <q-scroll-area class="fit">
@@ -117,7 +118,14 @@ under the License.
               </q-tr>
             </template>
             <template v-slot:body="props">
-              <q-tr :props="props" :class="props.row.id === focusedNotam?.id ? 'bg-accent' : ''">
+              <q-tr
+                :props="props"
+                :class="
+                  props.row.id === focusedNotam?.id || props.row.id === hoveredNotam?.id
+                    ? 'bg-info'
+                    : ''
+                "
+              >
                 <q-td>
                   <q-checkbox v-model="props.selected" />
                 </q-td>
@@ -195,6 +203,7 @@ const parsedAIP = ref<AIP>()
 const tableRef = ref<QTable>()
 const parsedNotams = ref<NOTAM[]>([])
 const selectedNotams = ref<NOTAM[]>([])
+const hoveredNotam = ref<NOTAM>()
 const focusedNotam = ref<NOTAM>()
 const notamSelectAll = ref<boolean | null>(true)
 const inputNOTAMText = ref()
