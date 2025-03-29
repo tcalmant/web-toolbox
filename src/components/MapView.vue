@@ -204,7 +204,7 @@ watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
   if (focused) {
     const focusedLayer = notamLayerDict.value.get(focused.id)
     if (focusedLayer) {
-      map.fitBounds(focusedLayer.getBounds())
+      map.fitBounds(focusedLayer.getBounds(), { maxZoom: 18 })
       return
     }
   }
