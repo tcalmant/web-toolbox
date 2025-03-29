@@ -245,6 +245,24 @@ const notamColumns: QTableColumn[] = [
     sortable: true,
   },
   {
+    name: 'limitLow',
+    label: 'Lower limit',
+    field: (r: NOTAM) => r.sectionQ?.limitLow,
+    sortable: true,
+  },
+  {
+    name: 'limitHigh',
+    label: 'Higher limit',
+    field: (r: NOTAM) => r.sectionQ?.limitHigh,
+    sortable: true,
+  },
+  {
+    name: 'radius',
+    label: 'Radius (NM)',
+    field: (r: NOTAM) => r.sectionQ?.radiusNM,
+    sortable: true,
+  },
+  {
     name: 'trafic',
     label: 'Trafic',
     field: (r: NOTAM) => r.sectionQ?.trafic,
@@ -260,24 +278,6 @@ const notamColumns: QTableColumn[] = [
     name: 'scope',
     label: 'Scope',
     field: (r: NOTAM) => r.sectionQ?.scope,
-    sortable: true,
-  },
-  {
-    name: 'limitLow',
-    label: 'LOW',
-    field: (r: NOTAM) => r.sectionQ?.limitLow,
-    sortable: true,
-  },
-  {
-    name: 'limitHigh',
-    label: 'HIGH',
-    field: (r: NOTAM) => r.sectionQ?.limitHigh,
-    sortable: true,
-  },
-  {
-    name: 'radius',
-    label: 'Radius (NM)',
-    field: (r: NOTAM) => r.sectionQ?.radiusNM,
     sortable: true,
   },
 ]
