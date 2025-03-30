@@ -42,7 +42,11 @@ export class FuelQuantity {
   unit: FuelOption
 
   constructor(value: FuelQuantity | number, unit?: FuelOption) {
-    if (typeof value === 'number') {
+    if (!value) {
+      // No value given
+      this.unit = unit ?? LITER
+      this.value = this.unit.value.mul(value ?? 0)
+    } else if (typeof value === 'number') {
       if (unit === undefined) {
         if (value !== 0) {
           console.warn('No explicit unit. Using liters')
