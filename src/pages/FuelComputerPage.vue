@@ -115,7 +115,7 @@ import { FUEL_UNITS, FuelQuantity, LITER } from 'src/components/fuelUtils'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import InputListHours from 'src/components/InputListHours.vue'
 import { TimePeriod } from 'src/components/timeUtils'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 class ResultRow {
   label: string
@@ -162,6 +162,12 @@ const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
 const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
 
 // Fuel computation
+watch(fuelCapacity, (newValue) => {
+  if (fuelConsumable.value > newValue || fuelConsumable.value == 0) {
+    fuelConsumable.value = newValue
+  }
+})
+
 const totalAddedFuel = ref<FuelQuantity>(new FuelQuantity(0))
 const totalConsumedFuel = computed(
   () =>
