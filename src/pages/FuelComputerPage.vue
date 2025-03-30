@@ -35,6 +35,7 @@ under the License.
           class="col"
           v-model.number="fuelPerHour"
           type="number"
+          min="0"
           label="Fuel consumption"
           :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit.label}/minute)`"
         />
@@ -42,6 +43,7 @@ under the License.
           class="col"
           v-model.number="fuelCapacity"
           type="number"
+          min="0"
           label="Fuel capacity"
           hint="Total fuel capacity"
         />
@@ -49,6 +51,7 @@ under the License.
           class="col"
           v-model.number="fuelConsumable"
           type="number"
+          min="0"
           label="Consumable fuel"
           hint="Total consumable fuel"
         />
