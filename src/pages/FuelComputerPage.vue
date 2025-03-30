@@ -33,19 +33,22 @@ under the License.
         <q-select class="col-1" v-model="fuelUnit" :options="FUEL_UNITS" />
         <q-input
           class="col"
-          v-model="fuelPerHour"
+          v-model.number="fuelPerHour"
+          type="number"
           label="Fuel consumption"
           :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit.label}/minute)`"
         />
         <q-input
           class="col"
-          v-model="fuelCapacity"
+          v-model.number="fuelCapacity"
+          type="number"
           label="Fuel capacity"
           hint="Total fuel capacity"
         />
         <q-input
           class="col"
-          v-model="fuelConsumable"
+          v-model.number="fuelConsumable"
+          type="number"
           label="Consumable fuel"
           hint="Total consumable fuel"
         />
