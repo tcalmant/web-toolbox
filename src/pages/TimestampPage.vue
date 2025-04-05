@@ -24,29 +24,32 @@ under the License.
   <q-page padding>
     <q-input v-model="unixTimestamp" label="Unix Timestamp" :hint="unixTimestampUnit" />
     <q-input v-model="dateUTC" label="Date (UTC)" hint="UTC date" />
-    <q-input v-model="dateLocalTZ" label="Local date"
-      :hint="`Date in local timezone: UTC ${formatTzOffset(shownDate)}`" />
+    <q-input
+      v-model="dateLocalTZ"
+      label="Local date"
+      :hint="`Date in local timezone: UTC ${formatTzOffset(shownDate)}`"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { dateToString, dateToUTCString, formatTzOffset } from 'src/components/timeUtils';
-import { computed, ref } from 'vue';
+import { dateToString, dateToUTCString, formatTzOffset } from 'src/components/timeUtils'
+import { computed, ref } from 'vue'
 
 /**
  * Supported timestamp units
  */
 enum TimestampUnit {
-  SECOND = "s",
-  MILLISECOND = "ms",
-  MICROSECOND = "µs",
-  NANOSECOND = "ns",
+  SECOND = 's',
+  MILLISECOND = 'ms',
+  MICROSECOND = 'µs',
+  NANOSECOND = 'ns',
 }
 
 /**
  * Initial date value
  */
-const shownDate = ref(new Date());
+const shownDate = ref(new Date())
 
 /**
  * UNIX timestamp
@@ -56,11 +59,11 @@ const unixTimestamp = computed({
     return shownDate.value.getTime()
   },
   set: (newValue: string) => {
-    const newValueNumber = parseInt(newValue);
+    const newValueNumber = parseInt(newValue)
     if (newValueNumber !== undefined) {
       shownDate.value = new Date(ensureMilliSeconds(newValueNumber))
     }
-  }
+  },
 })
 
 /**
@@ -71,13 +74,15 @@ const dateUTC = computed({
     return dateToUTCString(shownDate.value)
   },
   set: (newValue: string) => {
-    const dateInLocalTz = new Date(newValue);
+    const dateInLocalTz = new Date(newValue)
     if (dateInLocalTz !== undefined) {
       // The date is parsed as if it was a local time: convert it back to UTC
-      const dateInUTC = new Date(dateInLocalTz.getTime() - dateInLocalTz.getTimezoneOffset() * 60000)
+      const dateInUTC = new Date(
+        dateInLocalTz.getTime() - dateInLocalTz.getTimezoneOffset() * 60000,
+      )
       shownDate.value = dateInUTC
     }
-  }
+  },
 })
 
 /**
@@ -88,17 +93,17 @@ const dateLocalTZ = computed({
     return dateToString(shownDate.value, false)
   },
   set: (newValue: string) => {
-    const date = new Date(newValue);
+    const date = new Date(newValue)
     if (date !== undefined) {
       shownDate.value = date
     }
-  }
+  },
 })
 
 /**
  * The unit of the timestamp
  */
-const unixTimestampUnit = computed(() => detectTimestampUnit(unixTimestamp.value));
+const unixTimestampUnit = computed(() => detectTimestampUnit(unixTimestamp.value))
 
 /**
  * Compute the unit of the timestamp
@@ -132,10 +137,10 @@ function ensureMilliSeconds(ts: number): number {
     case TimestampUnit.MICROSECOND:
       return Math.round(ts / 1000)
     case TimestampUnit.SECOND:
-      return ts * 1000;
+      return ts * 1000
     case TimestampUnit.MILLISECOND:
     default:
-      return ts;
+      return ts
   }
 }
 </script>
