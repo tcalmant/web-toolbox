@@ -31,7 +31,11 @@ under the License.
           inputmode="numeric"
           label="Unix Timestamp"
           @update:model-value="onTimestampChange"
-        />
+        >
+          <template v-slot:prepend>
+            <q-icon name="history" @click="reset()" />
+          </template>
+        </q-input>
         <q-select
           class="col"
           v-model="unixTimestampUnit"
@@ -158,6 +162,10 @@ const TIMESTAMP_UNITS: TimestampUnit[] = [autoUnit, ...autoUnit.knownUnits]
  */
 const unixTimestampNs = ref<number>(unitMs.toNanoseconds(new Date().getTime()))
 const unixTimestampUnit = ref<TimestampUnit>(autoUnit)
+
+function reset() {
+  unixTimestampNs.value = unitMs.toNanoseconds(new Date().getTime())
+}
 
 /**
  * Input models
