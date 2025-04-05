@@ -48,13 +48,75 @@ under the License.
         label="Date (UTC)"
         hint="UTC date"
         @update:model-value="onUTCDateChange"
-      />
+      >
+        <template v-slot:prepend>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date
+                v-model="dateUTC"
+                mask="YYYY-MM-DD HH:mm:ss"
+                @update:model-value="onUTCDateChange"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup label="Close" color="primary" flat />
+                </div>
+              </q-date>
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+        <template v-slot:append>
+          <q-icon name="access_time" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-time
+                v-model="dateUTC"
+                mask="YYYY-MM-DD HH:mm:ss"
+                @update:model-value="onUTCDateChange"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup label="Close" color="primary" flat />
+                </div>
+              </q-time>
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
       <q-input
         v-model="dateLocalTZ"
         label="Local date"
         :hint="`Date in local timezone: UTC ${formatTzOffset(new Date())}`"
         @update:model-value="onLocalDateChange"
-      />
+      >
+        <template v-slot:prepend>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date
+                v-model="dateUTC"
+                mask="YYYY-MM-DD HH:mm:ss"
+                @update:model-value="onLocalDateChange"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup label="Close" color="primary" flat />
+                </div>
+              </q-date>
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+        <template v-slot:append>
+          <q-icon name="access_time" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-time
+                v-model="dateUTC"
+                mask="YYYY-MM-DD HH:mm:ss"
+                @update:model-value="onLocalDateChange"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup label="Close" color="primary" flat />
+                </div>
+              </q-time>
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
     </div>
   </q-page>
 </template>
