@@ -22,125 +22,203 @@ under the License.
 
 <template>
   <q-page padding>
-    <q-input v-model="unixTimestamp" label="Unix Timestamp" :hint="unixTimestampUnit" />
-    <q-input v-model="dateUTC" label="Date (UTC)" hint="UTC date" />
-    <q-input
-      v-model="dateLocalTZ"
-      label="Local date"
-      :hint="`Date in local timezone: UTC ${formatTzOffset(shownDate)}`"
-    />
+    <div class="col q-gutter-md q-pa-md">
+      <div class="row">
+        <q-input
+          class="col"
+          v-model.number="unixTimestamp"
+          type="number"
+          inputmode="numeric"
+          label="Unix Timestamp"
+          @update:model-value="onTimestampChange"
+        />
+        <q-select
+          class="col"
+          v-model="unixTimestampUnit"
+          :options="TIMESTAMP_UNITS"
+          label="Precision"
+        />
+      </div>
+      <q-input
+        v-model="dateUTC"
+        label="Date (UTC)"
+        hint="UTC date"
+        @update:model-value="onUTCDateChange"
+      />
+      <q-input
+        v-model="dateLocalTZ"
+        label="Local date"
+        :hint="`Date in local timezone: UTC ${formatTzOffset(new Date())}`"
+        @update:model-value="onLocalDateChange"
+      />
+    </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { dateToString, dateToUTCString, formatTzOffset } from 'src/components/timeUtils'
-import { computed, ref } from 'vue'
+import { ref, watch } from 'vue'
 
 /**
- * Supported timestamp units
+ * Representation of support timestamp units
  */
-enum TimestampUnit {
-  SECOND = 's',
-  MILLISECOND = 'ms',
-  MICROSECOND = 'µs',
-  NANOSECOND = 'ns',
+class TimestampUnit {
+  label: string
+  nanoseconds: number
+  nbNanosecondsDigits: number
+
+  constructor(label: string, nanoseconds: number) {
+    this.label = label
+    this.nanoseconds = nanoseconds
+    this.nbNanosecondsDigits = Math.floor(Math.log10(nanoseconds))
+  }
+
+  fromNanoseconds(value: number): number {
+    return value / this.nanoseconds
+  }
+
+  toNanoseconds(value: number): number {
+    return value * this.nanoseconds
+  }
+
+  toMilliseconds(value: number): number {
+    return (value * this.nanoseconds) / 1000000
+  }
 }
 
 /**
- * Initial date value
+ * Nanoseconds and milliseconds units are used internally
  */
-const shownDate = ref(new Date())
+const unitNs = new TimestampUnit('ns', 1)
+const unitSecond = new TimestampUnit('s', 1000000000)
+const unitMs = new TimestampUnit('ms', 1000000)
+const unitMicro = new TimestampUnit('µs', 1000)
 
-/**
- * UNIX timestamp
- */
-const unixTimestamp = computed({
-  get: () => {
-    return shownDate.value.getTime()
-  },
-  set: (newValue: string) => {
-    const newValueNumber = parseInt(newValue)
-    if (newValueNumber !== undefined) {
-      shownDate.value = new Date(ensureMilliSeconds(newValueNumber))
-    }
-  },
-})
+class AutoTimestampUnit extends TimestampUnit {
+  baseLabel: string
+  knownUnits: TimestampUnit[]
+  nbDigitsNowNs: number
+  lastUnit: TimestampUnit
 
-/**
- * UTC date
- */
-const dateUTC = computed({
-  get: () => {
-    return dateToUTCString(shownDate.value)
-  },
-  set: (newValue: string) => {
-    const dateInLocalTz = new Date(newValue)
-    if (dateInLocalTz !== undefined) {
-      // The date is parsed as if it was a local time: convert it back to UTC
-      const dateInUTC = new Date(
-        dateInLocalTz.getTime() - dateInLocalTz.getTimezoneOffset() * 60000,
-      )
-      shownDate.value = dateInUTC
-    }
-  },
-})
+  constructor(label: string, knownUnits: TimestampUnit[]) {
+    super(label, 0)
+    this.baseLabel = label
+    this.knownUnits = knownUnits
 
-/**
- * Date in local timezone
- */
-const dateLocalTZ = computed({
-  get: () => {
-    return dateToString(shownDate.value, false)
-  },
-  set: (newValue: string) => {
-    const date = new Date(newValue)
-    if (date !== undefined) {
-      shownDate.value = date
-    }
-  },
-})
+    // Base configuration
+    const now = new Date().getTime()
+    this.nbDigitsNowNs = Math.floor(Math.log10(unitMs.toNanoseconds(now)))
+    this.lastUnit = unitMs
 
-/**
- * The unit of the timestamp
- */
-const unixTimestampUnit = computed(() => detectTimestampUnit(unixTimestamp.value))
-
-/**
- * Compute the unit of the timestamp
- */
-function detectTimestampUnit(ts: number): TimestampUnit {
-  const nbDigits = Math.floor(Math.log10(ts))
-  if (nbDigits >= 18) {
-    return TimestampUnit.NANOSECOND
+    // Go through the method to update the label
+    this.autoUnit(now)
   }
 
-  if (nbDigits >= 15) {
-    return TimestampUnit.MICROSECOND
+  detectUnit(value: number): TimestampUnit {
+    const nbDigitsValue = Math.floor(Math.log10(Math.abs(value)))
+    const matchingUnits = this.knownUnits
+      .filter((u) => nbDigitsValue <= this.nbDigitsNowNs - u.nbNanosecondsDigits)
+      .sort((a, b) => b.nanoseconds - a.nanoseconds)
+
+    const matchingUnit = matchingUnits[0]
+    if (matchingUnit) {
+      return matchingUnit
+    } else {
+      // Fall back to nanoseconds if nothing matches
+      return unitNs
+    }
   }
 
-  if (nbDigits >= 12) {
-    return TimestampUnit.MILLISECOND
+  private autoUnit(value: number): TimestampUnit {
+    const newUnit = this.detectUnit(value)
+    this.label = `${this.baseLabel} (${newUnit.label})`
+    this.lastUnit = newUnit
+    return newUnit
   }
 
-  return TimestampUnit.SECOND
+  override fromNanoseconds(value: number): number {
+    return this.lastUnit.fromNanoseconds(value)
+  }
+
+  override toNanoseconds(value: number): number {
+    return this.autoUnit(value).toNanoseconds(value)
+  }
+
+  override toMilliseconds(value: number): number {
+    return this.autoUnit(value).toMilliseconds(value)
+  }
 }
 
+const autoUnit = new AutoTimestampUnit('Auto', [unitNs, unitSecond, unitMs, unitMicro])
+
+const TIMESTAMP_UNITS: TimestampUnit[] = [autoUnit, ...autoUnit.knownUnits]
+
 /**
- * Ensures that the given timestamp is in milliseconds
- * @param ts Timestamp to convert
- * @returns A timestamp in milliseconds
+ * The internal value, in nanoseconds
  */
-function ensureMilliSeconds(ts: number): number {
-  switch (detectTimestampUnit(ts)) {
-    case TimestampUnit.NANOSECOND:
-      return Math.round(ts / 1000000)
-    case TimestampUnit.MICROSECOND:
-      return Math.round(ts / 1000)
-    case TimestampUnit.SECOND:
-      return ts * 1000
-    case TimestampUnit.MILLISECOND:
-    default:
-      return ts
+const unixTimestampNs = ref<number>(unitMs.toNanoseconds(new Date().getTime()))
+const unixTimestampUnit = ref<TimestampUnit>(autoUnit)
+
+/**
+ * Input models
+ */
+const unixTimestamp = ref<number>()
+const dateUTC = ref<string>('')
+const dateLocalTZ = ref<string>('')
+
+/**
+ * Update on internal change
+ */
+watch(
+  unixTimestampNs,
+  (newValue) => {
+    if (isFinite(newValue)) {
+      const internalDate = new Date(unitNs.toMilliseconds(newValue))
+      unixTimestamp.value = Math.floor(unixTimestampUnit.value.fromNanoseconds(newValue))
+      dateUTC.value = dateToUTCString(internalDate)
+      dateLocalTZ.value = dateToString(internalDate, false)
+    }
+  },
+  { immediate: true },
+)
+
+function onTimestampChange(newValue: string | number | null) {
+  if (newValue === null || newValue === undefined) {
+    return
+  }
+
+  if (typeof newValue === 'string') {
+    newValue = parseInt(newValue)
+  }
+
+  if (isFinite(newValue)) {
+    unixTimestampNs.value = unixTimestampUnit.value.toNanoseconds(newValue)
+  }
+}
+
+function onUTCDateChange(newValue: string | number | null) {
+  if (newValue === null || newValue === undefined) {
+    return
+  }
+
+  const dateInLocalTz = new Date(newValue)
+  if (dateInLocalTz !== undefined) {
+    // The date is parsed as if it was a local time: convert it back to UTC
+    const utcTimestamp = dateInLocalTz.getTime() - dateInLocalTz.getTimezoneOffset() * 60000
+    if (!isNaN(utcTimestamp)) {
+      unixTimestampNs.value = unitMs.toNanoseconds(utcTimestamp)
+    }
+  }
+}
+
+function onLocalDateChange(newValue: string | number | null) {
+  if (newValue === null || newValue === undefined) {
+    return
+  }
+
+  const date = new Date(newValue)
+  if (date !== undefined) {
+    unixTimestampNs.value = unitMs.toNanoseconds(date.getTime())
   }
 }
 </script>
