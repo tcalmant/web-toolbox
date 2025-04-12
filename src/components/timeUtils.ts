@@ -18,28 +18,36 @@
 /**
  * Converts the given string to a date string in YYYY-MM-dd HH:mm:ss format, with the timezone.
  * @param date The date to convert
- * @param showOffset Whether or not to include the timezone offset
+ * @param tzName Name of the timezone to convert the date to
  * @returns A string representation of the given date
  */
-export function dateToString(date: Date, showOffset: boolean = false): string {
+export function dateToString(date: Date, tzName: string): string {
   if (date === undefined || date === null) {
     throw new Error('Invalid Date')
   }
 
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  const second = String(date.getSeconds()).padStart(2, '0')
-
-  let result = `${year}-${month}-${day} ${hour}:${minute}:${second}`
-
-  if (showOffset) {
-    result += ` ${formatTzOffset(date)}`
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: tzName,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
   }
 
-  return result
+  // Convert to FR locale: DD/MM/YYYY HH:mm:ss
+  const formatter = new Intl.DateTimeFormat('en-US', options)
+
+  const partsArray = formatter.formatToParts(date)
+  const parts: Record<string, string> = {}
+  for (const item of partsArray) {
+    parts[item.type] = item.value
+  }
+
+  // Convert it to ISO format
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
 /**
@@ -48,38 +56,31 @@ export function dateToString(date: Date, showOffset: boolean = false): string {
  * @returns A string representation of the given date in UTC
  */
 export function dateToUTCString(date: Date): string {
-  if (date === undefined || date === null) {
-    throw new Error('Invalid Date')
-  }
-
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  const hour = String(date.getUTCHours()).padStart(2, '0')
-  const minute = String(date.getUTCMinutes()).padStart(2, '0')
-  const second = String(date.getSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+  return dateToString(date, 'UTC')
 }
 
 /**
  * Converts a date offset to a string like +01:00 or +00:00 or -00:30
  * @param date Date representation
+ * @param tzName Name of the timezone
  * @returns String representation of the timezone offset
  */
-export function formatTzOffset(date: Date): string {
-  const offsetMinutes = date.getTimezoneOffset()
-  const hoursOffset = Math.abs(offsetMinutes / 60)
-  const minutesOffset = offsetMinutes % 60
-
-  let offsetSign = ''
-  if (offsetMinutes < 0) {
-    offsetSign = '+'
-  } else {
-    offsetSign = '-'
+export function formatTzOffset(date: Date, tzName: string): string {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: tzName,
+    timeZoneName: 'longOffset',
   }
 
-  return `${offsetSign}${String(hoursOffset).padStart(2, '0')}:${String(minutesOffset).padStart(2, '0')}`
+  const formatter = new Intl.DateTimeFormat(undefined, options)
+  const formattedDate = formatter.format(date)
+
+  const utcIdx = formattedDate.indexOf('UTC')
+  if (utcIdx == -1) {
+    // Timezone not found
+    return ''
+  }
+
+  return formattedDate.substring(utcIdx + 'UTC'.length)
 }
 
 export class TimePeriod {

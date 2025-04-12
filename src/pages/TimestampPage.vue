@@ -37,7 +37,7 @@ under the License.
           </template>
         </q-input>
         <q-select
-          class="col"
+          class="col q-px-md"
           v-model="unixTimestampUnit"
           :options="TIMESTAMP_UNITS"
           label="Precision"
@@ -53,9 +53,10 @@ under the License.
           <q-icon name="event" class="cursor-pointer">
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-date
-                v-model="dateUTC"
+                :model-value="dateUTC"
                 mask="YYYY-MM-DD HH:mm:ss"
                 @update:model-value="onUTCDateChange"
+                :today-btn="true"
               >
                 <div class="row items-center justify-end">
                   <q-btn v-close-popup label="Close" color="primary" flat />
@@ -68,9 +69,10 @@ under the License.
           <q-icon name="access_time" class="cursor-pointer">
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-time
-                v-model="dateUTC"
+                :model-value="dateUTC"
                 mask="YYYY-MM-DD HH:mm:ss"
                 @update:model-value="onUTCDateChange"
+                :now-btn="true"
               >
                 <div class="row items-center justify-end">
                   <q-btn v-close-popup label="Close" color="primary" flat />
@@ -80,43 +82,70 @@ under the License.
           </q-icon>
         </template>
       </q-input>
-      <q-input
-        v-model="dateLocalTZ"
-        label="Local date"
-        :hint="`Date in local timezone: UTC ${formatTzOffset(new Date())}`"
-        @update:model-value="onLocalDateChange"
-      >
-        <template v-slot:prepend>
-          <q-icon name="event" class="cursor-pointer">
-            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-              <q-date
-                v-model="dateUTC"
-                mask="YYYY-MM-DD HH:mm:ss"
-                @update:model-value="onLocalDateChange"
-              >
-                <div class="row items-center justify-end">
-                  <q-btn v-close-popup label="Close" color="primary" flat />
-                </div>
-              </q-date>
-            </q-popup-proxy>
-          </q-icon>
-        </template>
-        <template v-slot:append>
-          <q-icon name="access_time" class="cursor-pointer">
-            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-              <q-time
-                v-model="dateUTC"
-                mask="YYYY-MM-DD HH:mm:ss"
-                @update:model-value="onLocalDateChange"
-              >
-                <div class="row items-center justify-end">
-                  <q-btn v-close-popup label="Close" color="primary" flat />
-                </div>
-              </q-time>
-            </q-popup-proxy>
-          </q-icon>
-        </template>
-      </q-input>
+      <div class="row">
+        <q-input
+          class="col"
+          v-model="dateLocalTZ"
+          label="Local date"
+          :hint="`Date in ${selectedTz}: UTC ${formatTzOffset(new Date(unixTimestamp!), selectedTz)}`"
+          @update:model-value="onLocalDateChange"
+        >
+          <template v-slot:prepend>
+            <q-icon name="event" class="cursor-pointer">
+              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                <q-date
+                  :model-value="dateLocalTZ"
+                  mask="YYYY-MM-DD HH:mm:ss"
+                  @update:model-value="onLocalDateChange"
+                  :today-btn="true"
+                >
+                  <div class="row items-center justify-end">
+                    <q-btn v-close-popup label="Close" color="primary" flat />
+                  </div>
+                </q-date>
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+          <template v-slot:append>
+            <q-icon name="access_time" class="cursor-pointer">
+              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                <q-time
+                  :model-value="dateLocalTZ"
+                  mask="YYYY-MM-DD HH:mm:ss"
+                  @update:model-value="onLocalDateChange"
+                  :now-btn="true"
+                >
+                  <div class="row items-center justify-end">
+                    <q-btn v-close-popup label="Close" color="primary" flat />
+                  </div>
+                </q-time>
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
+        <q-select
+          class="col q-mx-md"
+          v-model="selectedTz"
+          :options="tzList"
+          label="Timezone"
+          use-input
+          input-debounce="0"
+          @filter="filterTimezone"
+        >
+          <template v-slot:append>
+            <q-btn
+              icon="public"
+              flat
+              @click.prevent="selectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone"
+            />
+          </template>
+          <template v-slot:no-option>
+            <q-item>
+              <q-item-section class="text-grey"> No results </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+      </div>
     </div>
   </q-page>
 </template>
@@ -232,9 +261,13 @@ function reset() {
 /**
  * Input models
  */
-const unixTimestamp = ref<number>()
+const unixTimestamp = ref<number>(new Date().getTime())
 const dateUTC = ref<string>('')
 const dateLocalTZ = ref<string>('')
+
+const allTimezones: string[] = Intl.supportedValuesOf('timeZone')
+const tzList = ref<string[]>(allTimezones)
+const selectedTz = ref<string>(Intl.DateTimeFormat().resolvedOptions().timeZone)
 
 /**
  * Update on internal change
@@ -246,11 +279,31 @@ watch(
       const internalDate = new Date(unitNs.toMilliseconds(newValue))
       unixTimestamp.value = Math.floor(unixTimestampUnit.value.fromNanoseconds(newValue))
       dateUTC.value = dateToUTCString(internalDate)
-      dateLocalTZ.value = dateToString(internalDate, false)
+      dateLocalTZ.value = dateToString(internalDate, selectedTz.value)
     }
   },
   { immediate: true },
 )
+
+watch(selectedTz, () => {
+  dateLocalTZ.value = dateToString(
+    new Date(unitNs.toMilliseconds(unixTimestampNs.value)),
+    selectedTz.value,
+  )
+})
+
+function filterTimezone(value: string, update: (cb: () => void) => void) {
+  if (value == '') {
+    update(() => {
+      tzList.value = allTimezones
+    })
+  } else {
+    update(() => {
+      const filterStr = value.toLowerCase()
+      tzList.value = allTimezones.filter((tzName) => tzName.toLowerCase().includes(filterStr))
+    })
+  }
+}
 
 function onTimestampChange(newValue: string | number | null) {
   if (newValue === null || newValue === undefined) {
