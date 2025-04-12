@@ -117,15 +117,6 @@ const aipLayer = computed<FeatureGroup>(() => {
   const groupLayer = new FeatureGroup()
   if (aip.value && aip.value.polygons) {
     aip.value.polygons.forEach((l) => groupLayer.addLayer(l))
-    const aipText = aip.value.text
-    groupLayer.on('click', () => {
-      groupLayer
-        .bindPopup(`<p class="mapViewNotamContent">${aipText}</p>`, {
-          minWidth: 400,
-          maxWidth: 600,
-        })
-        .openPopup()
-    })
   }
   return groupLayer
 })
@@ -170,12 +161,6 @@ const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
 
     if (layer.getLayers().length != 0) {
       layer.on('click', () => {
-        layer
-          .bindPopup(`<p class="mapViewNotamContent">${notam.text}</p>`, {
-            minWidth: 400,
-            maxWidth: 600,
-          })
-          .openPopup()
         focusedNotam.value = notam
       })
       layer.on('mouseover', () => {
