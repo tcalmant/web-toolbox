@@ -135,8 +135,20 @@ under the License.
                     color="primary"
                     round
                     dense
-                    @click="props.expand = !props.expand"
-                    :icon="props.expand ? 'remove' : 'add'"
+                    @click="
+                      () => {
+                        if (props.row != focusedNotam) {
+                          props.expand = !props.expand
+                        }
+                      }
+                    "
+                    :icon="
+                      props.row == focusedNotam
+                        ? 'radio_button_unchecked'
+                        : props.expand
+                          ? 'remove'
+                          : 'add'
+                    "
                   />
                 </q-td>
                 <q-td
@@ -152,7 +164,7 @@ under the License.
                   {{ col.value }}
                 </q-td>
               </q-tr>
-              <q-tr v-if="props.expand" :props="props">
+              <q-tr v-if="props.expand || props.row == focusedNotam" :props="props">
                 <q-td colspan="100%">
                   <pre>{{ (props.row as NOTAM).text }}</pre>
                 </q-td>
