@@ -77,7 +77,7 @@ export class AIP {
 
     // Look for AIP-formatted locations
     const aipLocation =
-      /(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])/g
+      /(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])/g
 
     const layers = []
     let currentList: LatLng[] = []
