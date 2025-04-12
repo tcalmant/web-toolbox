@@ -52,6 +52,12 @@ const mapRef = ref<L.Map>()
 onMounted(() => nextTick(initMap))
 
 const initMap = () => {
+  if (mapRef.value != undefined) {
+    // Clean up existing map
+    mapRef.value.remove()
+    mapRef.value = undefined
+  }
+
   const map = L.map('map', {
     center: props.center,
     zoom: props.zoom,
