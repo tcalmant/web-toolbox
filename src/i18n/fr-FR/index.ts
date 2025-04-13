@@ -81,7 +81,7 @@ export default {
   utcLabel: 'Date UTC',
   utcHint: 'Date au Temps Universel Coordonné',
   localDateLabel: 'Date locale',
-  localDateHint: 'Date dans le fuseau horaire {tzName}: UTC ${utcOffset}',
+  localDateHint: 'Date dans le fuseau horaire {tzName}: UTC {utcOffset}',
   timezoneLabel: 'Fuseau horaire',
 
   // Common-ish
