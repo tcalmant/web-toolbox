@@ -35,7 +35,7 @@ under the License.
         <q-scroll-area class="fit">
           <q-input
             v-model="inputNOTAMText"
-            label="NOTAM entries"
+            :label="$t('notamEntriesLabel')"
             filled
             type="textarea"
             :autofocus="shownPanel === 'notamInput'"
@@ -73,11 +73,12 @@ under the License.
               color="secondary"
               icon="edit"
               @click.prevent="shownPanel = shownPanel === 'map' ? 'notamInput' : 'map'"
-              >Set NOTAM</q-btn
             >
+              {{ $t('notamEditLabel') }}
+            </q-btn>
           </div>
           <div class="row">
-            <q-checkbox class="col" v-model="ignoreLargeNotams" label="Ignore large NOTAM" />
+            <q-checkbox class="col" v-model="ignoreLargeNotams" :label="$t('notamFilterLarge')" />
             <q-slider
               class="col-5"
               v-model="maxNotamRadius"
@@ -90,10 +91,10 @@ under the License.
             />
           </div>
           <div class="row">
-            <q-checkbox v-model="onlyWithPositions" label="Only show NOTAM with located items" />
+            <q-checkbox v-model="onlyWithPositions" :label="$t('notamFilterLocated')" />
           </div>
           <div class="row">
-            <q-checkbox v-model="showAreaOfInfluence" label="Show area of influence" />
+            <q-checkbox v-model="showAreaOfInfluence" :label="$t('notamFilterShowArea')" />
           </div>
           <q-table
             ref="tableRef"
@@ -175,7 +176,7 @@ under the License.
         <q-tab-panel name="aipTab">
           <q-input
             v-model="inputAIPText"
-            label="AIP entries"
+            :label="$t('aipEntriesLabel')"
             filled
             type="textarea"
             autofocus

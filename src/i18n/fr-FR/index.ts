@@ -34,4 +34,16 @@ export default {
   reportLink: 'Rapport de bug',
   reportLinkSubtitle: 'Dites moi si quelque chose ne va pas',
   srcLink: 'Code source',
+
+  // NOTAM Mapper
+  notamEntriesLabel: 'NOTAM à analyser',
+  notamEditLabel: 'Éditer les NOTAM',
+  notamFilterLarge: 'Ignorer les NOTAM étendus',
+  notamFilterLocated: "N'afficher que les NOTAM avec description d'objet(s)",
+  notamFilterShowArea: "Afficher la zone d'influence",
+  aipEntriesLabel: 'AIP à analyser',
+
+  // Fuel Computer
+
+  // Timestamp
 }

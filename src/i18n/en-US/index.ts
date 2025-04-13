@@ -35,4 +35,16 @@ export default {
   reportLink: 'Report issues',
   reportLinkSubtitle: 'Tell me if something goes wrong',
   srcLink: 'Source code',
+
+  // NOTAM Mapper
+  notamEntriesLabel: 'NOTAM entries',
+  notamEditLabel: 'Set NOTAM',
+  notamFilterLarge: 'Ignore large NOTAM',
+  notamFilterLocated: 'Only show NOTAM with located items',
+  notamFilterShowArea: 'Show area of influence',
+  aipEntriesLabel: 'AIP entries',
+
+  // Fuel Computer
+
+  // Timestamp
 }
