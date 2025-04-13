@@ -76,9 +76,9 @@ export default defineConfig((ctx) => {
 
             // if you want to use named tokens in your Vue I18n messages, such as 'Hello {name}',
             // you need to set `runtimeOnly: false`
-            // runtimeOnly: false,
+            runtimeOnly: false,
 
-            ssr: ctx.modeName === 'ssr',
+            ssr: false,
 
             // you need to set i18n resource including paths !
             include: [fileURLToPath(new URL('./src/i18n', import.meta.url))],
@@ -142,12 +142,12 @@ export default defineConfig((ctx) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-ssr/configuring-ssr
     ssr: {
-      prodPort: 3000, // The default port that the production server should use
+      // prodPort: 3000, // The default port that the production server should use
       // (gets superseded if process.env.PORT is specified at runtime)
 
-      middlewares: [
-        'render', // keep this as last one
-      ],
+      // middlewares: [
+      //   'render', // keep this as last one
+      // ],
 
       // extendPackageJson (json) {},
       // extendSSRWebserverConf (esbuildConf) {},
