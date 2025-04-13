@@ -55,7 +55,7 @@ under the License.
         readonly
         filled
         outlined
-        label="Total time"
+        :label="$t('tableTimeTotal')"
       />
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">

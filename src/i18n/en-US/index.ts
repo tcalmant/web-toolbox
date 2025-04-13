@@ -61,13 +61,19 @@ export default {
   fuelConsumableHint: 'Total consumable fuel',
   tablesPrintOption: 'Print tables',
   tableTimeTitle: 'Flight times',
+  tableTimeTotal: '@:resultTotalTime',
   tableFuelTitle: 'Added fuel',
+  tableFuelTotal: 'Total added fuel',
   resultTotalTime: 'Total flight time',
   resultTotalFuelConsumed: 'Total consumed fuel',
   resultTotalFuelAdded: 'Total added fuel',
   resultEstimatedFuel: 'Estimated remaining fuel',
   resultEstimatedUsableFuel: 'Estimated usable fuel',
   resultEstimatedRemainingTime: 'Estimated remaining flight time',
+
+  liter: 'liters',
+  us_gal: 'US Gal',
+  imp_gal: 'imp Gal',
 
   // Timestamp
   unixLabel: 'Unix Timestamp',

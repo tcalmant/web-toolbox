@@ -31,9 +31,9 @@ export class FuelOption {
   }
 }
 
-export const LITER = new FuelOption('Liter', new Qty('L'))
-export const US_GALLONS = new FuelOption('US gal', new Qty('gallon'))
-export const UK_GALLONS = new FuelOption('Imp gal', new Qty('gallon-imp'))
+export const LITER = new FuelOption('liter', new Qty('L'))
+export const US_GALLONS = new FuelOption('us_gal', new Qty('gallon'))
+export const UK_GALLONS = new FuelOption('imp_gal', new Qty('gallon-imp'))
 
 export const FUEL_UNITS = [LITER, US_GALLONS, UK_GALLONS]
 

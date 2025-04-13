@@ -60,13 +60,19 @@ export default {
   fuelConsumableHint: 'Total du carburant consommable de tous les réservoirs',
   tablesPrintOption: 'Imprimer les tables',
   tableTimeTitle: 'Temps de vol',
+  tableTimeTotal: '@:resultTotalTime',
   tableFuelTitle: 'Avitaillement carburant',
+  tableFuelTotal: '@:resultTotalFuelAdded',
   resultTotalTime: 'Temps de vol total',
   resultTotalFuelConsumed: 'Carburant consommé',
   resultTotalFuelAdded: 'Carburant ajouté',
   resultEstimatedFuel: 'Carburant restant estimé',
   resultEstimatedUsableFuel: 'Carburant restant utilisable estimé',
   resultEstimatedRemainingTime: 'Temps de vol restant estimé',
+
+  liter: 'litres',
+  us_gal: 'gal US',
+  imp_gal: 'gal GB',
 
   // Timestamp
   unixLabel: 'Temps Unix',

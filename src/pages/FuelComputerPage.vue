@@ -30,7 +30,12 @@ under the License.
           :label="$t('immatriculationLabel')"
           :hint="$t('immatriculationHint')"
         />
-        <q-select class="col-1" v-model="fuelUnit" :options="FUEL_UNITS" />
+        <q-select
+          class="col-1"
+          v-model="fuelUnit"
+          :options="FUEL_UNITS"
+          :option-label="(opt) => $t(opt.label)"
+        />
         <q-input
           class="col"
           v-model.number="fuelPerHour"
@@ -40,7 +45,7 @@ under the License.
           :hint="
             $t('fuelConsumptionHint', {
               perMinutes: fuelPerMinutes.toFixed(2),
-              fuelUnit: fuelUnit.label,
+              fuelUnit: $t(fuelUnit.label),
             })
           "
         />

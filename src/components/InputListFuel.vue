@@ -38,7 +38,13 @@ under the License.
             <span v-show="errorMessage" class="text-negative">{{ errorMessage }}</span>
           </div>
           <div class="col-2">
-            <q-select class="fit" v-model="inputUnit" :options="FUEL_UNITS" filled />
+            <q-select
+              class="fit"
+              v-model="inputUnit"
+              :options="FUEL_UNITS"
+              :option-label="(opt) => $t(opt.label)"
+              filled
+            />
           </div>
           <q-separator />
           <q-btn class="col-1" icon="add" type="submit" />
@@ -55,7 +61,7 @@ under the License.
         readonly
         filled
         outlined
-        label="Total fuel"
+        :label="$t('tableFuelTotal')"
       />
       <q-list bordered>
         <q-item v-for="(value, idx) in allValues" :key="idx">
