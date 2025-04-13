@@ -26,23 +26,23 @@ under the License.
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title> Tom's toolbox </q-toolbar-title>
+        <q-toolbar-title> {{ t('mainTitle') }} </q-toolbar-title>
 
         <q-tabs>
-          <q-route-tab label="NOTAM mapper" to="/notam-mapper" exact />
-          <q-route-tab label="Fuel computer" to="/fuel-computer" exact />
-          <q-route-tab label="Timestamp" to="/timestamp" exact />
+          <q-route-tab :label="$t('notamMapperTitle')" to="/notam-mapper" exact />
+          <q-route-tab :label="$t('fuelComputerTitle')" to="/fuel-computer" exact />
+          <q-route-tab :label="$t('timestampTitle')" to="/timestamp" exact />
         </q-tabs>
       </q-toolbar>
     </q-header>
 
     <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered>
       <q-list>
-        <q-item-label header> Aviation links </q-item-label>
+        <q-item-label header> {{ t('aviationLinks') }} </q-item-label>
         <EssentialLink v-for="link in aviationLinks" :key="link.title" v-bind="link" />
       </q-list>
       <q-list>
-        <q-item-label header> Project links </q-item-label>
+        <q-item-label header> {{ t('projectLinks') }} </q-item-label>
         <EssentialLink v-for="link in projectLinks" :key="link.title" v-bind="link" />
       </q-list>
     </q-drawer>
@@ -56,23 +56,26 @@ under the License.
 <script setup lang="ts">
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const aviationLinks: EssentialLinkProps[] = [
   {
     title: "Service de l'Information Aéronautique",
-    caption: 'Source for SUP-AIP and VAC',
+    caption: t('siaLinkSubtitle'),
     icon: 'info',
     link: 'https://www.sia.aviation-civile.gouv.fr/',
   },
   {
     title: 'Sofia Briefing',
-    caption: 'NOTAM and flight plans',
+    caption: t('sofiaLinkSubtitle'),
     icon: 'timer',
     link: 'https://sofia-briefing.aviation-civile.gouv.fr/',
   },
   {
     title: 'AeroWeb',
-    caption: 'Weather from Météo France',
+    caption: t('aerowebLinkSubtitle'),
     icon: 'cloud',
     link: 'https://aviation.meteo.fr/',
   },
@@ -80,13 +83,13 @@ const aviationLinks: EssentialLinkProps[] = [
 
 const projectLinks: EssentialLinkProps[] = [
   {
-    title: 'Report issues',
-    caption: 'Tell me if something is wrong',
+    title: t('reportLink'),
+    caption: t('reportLinkSubtitle'),
     icon: 'feedback',
     link: 'https://github.com/tcalmant/web-toolbox/issues',
   },
   {
-    title: 'Source code',
+    title: t('srcLink'),
     caption: 'github.com/tcalmant/web-toolbox',
     icon: 'code',
     link: 'https://github.com/tcalmant/web-toolbox',
@@ -99,3 +102,18 @@ function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
 </script>
+
+<i18n lang="js">
+{
+  "en": {
+    "aviationLinks": "Aviation links",
+    "siaLinkSubtitle": "French source for SUP-AIP and VAC",
+    "sofiaLinkSubtitle": "NOTAM and flight plans",
+    "aerowebLinkSubtitle": "Weather from Météo France",
+    "projectLinks": "Project Links",
+    "reportLink": "Report issues",
+    "reportLinkSubtitle": "Tell me if something goes wrong",
+    "srcLink": "Source code"
+  }
+}
+</i18n>
