@@ -29,7 +29,7 @@ under the License.
           v-model.number="unixTimestamp"
           type="number"
           inputmode="numeric"
-          label="Unix Timestamp"
+          :label="$t('unixLabel')"
           @update:model-value="onTimestampChange"
         >
           <template v-slot:prepend>
@@ -40,13 +40,15 @@ under the License.
           class="col q-px-md"
           v-model="unixTimestampUnit"
           :options="TIMESTAMP_UNITS"
-          label="Precision"
-        />
+          :option-label="(opt) => opt.getLabel()"
+          :label="$t('unixPrecisionLabel')"
+        >
+        </q-select>
       </div>
       <q-input
         v-model="dateUTC"
-        label="Date (UTC)"
-        hint="UTC date"
+        :label="$t('utcLabel')"
+        :hint="$t('utcHint')"
         @update:model-value="onUTCDateChange"
       >
         <template v-slot:prepend>
@@ -86,8 +88,13 @@ under the License.
         <q-input
           class="col"
           v-model="dateLocalTZ"
-          label="Local date"
-          :hint="`Date in ${selectedTz}: UTC ${formatTzOffset(new Date(unixTimestamp!), selectedTz)}`"
+          :label="$t('localDateLabel')"
+          :hint="
+            $t('localDateHint', {
+              tzName: selectedTz,
+              utcOffset: formatTzOffset(new Date(unixTimestamp!), selectedTz),
+            })
+          "
           @update:model-value="onLocalDateChange"
         >
           <template v-slot:prepend>
@@ -127,7 +134,7 @@ under the License.
           class="col q-mx-md"
           v-model="selectedTz"
           :options="tzList"
-          label="Timezone"
+          :label="$t('timezoneLabel')"
           use-input
           input-debounce="0"
           @filter="filterTimezone"
@@ -153,6 +160,9 @@ under the License.
 <script setup lang="ts">
 import { dateToString, dateToUTCString, formatTzOffset } from 'src/components/timeUtils'
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Representation of support timestamp units
@@ -166,6 +176,10 @@ class TimestampUnit {
     this.label = label
     this.nanoseconds = nanoseconds
     this.nbNanosecondsDigits = Math.floor(Math.log10(nanoseconds))
+  }
+
+  getLabel(): string {
+    return this.label
   }
 
   fromNanoseconds(value: number): number {
@@ -190,14 +204,12 @@ const unitMs = new TimestampUnit('ms', 1000000)
 const unitMicro = new TimestampUnit('µs', 1000)
 
 class AutoTimestampUnit extends TimestampUnit {
-  baseLabel: string
   knownUnits: TimestampUnit[]
   nbDigitsNowNs: number
   lastUnit: TimestampUnit
 
   constructor(label: string, knownUnits: TimestampUnit[]) {
     super(label, 0)
-    this.baseLabel = label
     this.knownUnits = knownUnits
 
     // Base configuration
@@ -224,9 +236,13 @@ class AutoTimestampUnit extends TimestampUnit {
     }
   }
 
+  override getLabel(): string {
+    return t('autoPrecisionLabel', { subUnit: this.lastUnit.label })
+  }
+
   private autoUnit(value: number): TimestampUnit {
     const newUnit = this.detectUnit(value)
-    this.label = `${this.baseLabel} (${newUnit.label})`
+    this.label = t('autoPrecisionLabel', { subUnit: newUnit.label })
     this.lastUnit = newUnit
     return newUnit
   }
@@ -244,7 +260,7 @@ class AutoTimestampUnit extends TimestampUnit {
   }
 }
 
-const autoUnit = new AutoTimestampUnit('Auto', [unitNs, unitSecond, unitMs, unitMicro])
+const autoUnit = new AutoTimestampUnit('Auto', [unitSecond, unitMs, unitMicro, unitNs])
 
 const TIMESTAMP_UNITS: TimestampUnit[] = [autoUnit, ...autoUnit.knownUnits]
 

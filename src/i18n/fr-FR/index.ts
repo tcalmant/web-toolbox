@@ -63,4 +63,12 @@ export default {
   resultEstimatedRemainingTime: 'Temps de vol restant estimé',
 
   // Timestamp
+  unixLabel: 'Temps Unix',
+  unixPrecisionLabel: 'Précision',
+  autoPrecisionLabel: 'Automatique ({subUnit})',
+  utcLabel: 'Date UTC',
+  utcHint: 'Date au Temps Universel Coordonné',
+  localDateLabel: 'Date locale',
+  localDateHint: 'Date dans le fuseau horaire {tzName}: UTC ${utcOffset}',
+  timezoneLabel: 'Fuseau horaire',
 }

@@ -64,4 +64,12 @@ export default {
   resultEstimatedRemainingTime: 'Estimated remaining flight time',
 
   // Timestamp
+  unixLabel: 'Unix Timestamp',
+  unixPrecisionLabel: 'Precision',
+  autoPrecisionLabel: 'Auto ({subUnit})',
+  utcLabel: 'Date (UTC)',
+  utcHint: 'UTC date',
+  localDateLabel: 'Local date',
+  localDateHint: 'Date in {tzName}: UTC {utcOffset}',
+  timezoneLabel: 'Timezone',
 }
