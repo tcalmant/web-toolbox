@@ -45,6 +45,8 @@ under the License.
         <q-item-label header> {{ t('projectLinks') }} </q-item-label>
         <EssentialLink v-for="link in projectLinks" :key="link.title" v-bind="link" />
       </q-list>
+
+      <LanguageSwitcher style="position: absolute; bottom: 0" />
     </q-drawer>
 
     <q-page-container>
@@ -55,6 +57,7 @@ under the License.
 
 <script setup lang="ts">
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue'
+import LanguageSwitcher from 'src/components/LanguageSwitcher.vue'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
