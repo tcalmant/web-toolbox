@@ -45,6 +45,23 @@ export default {
   aipEntriesLabel: 'AIP entries',
 
   // Fuel Computer
+  immatriculationLabel: 'Immatriculation',
+  immatriculationHint: 'Immatriculation of the airplane',
+  fuelConsumptionLabel: 'Fuel consumption',
+  fuelConsumptionHint: 'Fuel consumption per hour ({perMinutes} {fuelUnit}/min)',
+  fuelCapacityLabel: 'Fuel capacity',
+  fuelCapacityHint: 'Total fuel capacity',
+  fuelConsumableLabel: 'Consumable fuel',
+  fuelConsumableHint: 'Total consumable fuel',
+  tablesPrintOption: 'Print tables',
+  tableTimeTitle: 'Flight times',
+  tableFuelTitle: 'Added fuel',
+  resultTotalTime: 'Total flight time',
+  resultTotalFuelConsumed: 'Total consumed fuel',
+  resultTotalFuelAdded: 'Total added fuel',
+  resultEstimatedFuel: 'Estimated remaining fuel',
+  resultEstimatedUsableFuel: 'Estimated usable fuel',
+  resultEstimatedRemainingTime: 'Estimated remaining flight time',
 
   // Timestamp
 }

@@ -44,6 +44,23 @@ export default {
   aipEntriesLabel: 'AIP à analyser',
 
   // Fuel Computer
+  immatriculationLabel: 'Immatriculation',
+  immatriculationHint: "Immatriculation de l'avion",
+  fuelConsumptionLabel: 'Consommation de carburant',
+  fuelConsumptionHint: 'Consommation horaire ({perMinutes} {fuelUnit}/minute)',
+  fuelCapacityLabel: 'Capacité réservoir(s)',
+  fuelCapacityHint: 'Capacité totale de tous les réservoirs',
+  fuelConsumableLabel: 'Carburant consommable',
+  fuelConsumableHint: 'Total du carburant consommable de tous les réservoirs',
+  tablesPrintOption: 'Imprimer les tables',
+  tableTimeTitle: 'Temps de vol',
+  tableFuelTitle: 'Avitaillement carburant',
+  resultTotalTime: 'Temps de vol total',
+  resultTotalFuelConsumed: 'Carburant consommé',
+  resultTotalFuelAdded: 'Carburant ajouté',
+  resultEstimatedFuel: 'Carburant restant estimé',
+  resultEstimatedUsableFuel: 'Carburant restant utilisable estimé',
+  resultEstimatedRemainingTime: 'Temps de vol restant estimé',
 
   // Timestamp
 }
