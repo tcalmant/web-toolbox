@@ -29,7 +29,11 @@ under the License.
       dense
       emit-value
       map-options
-    />
+    >
+      <template v-slot:append>
+        <q-icon name="public" />
+      </template>
+    </q-select>
   </div>
 </template>
 
