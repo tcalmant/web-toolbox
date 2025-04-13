@@ -84,4 +84,8 @@ export default {
   localDateLabel: 'Local date',
   localDateHint: 'Date in {tzName}: UTC {utcOffset}',
   timezoneLabel: 'Timezone',
+
+  // Common-ish
+  confirmTitle: 'Confirm',
+  confirmDeleteAllMessage: 'Delete all entries?',
 }

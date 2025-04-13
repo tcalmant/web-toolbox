@@ -83,4 +83,8 @@ export default {
   localDateLabel: 'Date locale',
   localDateHint: 'Date dans le fuseau horaire {tzName}: UTC ${utcOffset}',
   timezoneLabel: 'Fuseau horaire',
+
+  // Common-ish
+  confirmTitle: 'Confirmer',
+  confirmDeleteAllMessage: 'Supprimer toutes les entrées ?',
 }

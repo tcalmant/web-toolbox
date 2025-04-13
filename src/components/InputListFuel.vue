@@ -79,8 +79,11 @@ under the License.
 <script setup lang="ts">
 import { QInput, useQuasar } from 'quasar'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { FuelOption } from './fuelUtils'
 import { FUEL_UNITS, FuelQuantity, LITER } from './fuelUtils'
+
+const { t } = useI18n()
 
 const $q = useQuasar()
 const props = withDefaults(
@@ -141,8 +144,8 @@ function onDelete(idx: number) {
 function onDeleteAll() {
   if (allValues.value?.length > 1) {
     $q.dialog({
-      title: 'Confirm',
-      message: 'Delete all entries?',
+      title: t('confirmTitle'),
+      message: t('confirmDeleteAllMessage'),
       cancel: true,
       persistent: false,
     })

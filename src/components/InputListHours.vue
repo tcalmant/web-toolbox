@@ -75,7 +75,10 @@ under the License.
 <script setup lang="ts">
 import { QInput, useQuasar } from 'quasar'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { TimePeriod } from './timeUtils'
+
+const { t } = useI18n()
 
 const $q = useQuasar()
 const totalDuration = defineModel<TimePeriod>()
@@ -121,8 +124,8 @@ function onDelete(idx: number) {
 function onDeleteAll() {
   if (allValues.value?.length > 1) {
     $q.dialog({
-      title: 'Confirm',
-      message: 'Delete all entries?',
+      title: t('confirmTitle'),
+      message: t('confirmDeleteAllMessage'),
       cancel: true,
       persistent: false,
     })
