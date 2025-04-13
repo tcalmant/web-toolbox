@@ -16,8 +16,22 @@
  */
 
 export default {
+  // Language description
+  languageName: 'Français',
+  languageSwitch: "Langue d'affichage",
+  // Main layout
   mainTitle: "Tom's Toolbox",
-  notamMapperTitle: 'NOTAM mapper',
-  fuelComputerTitle: 'Fuel computer',
-  timestampTitle: 'Timestamp',
+  notamMapperTitle: 'Carte NOTAM',
+  fuelComputerTitle: 'Carburant',
+  timestampTitle: 'Dates',
+
+  // Drawer
+  aviationLinks: 'Aviation',
+  siaLinkSubtitle: 'SUP-AIP et VAC en France',
+  sofiaLinkSubtitle: 'NOTAM et plans de vol',
+  aerowebLinkSubtitle: 'Météo aéronautique par Météo France',
+  projectLinks: 'Projet',
+  reportLink: 'Rapport de bug',
+  reportLinkSubtitle: 'Dites moi si quelque chose ne va pas',
+  srcLink: 'Code source',
 }

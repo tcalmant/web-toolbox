@@ -25,7 +25,7 @@ under the License.
     <q-select
       v-model="locale"
       :options="localeOptions"
-      label="Display language"
+      :label="t('languageSwitch')"
       dense
       emit-value
       map-options
@@ -35,11 +35,23 @@ under the License.
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import * as appI18n from 'src/i18n'
 
-const { locale } = useI18n({ useScope: 'global' })
+const { t, locale } = useI18n({ useScope: 'global' })
 
-const localeOptions = [
-  { value: 'en-US', label: 'English' },
-  { value: 'fr', label: 'Français' },
-].sort((a, b) => a.value.localeCompare(b.value))
+class LocaleInfo {
+  label: string
+  value: string
+  flag: string | undefined
+
+  constructor(label: string, languageId: string, flag?: string) {
+    this.label = label
+    this.value = languageId
+    this.flag = flag
+  }
+}
+
+const localeOptions = Object.entries(appI18n.default)
+  .map(([key, value]) => new LocaleInfo(value['languageName'] ?? key, key))
+  .sort((a, b) => a.value.localeCompare(b.value))
 </script>

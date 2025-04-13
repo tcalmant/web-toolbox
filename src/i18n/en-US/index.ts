@@ -16,8 +16,23 @@
  */
 
 export default {
+  // Language description
+  languageName: 'English',
+  languageSwitch: 'Display language',
+
+  // Main layout
   mainTitle: "Tom's Toolbox",
   notamMapperTitle: 'NOTAM mapper',
   fuelComputerTitle: 'Fuel computer',
   timestampTitle: 'Timestamp',
+
+  // Drawer
+  aviationLinks: 'Aviation links',
+  siaLinkSubtitle: 'French source for SUP-AIP and VAC',
+  sofiaLinkSubtitle: 'NOTAM and flight plans',
+  aerowebLinkSubtitle: 'Weather from Météo France',
+  projectLinks: 'Project Links',
+  reportLink: 'Report issues',
+  reportLinkSubtitle: 'Tell me if something goes wrong',
+  srcLink: 'Source code',
 }
