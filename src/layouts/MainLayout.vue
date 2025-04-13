@@ -26,25 +26,27 @@ under the License.
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title> Tom's toolbox </q-toolbar-title>
+        <q-toolbar-title> {{ $t('mainTitle') }} </q-toolbar-title>
 
         <q-tabs>
-          <q-route-tab label="NOTAM mapper" to="/notam-mapper" exact />
-          <q-route-tab label="Fuel computer" to="/fuel-computer" exact />
-          <q-route-tab label="Timestamp" to="/timestamp" exact />
+          <q-route-tab :label="$t('notamMapperTitle')" to="/notam-mapper" exact />
+          <q-route-tab :label="$t('fuelComputerTitle')" to="/fuel-computer" exact />
+          <q-route-tab :label="$t('timestampTitle')" to="/timestamp" exact />
         </q-tabs>
       </q-toolbar>
     </q-header>
 
     <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered>
       <q-list>
-        <q-item-label header> Aviation links </q-item-label>
-        <EssentialLink v-for="link in aviationLinks" :key="link.title" v-bind="link" />
+        <q-item-label header> {{ t('aviationLinks') }} </q-item-label>
+        <EssentialLink v-for="link in aviationLinks" :key="link.id" v-bind="link" />
       </q-list>
       <q-list>
-        <q-item-label header> Project links </q-item-label>
-        <EssentialLink v-for="link in projectLinks" :key="link.title" v-bind="link" />
+        <q-item-label header> {{ t('projectLinks') }} </q-item-label>
+        <EssentialLink v-for="link in projectLinks" :key="link.id" v-bind="link" />
       </q-list>
+
+      <LanguageSwitcher style="position: absolute; bottom: 0" />
     </q-drawer>
 
     <q-page-container>
@@ -55,24 +57,31 @@ under the License.
 
 <script setup lang="ts">
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue'
+import LanguageSwitcher from 'src/components/LanguageSwitcher.vue'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const aviationLinks: EssentialLinkProps[] = [
   {
+    id: 'sia',
     title: "Service de l'Information Aéronautique",
-    caption: 'Source for SUP-AIP and VAC',
+    captionKey: 'siaLinkSubtitle',
     icon: 'info',
     link: 'https://www.sia.aviation-civile.gouv.fr/',
   },
   {
+    id: 'sofia',
     title: 'Sofia Briefing',
-    caption: 'NOTAM and flight plans',
+    captionKey: 'sofiaLinkSubtitle',
     icon: 'timer',
     link: 'https://sofia-briefing.aviation-civile.gouv.fr/',
   },
   {
+    id: 'aeroweb',
     title: 'AeroWeb',
-    caption: 'Weather from Météo France',
+    captionKey: 'aerowebLinkSubtitle',
     icon: 'cloud',
     link: 'https://aviation.meteo.fr/',
   },
@@ -80,13 +89,15 @@ const aviationLinks: EssentialLinkProps[] = [
 
 const projectLinks: EssentialLinkProps[] = [
   {
-    title: 'Report issues',
-    caption: 'Tell me if something is wrong',
+    id: 'bugReport',
+    titleKey: 'reportLink',
+    captionKey: 'reportLinkSubtitle',
     icon: 'feedback',
     link: 'https://github.com/tcalmant/web-toolbox/issues',
   },
   {
-    title: 'Source code',
+    id: 'src',
+    titleKey: 'srcLink',
     caption: 'github.com/tcalmant/web-toolbox',
     icon: 'code',
     link: 'https://github.com/tcalmant/web-toolbox',

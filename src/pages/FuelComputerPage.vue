@@ -27,33 +27,43 @@ under the License.
         <q-input
           class="col"
           v-model="planeIdent"
-          label="Immatriculation"
-          hint="Immatriculation of the plane"
+          :label="$t('immatriculationLabel')"
+          :hint="$t('immatriculationHint')"
         />
-        <q-select class="col-1" v-model="fuelUnit" :options="FUEL_UNITS" />
+        <q-select
+          class="col-1"
+          v-model="fuelUnit"
+          :options="FUEL_UNITS"
+          :option-label="(opt) => $t(opt.label)"
+        />
         <q-input
           class="col"
           v-model.number="fuelPerHour"
           type="number"
           min="0"
-          label="Fuel consumption"
-          :hint="`Fuel consumption per hour (${fuelPerMinutes.toFixed(2)} ${fuelUnit.label}/minute)`"
+          :label="$t('fuelConsumptionLabel')"
+          :hint="
+            $t('fuelConsumptionHint', {
+              perMinutes: fuelPerMinutes.toFixed(2),
+              fuelUnit: $t(fuelUnit.label),
+            })
+          "
         />
         <q-input
           class="col"
           v-model.number="fuelCapacity"
           type="number"
           min="0"
-          label="Fuel capacity"
-          hint="Total fuel capacity"
+          :label="$t('fuelCapacityLabel')"
+          :hint="$t('fuelCapacityHint')"
         />
         <q-input
           class="col"
           v-model.number="fuelConsumable"
           type="number"
           min="0"
-          label="Consumable fuel"
-          hint="Total consumable fuel"
+          :label="$t('fuelConsumableLabel')"
+          :hint="$t('fuelConsumableHint')"
         />
       </div>
       <div class="row q-gutter-md print-only">
@@ -86,8 +96,8 @@ under the License.
                 'text-weight-medium': props.row.showAlert || props.row.showWarning,
               }"
             >
-              <q-td key="label" :props="props">
-                {{ props.row.label }}
+              <q-td key="labelKey" :props="props">
+                {{ $t(props.row.labelKey) }}
               </q-td>
               <q-td key="value" :props="props" class="text-right">{{ props.row.value }} </q-td>
             </q-tr>
@@ -95,15 +105,15 @@ under the License.
         </q-table>
       </div>
       <q-separator />
-      <q-checkbox class="print-hide" v-model="printInputTables" label="Print tables" />
+      <q-checkbox class="print-hide" v-model="printInputTables" :label="$t('tablesPrintOption')" />
       <div class="row q-gutter-md" :class="{ 'print-hide': !printInputTables }">
-        <InputListHours class="col" v-model="totalFlightDuration" title="Flight times" />
+        <InputListHours class="col" v-model="totalFlightDuration" :title="$t('tableTimeTitle')" />
         <InputListFuel
           class="col"
           v-model="totalAddedFuel"
           :global-fuel-unit="fuelUnit"
           :fuel-capacity="typedFuelCapacity"
-          title="Added fuel"
+          :title="$t('tableFuelTitle')"
         />
       </div>
     </div>
@@ -121,18 +131,18 @@ import { TimePeriod } from 'src/components/timeUtils'
 import { computed, ref, watch } from 'vue'
 
 class ResultRow {
-  label: string
+  labelKey: string
   value: string
   showWarning: boolean
   showAlert: boolean
 
   constructor(
-    label: string,
+    labelKey: string,
     value: string | number | null | undefined,
     showWarning: boolean = false,
     showAlert: boolean = false,
   ) {
-    this.label = label
+    this.labelKey = labelKey
     if (value === null || value === undefined) {
       this.value = 'n/a'
     } else if (typeof value === 'number') {
@@ -205,25 +215,25 @@ const resultRows = computed((): ResultRow[] => {
 
   return [
     new ResultRow(
-      'Total flight time',
+      'resultTotalTime',
       `${totalFlightDuration.value.toString()} (${Math.ceil(totalFlightDuration.value.duration_s / 60)} min)`,
     ),
-    new ResultRow('Total consumed fuel', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
-    new ResultRow('Total added fuel', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
+    new ResultRow('resultTotalFuelConsumed', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
+    new ResultRow('resultTotalFuelAdded', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
     new ResultRow(
-      'Estimated remaining fuel',
+      'resultEstimatedFuel',
       `${totalRemainingFuel.value.toString(fuelUnit.value)}`,
       fuelLevelWarning,
       noFuelAlert,
     ),
     new ResultRow(
-      'Estimated usable fuel',
+      'resultEstimatedUsableFuel',
       `${usableRemainingFuel.value.toString(fuelUnit.value)}`,
       fuelLevelWarning,
       noFuelAlert,
     ),
     new ResultRow(
-      'Estimated remaining flight time',
+      'resultEstimatedRemainingTime',
       `${usableRemainingTime.value.toString()} (${Math.floor(usableRemainingTime.value.duration_s / 60)} min)`,
       fuelLevelWarning,
       noFuelAlert,
