@@ -42,6 +42,12 @@ export default {
   notamFilterLarge: 'Ignore large NOTAM',
   notamFilterLocated: 'Only show NOTAM with located items',
   notamFilterShowArea: 'Show area of influence',
+  notamLimitLow: 'Lower limit',
+  notamLimitHigh: 'Higher limit',
+  notamRadius: 'Radius (NM)',
+  notamTrafic: 'Trafic',
+  notamObject: 'Object',
+  notamScope: 'Scope',
   aipEntriesLabel: 'AIP entries',
 
   // Fuel Computer

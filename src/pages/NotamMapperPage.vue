@@ -198,7 +198,10 @@ import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 function pageStyleFn(offset: number, height: number) {
   return { height: `${height - offset}px` }
@@ -226,7 +229,7 @@ const onlyWithPositions = ref<boolean>(true)
 const showAreaOfInfluence = ref<boolean>(true)
 
 // ... table
-const notamColumns: QTableColumn[] = [
+const notamColumns = computed<QTableColumn[]>(() => [
   {
     name: 'id',
     label: 'N°',
@@ -250,41 +253,41 @@ const notamColumns: QTableColumn[] = [
   },
   {
     name: 'limitLow',
-    label: 'Lower limit',
+    label: t('notamLimitLow'),
     field: (r: NOTAM) => r.sectionQ?.limitLow,
     sortable: true,
   },
   {
     name: 'limitHigh',
-    label: 'Higher limit',
+    label: t('notamLimitHigh'),
     field: (r: NOTAM) => r.sectionQ?.limitHigh,
     sortable: true,
   },
   {
     name: 'radius',
-    label: 'Radius (NM)',
+    label: t('notamRadius'),
     field: (r: NOTAM) => r.sectionQ?.radiusNM,
     sortable: true,
   },
   {
     name: 'trafic',
-    label: 'Trafic',
+    label: t('notamTrafic'),
     field: (r: NOTAM) => r.sectionQ?.trafic,
     sortable: true,
   },
   {
     name: 'object',
-    label: 'Object',
+    label: t('notamObject'),
     field: (r: NOTAM) => r.sectionQ?.object,
     sortable: true,
   },
   {
     name: 'scope',
-    label: 'Scope',
+    label: t('notamScope'),
     field: (r: NOTAM) => r.sectionQ?.scope,
     sortable: true,
   },
-]
+])
 
 // Handle updates
 onMounted(() => {

@@ -41,6 +41,12 @@ export default {
   notamFilterLarge: 'Ignorer les NOTAM étendus',
   notamFilterLocated: "N'afficher que les NOTAM avec description d'objet(s)",
   notamFilterShowArea: "Afficher la zone d'influence",
+  notamLimitLow: 'Plancher',
+  notamLimitHigh: 'Plafond',
+  notamRadius: 'Rayon (NM)',
+  notamTrafic: 'Traffic',
+  notamObject: 'Objet',
+  notamScope: 'Périmètre',
   aipEntriesLabel: 'AIP à analyser',
 
   // Fuel Computer
