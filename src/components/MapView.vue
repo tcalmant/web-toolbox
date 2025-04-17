@@ -83,9 +83,10 @@ const initMap = () => {
         '&TILEROW={y}' +
         '&TILECOL={x}',
       {
+        bounds: L.latLngBounds(L.latLng(-85, -179.9), L.latLng(85, 179.9)),
         minZoom: 0,
         maxZoom: 18,
-        attribution: 'IGN-F/Geoportail',
+        attribution: '&copy; <a href="https://www.geoportail.gouv.fr/">IGN-F/Geoportail</a>',
         tileSize: 256,
       },
     ),
@@ -100,9 +101,13 @@ const initMap = () => {
         '&TILEROW={y}' +
         '&TILECOL={x}',
       {
+        bounds: L.latLngBounds(L.latLng(-80, -180), L.latLng(80, 180)),
         minZoom: 0,
         maxZoom: 18,
-        attribution: 'IGN-F/Geoportail',
+        attribution: '&copy; <a href="https://www.geoportail.gouv.fr/">IGN-F/Geoportail</a>',
+        tileSize: 256,
+      },
+    ),
         tileSize: 256,
       },
     ),
