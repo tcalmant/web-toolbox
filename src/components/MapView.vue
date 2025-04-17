@@ -121,7 +121,7 @@ const initMap = () => {
         '&TILECOL={x}',
       {
         bounds: L.latLngBounds(L.latLng(40.3893, -5.99644), L.latLng(51.4441, 11.146)),
-        minZoom: 0,
+        minZoom: 6,
         maxZoom: 11,
         attribution:
           '&copy; <a href="https://geoservices.ign.fr/">IGN</a> - 2025. <a href="https://geoservices.ign.fr/cgu-licences">Copie et reproduction interdite.</a>',
@@ -165,15 +165,6 @@ const aipLayer = computed<FeatureGroup>(() => {
     aip.value.polygons.forEach((l) => groupLayer.addLayer(l))
   }
   return groupLayer
-})
-
-watch(aipLayer, (newLayer, oldLayer) => {
-  oldLayer?.remove()
-
-  const map = mapRef.value
-  if (map && newLayer) {
-    newLayer.addTo(map)
-  }
 })
 
 const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
@@ -231,16 +222,32 @@ const notamLayer = computed<FeatureGroup>(
   () => new FeatureGroup(Array.from(notamLayerDict.value.values())),
 )
 
+// Handle updates
+watch(aipLayer, (newLayer, oldLayer) => {
+  oldLayer?.remove()
+
+  const map = mapRef.value
+  if (map && newLayer) {
+    newLayer.addTo(map)
+    computeMapBounds()
+  }
+})
+
 watch(notamLayer, (newLayer, oldLayer) => {
   oldLayer?.remove()
 
   const map = mapRef.value
   if (map && newLayer) {
     newLayer.addTo(map)
+    computeMapBounds()
   }
 })
 
-watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
+watch([mapRef, focusedNotam], () => {
+  computeMapBounds()
+})
+
+function computeMapBounds() {
   const map = mapRef.value
   if (!map) {
     return
@@ -254,9 +261,9 @@ watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
   // Stay on the focused NOTAM
   const focused = focusedNotam.value
   if (focused) {
-    const focusedLayer = notamLayerDict.value.get(focused.id)
-    if (focusedLayer) {
-      map.fitBounds(focusedLayer.getBounds(), { maxZoom })
+    const focusedLayerBounds = notamLayerDict.value.get(focused.id)?.getBounds()
+    if (focusedLayerBounds && focusedLayerBounds.isValid()) {
+      map.fitBounds(focusedLayerBounds, { maxZoom })
       return
     }
   }
@@ -276,7 +283,7 @@ watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
   if (bounds && bounds.isValid()) {
     map.fitBounds(bounds, { maxZoom })
   }
-})
+}
 </script>
 
 <style lang="css">
