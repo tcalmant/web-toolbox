@@ -100,7 +100,7 @@ const props = withDefaults(
 const totalQuantity = defineModel<FuelQuantity>()
 
 const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
-const inputValue = ref(0)
+const inputValue = ref(Math.min(50, props.fuelCapacity.value.scalar))
 const inputUnit = ref(LITER)
 const fuelInputField = ref<QInput>()
 const totalValueString = computed(
@@ -109,6 +109,7 @@ const totalValueString = computed(
 const errorMessage = ref<string | null>(null)
 
 watch(props, (newProps) => {
+  inputValue.value = Math.min(inputValue.value, props.fuelCapacity.value.scalar)
   inputUnit.value = newProps.globalFuelUnit
 })
 
