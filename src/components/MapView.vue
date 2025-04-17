@@ -108,6 +108,23 @@ const initMap = () => {
         tileSize: 256,
       },
     ),
+    'IGN OACI-VFR 2025': L.tileLayer(
+      'https://data.geopf.fr/private/wmts?SERVICE=WMTS' +
+        '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
+        '&apikey=ign_scan_ws' +
+        '&STYLE=normal' +
+        '&TILEMATRIXSET=PM' +
+        '&FORMAT=image/jpeg' +
+        '&LAYER=GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN-OACI' +
+        '&TILEMATRIX={z}' +
+        '&TILEROW={y}' +
+        '&TILECOL={x}',
+      {
+        bounds: L.latLngBounds(L.latLng(40.3893, -5.99644), L.latLng(51.4441, 11.146)),
+        minZoom: 0,
+        maxZoom: 11,
+        attribution:
+          '&copy; <a href="https://geoservices.ign.fr/">IGN</a> - 2025. <a href="https://geoservices.ign.fr/cgu-licences">Copie et reproduction interdite.</a>',
         tileSize: 256,
       },
     ),
