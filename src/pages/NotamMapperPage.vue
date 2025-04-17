@@ -194,6 +194,7 @@ under the License.
 
 <script setup lang="ts">
 import type { QTable, QTableColumn } from 'quasar'
+import { useQuasar } from 'quasar'
 import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import { NOTAM } from 'src/components/notamUtils'
@@ -201,6 +202,7 @@ import { findFirstRegex } from 'src/components/stringUtils'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+const $q = useQuasar()
 const { t } = useI18n()
 
 function pageStyleFn(offset: number, height: number) {
@@ -289,13 +291,23 @@ const notamColumns = computed<QTableColumn[]>(() => [
   },
 ])
 
-// Handle updates
+// Handle setup and updates
 onMounted(() => {
+  // Reload data from session storage
+  inputAIPText.value = $q.sessionStorage.getItem('notam.input.aip') ?? inputAIPText.value
+  inputNOTAMText.value = $q.sessionStorage.getItem('notam.input.notam') ?? inputNOTAMText.value
+
   handleAIPInput(inputAIPText.value)
   handleNOTAMInput(inputNOTAMText.value)
 })
-watch(inputAIPText, (newValue: string) => handleAIPInput(newValue))
-watch(inputNOTAMText, (newValue: string) => handleNOTAMInput(newValue))
+watch(inputAIPText, (newValue: string) => {
+  $q.sessionStorage?.setItem('notam.input.aip', newValue)
+  handleAIPInput(newValue)
+})
+watch(inputNOTAMText, (newValue: string) => {
+  $q.sessionStorage?.setItem('notam.input.notam', newValue)
+  handleNOTAMInput(newValue)
+})
 
 watch(notamSelectAll, (newState, oldState) => {
   if (newState === true && oldState !== true) {
