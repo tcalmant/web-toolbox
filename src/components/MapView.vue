@@ -25,7 +25,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import L, { FeatureGroup, type LatLngTuple } from 'leaflet'
+import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { AIP } from './aipUtils'
@@ -246,12 +246,17 @@ watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
     return
   }
 
+  // Compute the maximum zoom we can handle
+  const maxZooms: (number | undefined)[] = []
+  map.eachLayer((l) => maxZooms.push((l.options as TileLayerOptions | undefined)?.maxZoom))
+  const maxZoom = Math.max(11, Math.min(...maxZooms.filter((v) => v !== undefined)))
+
   // Stay on the focused NOTAM
   const focused = focusedNotam.value
   if (focused) {
     const focusedLayer = notamLayerDict.value.get(focused.id)
     if (focusedLayer) {
-      map.fitBounds(focusedLayer.getBounds(), { maxZoom: 18 })
+      map.fitBounds(focusedLayer.getBounds(), { maxZoom })
       return
     }
   }
@@ -269,7 +274,7 @@ watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
   }
 
   if (bounds && bounds.isValid()) {
-    map.fitBounds(bounds, { maxZoom: 12 })
+    map.fitBounds(bounds, { maxZoom })
   }
 })
 </script>
