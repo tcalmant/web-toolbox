@@ -21,15 +21,20 @@ under the License.
 -->
 
 <template>
-  <div id="map" class="fit"></div>
+  <div id="map" ref="mapDiv" class="fit">
+    <q-resize-observer @resize="mapRef?.invalidateSize()" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import L, { FeatureGroup, type LatLngTuple } from 'leaflet'
+import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { useQuasar } from 'quasar'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { AIP } from './aipUtils'
 import type { NOTAM } from './notamUtils'
+
+const $q = useQuasar()
 
 export interface MapProps {
   center?: LatLngTuple
@@ -43,10 +48,11 @@ const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence')
 const hoveredNotam = defineModel<NOTAM | undefined>('hoveredNotam')
 
 const props = withDefaults(defineProps<MapProps>(), {
-  center: () => [46.45, 2.21],
-  zoom: 6,
+  center: () => [45.218, 5.848],
+  zoom: 10,
 })
 
+const mapDiv = ref()
 const mapRef = ref<L.Map>()
 
 onMounted(() => nextTick(initMap))
@@ -63,7 +69,7 @@ const initMap = () => {
     zoom: props.zoom,
   })
 
-  const baseLayers = {
+  const baseLayers: { [key: string]: L.Layer } = {
     'IGN Plan': L.tileLayer(
       'https://data.geopf.fr/wmts?' +
         '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
@@ -75,9 +81,10 @@ const initMap = () => {
         '&TILEROW={y}' +
         '&TILECOL={x}',
       {
+        bounds: L.latLngBounds(L.latLng(-85, -179.9), L.latLng(85, 179.9)),
         minZoom: 0,
         maxZoom: 18,
-        attribution: 'IGN-F/Geoportail',
+        attribution: '&copy; <a href="https://www.geoportail.gouv.fr/">IGN-F/Geoportail</a>',
         tileSize: 256,
       },
     ),
@@ -92,9 +99,30 @@ const initMap = () => {
         '&TILEROW={y}' +
         '&TILECOL={x}',
       {
+        bounds: L.latLngBounds(L.latLng(-80, -180), L.latLng(80, 180)),
         minZoom: 0,
         maxZoom: 18,
-        attribution: 'IGN-F/Geoportail',
+        attribution: '&copy; <a href="https://www.geoportail.gouv.fr/">IGN-F/Geoportail</a>',
+        tileSize: 256,
+      },
+    ),
+    'IGN OACI-VFR 2025': L.tileLayer(
+      'https://data.geopf.fr/private/wmts?SERVICE=WMTS' +
+        '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
+        '&apikey=ign_scan_ws' +
+        '&STYLE=normal' +
+        '&TILEMATRIXSET=PM' +
+        '&FORMAT=image/jpeg' +
+        '&LAYER=GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN-OACI' +
+        '&TILEMATRIX={z}' +
+        '&TILEROW={y}' +
+        '&TILECOL={x}',
+      {
+        bounds: L.latLngBounds(L.latLng(40.3893, -5.99644), L.latLng(51.4441, 11.146)),
+        minZoom: 6,
+        maxZoom: 11,
+        attribution:
+          '&copy; <a href="https://geoservices.ign.fr/">IGN</a> - 2025. <a href="https://geoservices.ign.fr/cgu-licences">Copie et reproduction interdite.</a>',
         tileSize: 256,
       },
     ),
@@ -109,8 +137,18 @@ const initMap = () => {
     }),
   }
 
-  L.control.layers(baseLayers, {}).addTo(map)
-  Object.values(baseLayers)[2]?.addTo(map)
+  L.control.layers(baseLayers, {}, { hideSingleBase: true }).addTo(map)
+
+  // Use the last selected base layer
+  const selectedBaseLayerName =
+    ($q.sessionStorage.getItem('mapViewer.selectedBaseLayer') as string) ||
+    Object.keys(baseLayers)[0]!
+
+  const selectedBaseLayer = baseLayers[selectedBaseLayerName] ?? Object.values(baseLayers)[0]!
+  selectedBaseLayer.addTo(map)
+
+  // Register to base layer change events
+  map.on('baselayerchange', (e) => $q.sessionStorage.setItem('mapViewer.selectedBaseLayer', e.name))
 
   L.control.scale().addTo(map)
 
@@ -121,23 +159,20 @@ const initMap = () => {
 
 const aipLayer = computed<FeatureGroup>(() => {
   const groupLayer = new FeatureGroup()
-  if (aip.value && aip.value.polygons) {
+  if (mapRef.value && aip.value && aip.value.polygons) {
     aip.value.polygons.forEach((l) => groupLayer.addLayer(l))
   }
   return groupLayer
 })
 
-watch(aipLayer, (newLayer, oldLayer) => {
-  oldLayer?.remove()
-
-  const map = mapRef.value
-  if (map && newLayer) {
-    newLayer.addTo(map)
-  }
-})
-
 const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
   const layers = new Map<string, FeatureGroup>()
+
+  if (!mapRef.value) {
+    // Do nothing without a valid map
+    return layers
+  }
+
   for (const notam of notamList.value ?? []) {
     const layer: FeatureGroup = new FeatureGroup()
     const qSection = notam.sectionQ
@@ -191,27 +226,48 @@ const notamLayer = computed<FeatureGroup>(
   () => new FeatureGroup(Array.from(notamLayerDict.value.values())),
 )
 
+// Handle updates
+watch(aipLayer, (newLayer, oldLayer) => {
+  oldLayer?.remove()
+
+  const map = mapRef.value
+  if (map && newLayer) {
+    newLayer.addTo(map)
+    computeMapBounds()
+  }
+})
+
 watch(notamLayer, (newLayer, oldLayer) => {
   oldLayer?.remove()
 
   const map = mapRef.value
   if (map && newLayer) {
     newLayer.addTo(map)
+    computeMapBounds()
   }
 })
 
-watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
+watch([mapRef, focusedNotam], () => {
+  computeMapBounds()
+})
+
+function computeMapBounds() {
   const map = mapRef.value
   if (!map) {
     return
   }
 
+  // Compute the maximum zoom we can handle
+  const maxZooms: (number | undefined)[] = []
+  map.eachLayer((l) => maxZooms.push((l.options as TileLayerOptions | undefined)?.maxZoom))
+  const maxZoom = Math.max(11, Math.min(...maxZooms.filter((v) => v !== undefined)))
+
   // Stay on the focused NOTAM
   const focused = focusedNotam.value
   if (focused) {
-    const focusedLayer = notamLayerDict.value.get(focused.id)
-    if (focusedLayer) {
-      map.fitBounds(focusedLayer.getBounds(), { maxZoom: 18 })
+    const focusedLayerBounds = notamLayerDict.value.get(focused.id)?.getBounds()
+    if (focusedLayerBounds && focusedLayerBounds.isValid()) {
+      map.fitBounds(focusedLayerBounds, { maxZoom })
       return
     }
   }
@@ -229,9 +285,9 @@ watch([mapRef, aipLayer, notamLayer, focusedNotam], () => {
   }
 
   if (bounds && bounds.isValid()) {
-    map.fitBounds(bounds, { maxZoom: 12 })
+    map.fitBounds(bounds, { maxZoom, animate: false })
   }
-})
+}
 </script>
 
 <style lang="css">

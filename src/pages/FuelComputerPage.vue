@@ -62,6 +62,7 @@ under the License.
           v-model.number="fuelConsumable"
           type="number"
           min="0"
+          :max="fuelCapacity"
           :label="$t('fuelConsumableLabel')"
           :hint="$t('fuelConsumableHint')"
         />
@@ -124,11 +125,14 @@ under the License.
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar'
 import { FUEL_UNITS, FuelQuantity, LITER } from 'src/components/fuelUtils'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import InputListHours from 'src/components/InputListHours.vue'
 import { TimePeriod } from 'src/components/timeUtils'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+
+const $q = useQuasar()
 
 class ResultRow {
   labelKey: string
@@ -174,13 +178,32 @@ const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
 // Flight duration
 const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
 
-// Fuel computation
-watch(fuelCapacity, (newValue) => {
-  if (fuelConsumable.value > newValue || fuelConsumable.value == 0) {
-    fuelConsumable.value = newValue
-  }
-})
+// Description updates
+watch(planeIdent, (newValue) =>
+  $q.sessionStorage?.setItem('fuel_computer.input.planeIdent', newValue),
+)
+watch(fuelUnit, (newValue) =>
+  $q.sessionStorage?.setItem('fuel_computer.input.fuelUnit', newValue.label),
+)
+watch(fuelPerHour, (newValue) =>
+  $q.sessionStorage?.setItem('fuel_computer.input.fuelPerHour', newValue),
+)
 
+watch(
+  [fuelCapacity, fuelConsumable],
+  ([newCapacity, newConsumable], [oldCapacity, oldConsumable]) => {
+    if (newCapacity != oldCapacity) {
+      const oldNonConsumable = oldCapacity - oldConsumable
+      newConsumable = Math.max(0, newCapacity - oldNonConsumable)
+      fuelConsumable.value = newConsumable
+    }
+
+    $q.sessionStorage?.setItem('fuel_computer.input.fuelCapacity', newCapacity)
+    $q.sessionStorage?.setItem('fuel_computer.input.fuelConsumable', newConsumable)
+  },
+)
+
+// Fuel computation
 const totalAddedFuel = ref<FuelQuantity>(new FuelQuantity(0))
 const totalConsumedFuel = computed(
   () =>
@@ -243,4 +266,24 @@ const resultRows = computed((): ResultRow[] => {
 
 // Print tables switch
 const printInputTables = ref(false)
+
+// Load previous details from session storage
+onMounted(() => {
+  // Reload data from session storage
+  planeIdent.value = $q.sessionStorage.getItem('fuel_computer.input.planeIdent') ?? planeIdent.value
+
+  const fuelUnitLabel = $q.sessionStorage.getItem('fuel_computer.input.fuelUnit')
+  if (fuelUnitLabel) {
+    fuelUnit.value = FUEL_UNITS.find((f) => f.label === fuelUnitLabel) ?? fuelUnit.value
+  }
+
+  fuelPerHour.value =
+    $q.sessionStorage.getItem('fuel_computer.input.fuelPerHour') ?? fuelPerHour.value
+
+  // Reload consumable first as the capacity watcher needs its value and will update it
+  fuelConsumable.value =
+    $q.sessionStorage.getItem('fuel_computer.input.fuelConsumable') ?? fuelConsumable.value
+  fuelCapacity.value =
+    $q.sessionStorage.getItem('fuel_computer.input.fuelCapacity') ?? fuelCapacity.value
+})
 </script>

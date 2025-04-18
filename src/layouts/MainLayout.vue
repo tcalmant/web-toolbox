@@ -36,7 +36,7 @@ under the License.
       </q-toolbar>
     </q-header>
 
-    <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered>
+    <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered overlay>
       <q-list>
         <q-item-label header> {{ t('aviationLinks') }} </q-item-label>
         <EssentialLink v-for="link in aviationLinks" :key="link.id" v-bind="link" />
