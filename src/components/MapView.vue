@@ -161,7 +161,7 @@ const initMap = () => {
 
 const aipLayer = computed<FeatureGroup>(() => {
   const groupLayer = new FeatureGroup()
-  if (aip.value && aip.value.polygons) {
+  if (mapRef.value && aip.value && aip.value.polygons) {
     aip.value.polygons.forEach((l) => groupLayer.addLayer(l))
   }
   return groupLayer
@@ -169,6 +169,12 @@ const aipLayer = computed<FeatureGroup>(() => {
 
 const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
   const layers = new Map<string, FeatureGroup>()
+
+  if (!mapRef.value) {
+    // Do nothing without a valid map
+    return layers
+  }
+
   for (const notam of notamList.value ?? []) {
     const layer: FeatureGroup = new FeatureGroup()
     const qSection = notam.sectionQ
@@ -281,7 +287,7 @@ function computeMapBounds() {
   }
 
   if (bounds && bounds.isValid()) {
-    map.fitBounds(bounds, { maxZoom })
+    map.fitBounds(bounds, { maxZoom, animate: false })
   }
 }
 </script>
