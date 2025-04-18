@@ -27,9 +27,12 @@ under the License.
 <script setup lang="ts">
 import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { useQuasar } from 'quasar'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { AIP } from './aipUtils'
 import type { NOTAM } from './notamUtils'
+
+const $q = useQuasar()
 
 export interface MapProps {
   center?: LatLngTuple
@@ -71,7 +74,7 @@ const initMap = () => {
     zoom: props.zoom,
   })
 
-  const baseLayers = {
+  const baseLayers: { [key: string]: L.Layer } = {
     'IGN Plan': L.tileLayer(
       'https://data.geopf.fr/wmts?' +
         '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
@@ -139,8 +142,18 @@ const initMap = () => {
     }),
   }
 
-  L.control.layers(baseLayers, {}).addTo(map)
-  Object.values(baseLayers)[2]?.addTo(map)
+  L.control.layers(baseLayers, {}, { hideSingleBase: true }).addTo(map)
+
+  // Use the last selected base layer
+  const selectedBaseLayerName =
+    ($q.sessionStorage.getItem('mapViewer.selectedBaseLayer') as string) ||
+    Object.keys(baseLayers)[0]!
+
+  const selectedBaseLayer = baseLayers[selectedBaseLayerName] ?? Object.values(baseLayers)[0]!
+  selectedBaseLayer.addTo(map)
+
+  // Register to base layer change events
+  map.on('baselayerchange', (e) => $q.sessionStorage.setItem('mapViewer.selectedBaseLayer', e.name))
 
   L.control.scale().addTo(map)
 
