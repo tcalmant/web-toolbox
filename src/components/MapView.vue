@@ -21,7 +21,9 @@ under the License.
 -->
 
 <template>
-  <div id="map" ref="mapDiv" class="fit"></div>
+  <div id="map" ref="mapDiv" class="fit">
+    <q-resize-observer @resize="mapRef?.invalidateSize()" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -52,17 +54,10 @@ const props = withDefaults(defineProps<MapProps>(), {
 
 const mapDiv = ref()
 const mapRef = ref<L.Map>()
-const observerRef = ref<ResizeObserver>()
 
 onMounted(() => nextTick(initMap))
 
 const initMap = () => {
-  if (observerRef.value != undefined) {
-    // Stop the observer
-    observerRef.value.disconnect()
-    observerRef.value = undefined
-  }
-
   if (mapRef.value != undefined) {
     // Clean up existing map
     mapRef.value.remove()
@@ -160,16 +155,6 @@ const initMap = () => {
   mapRef.value = map
   aipLayer.value.addTo(map)
   notamLayer.value.addTo(map)
-
-  // Register an observer to force-refresh the map on resize
-  const resizeObserver = new ResizeObserver(() => {
-    if (mapRef.value) {
-      mapRef.value.invalidateSize()
-    }
-  })
-
-  resizeObserver.observe(mapDiv.value)
-  observerRef.value = resizeObserver
 }
 
 const aipLayer = computed<FeatureGroup>(() => {
