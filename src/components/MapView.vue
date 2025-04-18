@@ -46,8 +46,8 @@ const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence')
 const hoveredNotam = defineModel<NOTAM | undefined>('hoveredNotam')
 
 const props = withDefaults(defineProps<MapProps>(), {
-  center: () => [46.45, 2.21],
-  zoom: 6,
+  center: () => [45.218, 5.848],
+  zoom: 10,
 })
 
 const mapDiv = ref()
