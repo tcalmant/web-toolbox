@@ -23,42 +23,49 @@ under the License.
 <template>
   <q-page class="row q-gutter-md q-pa-md no-wrap" :style-fn="pageStyleFn">
     <div class="col-6">
-      <MapView
-        v-show="shownPanel === 'map'"
-        v-model:notam-list="selectedNotams as NOTAM[] | undefined"
-        v-model:notam-focus="focusedNotam"
-        v-model:aip="parsedAIP"
-        v-model:show-area-of-influence="showAreaOfInfluence"
-        v-model:hovered-notam="hoveredNotam"
-      />
-      <q-form v-if="shownPanel === 'notamInput'" class="fit">
-        <q-scroll-area class="fit">
-          <q-input
-            v-model="inputNOTAMText"
-            :label="$t('notamEntriesLabel')"
-            filled
-            type="textarea"
-            :autofocus="shownPanel === 'notamInput'"
-            autogrow
-          >
-            <template v-slot:append>
-              <div class="fixed-right">
-                <div style="background: rgba(255, 255, 255, 0.75)">
-                  <q-btn
-                    icon="map"
-                    color="green"
-                    flat
-                    round
-                    unelevated
-                    @click.prevent="shownPanel = 'map'"
-                  />
-                  <q-btn icon="cancel" flat round unelevated @click.prevent="inputNOTAMText = ''" />
+      <div class="map-container">
+        <MapView
+          v-model:notam-list="selectedNotams as NOTAM[] | undefined"
+          v-model:notam-focus="focusedNotam"
+          v-model:aip="parsedAIP"
+          v-model:show-area-of-influence="showAreaOfInfluence"
+          v-model:hovered-notam="hoveredNotam"
+        />
+        <q-form v-if="shownPanel === 'notamInput'" class="map-input-overlay">
+          <q-scroll-area class="fit">
+            <q-input
+              v-model="inputNOTAMText"
+              :label="$t('notamEntriesLabel')"
+              filled
+              type="textarea"
+              :autofocus="shownPanel === 'notamInput'"
+              autogrow
+            >
+              <template v-slot:append>
+                <div class="fixed-right">
+                  <div style="background: rgba(255, 255, 255, 0.75)">
+                    <q-btn
+                      icon="map"
+                      color="green"
+                      flat
+                      round
+                      unelevated
+                      @click.prevent="shownPanel = 'map'"
+                    />
+                    <q-btn
+                      icon="cancel"
+                      flat
+                      round
+                      unelevated
+                      @click.prevent="inputNOTAMText = ''"
+                    />
+                  </div>
                 </div>
-              </div>
-            </template>
-          </q-input>
-        </q-scroll-area>
-      </q-form>
+              </template>
+            </q-input>
+          </q-scroll-area>
+        </q-form>
+      </div>
     </div>
     <div class="col-5 col column no-wrap">
       <q-tabs v-model="selectedTab">
@@ -431,5 +438,30 @@ function parseNotams(fullText: string): NOTAM[] {
 
 .notam-table thead tr:first-child th {
   top: 0;
+}
+
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.map-input-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5000; /* Ensure it appears above the map and its controls */
+  background: white;
+  margin: 0;
+  padding: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 </style>
