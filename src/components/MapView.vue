@@ -247,9 +247,7 @@ watch(notamLayer, (newLayer, oldLayer) => {
   }
 })
 
-watch([mapRef, focusedNotam], () => {
-  computeMapBounds()
-})
+watch([mapRef, focusedNotam], () => computeMapBounds())
 
 function computeMapBounds() {
   const map = mapRef.value
