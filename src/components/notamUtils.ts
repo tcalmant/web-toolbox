@@ -343,7 +343,7 @@ export class NOTAM {
 
       const separator = text.substring(lastEndIdx, match.index - 1).trim()
       // Consider spaces, commas and "TO" as polygon separators
-      if (separator.length != 0 && !separator.match(/\s*(?:AS|FROM|TO|AT|,|;)\s*$/)) {
+      if (separator.length != 0 && !separator.match(/\s*(?:AS|FROM|TO|AT|,|;|-)\s*$/)) {
         // Found text between previous and current number
         const layer = new Polygon(currentList).toLayer()
         if (layer !== null) {
