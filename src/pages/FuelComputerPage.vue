@@ -106,16 +106,42 @@ under the License.
         </q-table>
       </div>
       <q-separator />
-      <q-checkbox class="print-hide" v-model="printInputTables" :label="$t('tablesPrintOption')" />
-      <div class="row q-gutter-md" :class="{ 'print-hide': !printInputTables }">
-        <InputListHours class="col" v-model="totalFlightDuration" :title="$t('tableTimeTitle')" />
-        <InputListFuel
-          class="col"
-          v-model="totalAddedFuel"
-          :global-fuel-unit="fuelUnit"
-          :fuel-capacity="typedFuelCapacity"
-          :title="$t('tableFuelTitle')"
+      <div v-if="!isPortrait">
+        <q-checkbox
+          class="print-hide"
+          v-model="printInputTables"
+          :label="$t('tablesPrintOption')"
         />
+        <div class="row q-gutter-md" :class="{ 'print-hide': !printInputTables }">
+          <InputListHours class="col" v-model="totalFlightDuration" :title="$t('tableTimeTitle')" />
+          <InputListFuel
+            class="col"
+            v-model="totalAddedFuel"
+            :global-fuel-unit="fuelUnit"
+            :fuel-capacity="typedFuelCapacity"
+            :title="$t('tableFuelTitle')"
+          />
+        </div>
+      </div>
+      <div v-else>
+        <q-tabs v-model="tab" outside-arrows mobile-arrows style="max-width: 90vw">
+          <q-tab name="flightTimeTable" :label="$t('tableTimeTitle')" />
+          <q-tab name="fuelTable" :label="$t('tableFuelTitle')" />
+        </q-tabs>
+        <q-separator />
+        <q-tab-panels v-model="tab">
+          <q-tab-panel name="flightTimeTable">
+            <InputListHours class="col" v-model="totalFlightDuration" />
+          </q-tab-panel>
+          <q-tab-panel name="fuelTable">
+            <InputListFuel
+              class="col"
+              v-model="totalAddedFuel"
+              :global-fuel-unit="fuelUnit"
+              :fuel-capacity="typedFuelCapacity"
+            />
+          </q-tab-panel>
+        </q-tab-panels>
       </div>
     </div>
   </q-page>
@@ -130,9 +156,21 @@ import { FUEL_UNITS, FuelQuantity, LITER } from 'src/components/fuelUtils'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import InputListHours from 'src/components/InputListHours.vue'
 import { TimePeriod } from 'src/components/timeUtils'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const $q = useQuasar()
+
+// Display configuration
+const isPortrait = ref(window.innerHeight > window.innerWidth)
+
+const updateOrientation = () => {
+  isPortrait.value = window.innerHeight > window.innerWidth
+}
+
+onMounted(() => window.addEventListener('resize', updateOrientation))
+onUnmounted(() => window.removeEventListener('resize', updateOrientation))
+
+const tab = ref('flightTimeTable')
 
 class ResultRow {
   labelKey: string
