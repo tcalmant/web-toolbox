@@ -104,9 +104,7 @@ under the License.
             <q-checkbox v-model="showAreaOfInfluence" :label="$t('notamFilterShowArea')" />
           </div>
           <q-table
-            ref="tableRef"
             class="col notam-table"
-            virtual-scroll
             row-key="idx"
             :rows="parsedNotams"
             :columns="notamColumns"
@@ -127,6 +125,7 @@ under the License.
             </template>
             <template v-slot:body="props">
               <q-tr
+                :id="notamRowId(props.row)"
                 :props="props"
                 :class="
                   props.row.id === focusedNotam?.id || props.row.id === hoveredNotam?.id
@@ -225,7 +224,6 @@ const inputAIPText = ref('')
 const parsedAIP = ref<AIP>()
 
 // NOTAMs
-const tableRef = ref<QTable>()
 const parsedNotams = ref<NOTAM[]>([])
 const selectedNotams = ref<NOTAM[]>([])
 const hoveredNotam = ref<NOTAM>()
@@ -338,13 +336,15 @@ watch(selectedNotams, (newSelection) => {
   }
 })
 
+function notamRowId(notam: NOTAM): string {
+  return `notam-row-${notam.id}`
+}
+
 watch(focusedNotam, (newSelection) => {
-  const table = tableRef.value
-  if (newSelection && table) {
-    const sortedIdx = table.computedRows.findIndex((r: NOTAM) => r.idx === newSelection.idx)
-    if (sortedIdx != -1) {
-      table.scrollTo(sortedIdx, 'center')
-    }
+  if (newSelection) {
+    document
+      .getElementById(notamRowId(newSelection))
+      ?.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'start' })
   }
 })
 
