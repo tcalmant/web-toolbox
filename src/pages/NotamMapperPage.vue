@@ -92,8 +92,6 @@ function pageStyleFn(offset: number, height: number) {
 }
 
 // Display configuration
-// const shownPanel = ref<'map' | 'notamInput' | 'aipInput'>('map')
-// const selectedTab = ref('notamTab')
 const showAipEdit = ref<boolean>(false)
 const showNotamEdit = ref<boolean>(false)
 
@@ -274,26 +272,6 @@ function parseNotams(fullText: string): NOTAM[] {
 </script>
 
 <style lang="css">
-.notam-table {
-  overflow: auto;
-}
-
-.notam-table .q-table__top,
-.notam-table .q-table__bottom,
-.notam-table thead tr:first-child th {
-  /* bg color is important for th; just specify one */
-  background-color: #ffffff;
-}
-
-.notam-table thead tr th {
-  position: sticky;
-  z-index: 1;
-}
-
-.notam-table thead tr:first-child th {
-  top: 0;
-}
-
 .map-container {
   position: relative;
   width: 100%;
@@ -302,20 +280,5 @@ function parseNotams(fullText: string): NOTAM[] {
   bottom: 0;
   left: 0;
   right: 0;
-}
-
-.map-input-overlay {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 5000; /* Ensure it appears above the map and its controls */
-  background: white;
-  margin: 0;
-  padding: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -137,3 +137,25 @@ function notamRowId(notam: NOTAM): string {
   return `notam-row-${notam.id}`
 }
 </script>
+
+<style scoped>
+.notam-table {
+  overflow: auto;
+}
+
+.notam-table .q-table__top,
+.notam-table .q-table__bottom,
+.notam-table thead tr:first-child th {
+  /* bg color is important for th; just specify one */
+  background-color: #ffffff;
+}
+
+.notam-table thead tr th {
+  position: sticky;
+  z-index: 1;
+}
+
+.notam-table thead tr:first-child th {
+  top: 0;
+}
+</style>
