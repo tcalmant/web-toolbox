@@ -52,6 +52,8 @@ export default {
   aipEntriesLabel: 'AIP entries',
   aipEditLabel: 'Set AIP',
   aipEditTitle: 'Set AIP content',
+  notamTabMapTitle: 'Map',
+  notamTabConfigurationTitle: 'Options',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',

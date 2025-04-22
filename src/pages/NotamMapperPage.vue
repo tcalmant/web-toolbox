@@ -21,11 +21,7 @@ under the License.
 -->
 
 <template>
-  <q-page
-    class="q-pa-md"
-    :class="{ row: !isPortrait, 'q-gutter-md': !isPortrait, 'no-wrap': !isPortrait }"
-    :style-fn="pageStyleFn"
-  >
+  <q-page v-if="!isPortrait" class="row q-gutter-md q-pa-md no-wrap" :style-fn="pageStyleFn">
     <div class="col-6">
       <div class="map-container">
         <MapView
@@ -54,21 +50,60 @@ under the License.
         v-model:selected-notams="selectedNotams"
       />
     </div>
-
-    <NotamTextAreaDialog
-      v-model="inputAIPText"
-      v-model:show-dialog="showAipEdit"
-      :input-label="$t('aipEntriesLabel')"
-      :title="$t('aipEditTitle')"
-    />
-
-    <NotamTextAreaDialog
-      v-model="inputNOTAMText"
-      v-model:show-dialog="showNotamEdit"
-      :input-label="$t('notamEntriesLabel')"
-      :title="$t('notamEditTitle')"
-    />
   </q-page>
+  <q-page v-else :style-fn="pageStyleFn">
+    <q-tabs v-model="tab">
+      <q-tab name="map" label="Map" />
+      <q-tab name="mapConfig" label="Configuration" />
+    </q-tabs>
+    <q-separator />
+    <q-tab-panels v-model="tab">
+      <q-tab-panel name="map" style="height: 80vh">
+        <div class="map-container">
+          <MapView
+            v-model:notam-list="selectedNotams as NOTAM[] | undefined"
+            v-model:notam-focus="focusedNotam"
+            v-model:aip="parsedAIP"
+            v-model:show-area-of-influence="showAreaOfInfluence"
+            v-model:hovered-notam="hoveredNotam"
+          />
+        </div>
+      </q-tab-panel>
+      <q-tab-panel name="mapConfig">
+        <div class="col column no-wrap">
+          <NotamOptions
+            v-model:ignore-large-notams="ignoreLargeNotams"
+            v-model:max-notam-radius="maxNotamRadius"
+            v-model:only-with-positions="onlyWithPositions"
+            v-model:show-area-of-influence="showAreaOfInfluence"
+            @show-notam-edit="showNotamEdit = true"
+            @show-aip-edit="showAipEdit = true"
+          />
+          <NotamTable
+            v-model:focused-notam="focusedNotam"
+            v-model:hovered-notam="hoveredNotam"
+            v-model:notam-columns="notamColumns"
+            v-model:parsed-notams="parsedNotams"
+            v-model:selected-notams="selectedNotams"
+          />
+        </div>
+      </q-tab-panel>
+    </q-tab-panels>
+  </q-page>
+
+  <NotamTextAreaDialog
+    v-model="inputAIPText"
+    v-model:show-dialog="showAipEdit"
+    :input-label="$t('aipEntriesLabel')"
+    :title="$t('aipEditTitle')"
+  />
+
+  <NotamTextAreaDialog
+    v-model="inputNOTAMText"
+    v-model:show-dialog="showNotamEdit"
+    :input-label="$t('notamEntriesLabel')"
+    :title="$t('notamEditTitle')"
+  />
 </template>
 
 <script setup lang="ts">
@@ -86,6 +121,8 @@ import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
 const { t } = useI18n()
+
+const tab = ref('mapConfig')
 
 function pageStyleFn(offset: number, height: number) {
   return { height: `${height - offset}px` }

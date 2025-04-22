@@ -51,6 +51,8 @@ export default {
   aipEntriesLabel: 'AIP à analyser',
   aipEditLabel: 'Éditer les AIP',
   aipEditTitle: 'Édition des AIP',
+  notamTabMapTitle: 'Carte',
+  notamTabConfigurationTitle: 'Configuration',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',
