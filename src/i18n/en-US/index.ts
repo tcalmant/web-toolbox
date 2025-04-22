@@ -39,6 +39,7 @@ export default {
   // NOTAM Mapper
   notamEntriesLabel: 'NOTAM entries',
   notamEditLabel: 'Set NOTAM',
+  notamEditTitle: 'Set NOTAM content',
   notamFilterLarge: 'Ignore large NOTAM',
   notamFilterLocated: 'Only show NOTAM with located items',
   notamFilterShowArea: 'Show area of influence',
@@ -49,6 +50,8 @@ export default {
   notamObject: 'Object',
   notamScope: 'Scope',
   aipEntriesLabel: 'AIP entries',
+  aipEditLabel: 'Set AIP',
+  aipEditTitle: 'Set AIP content',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',
