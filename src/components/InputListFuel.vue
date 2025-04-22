@@ -21,7 +21,7 @@ under the License.
 -->
 
 <template>
-  <q-card class="q-pa-md">
+  <q-card class="q-pa-md" style="min-width: min-content">
     <div class="column q-gutter-md">
       <span v-if="title" class="text-subtitle1 text-center">{{ title }}</span>
       <q-form class="print-hide" @submit.prevent="onAdd">
