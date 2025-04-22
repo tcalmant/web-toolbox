@@ -53,8 +53,8 @@ under the License.
   </q-page>
   <q-page v-else :style-fn="pageStyleFn">
     <q-tabs v-model="tab">
-      <q-tab name="map" label="Map" />
-      <q-tab name="mapConfig" label="Configuration" />
+      <q-tab name="map" :label="$t('notamTabMapTitle')" />
+      <q-tab name="mapConfig" :label="$t('notamTabConfigurationTitle')" />
     </q-tabs>
     <q-separator />
     <q-tab-panels v-model="tab">
