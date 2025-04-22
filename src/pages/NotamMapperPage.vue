@@ -237,6 +237,10 @@ watch(inputNOTAMText, (newValue: string) => {
 
 watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
 
+watch(focusedNotam, () => {
+  tab.value = tab.value == 'mapConfig' ? 'map' : 'mapConfig'
+})
+
 function handleAIPInput(fullText: string): void {
   parsedAIP.value = fullText ? new AIP(fullText) : undefined
 }
