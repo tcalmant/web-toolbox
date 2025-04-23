@@ -37,6 +37,7 @@ under the License.
     />
     <q-slider
       :class="{ 'col-5': !isPortrait, row: isPortrait }"
+      :aria-label="$t('notamFilterLargeSliderAria')"
       v-model="maxNotamRadius"
       :min="1"
       :max="999"

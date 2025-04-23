@@ -29,6 +29,7 @@ under the License.
           <div class="col">
             <q-input
               ref="fuelInputField"
+              :label="$t('fuelInputLabel')"
               v-model.number="inputValue"
               type="number"
               inputmode="numeric"
@@ -47,9 +48,9 @@ under the License.
             />
           </div>
           <q-separator />
-          <q-btn class="col-1" icon="add" type="submit" />
+          <q-btn class="col-1" icon="add" type="submit" :title="$t('addEntry')" />
           <q-separator />
-          <q-btn class="col-1" @mousedown.prevent @click="onDeleteAll()">
+          <q-btn class="col-1" @mousedown.prevent @click="onDeleteAll()" :title="$t('deleteAll')">
             <q-icon name="delete_forever" color="negative" />
           </q-btn>
         </div>
@@ -68,7 +69,13 @@ under the License.
           <q-item-section> {{ value }} </q-item-section>
           <q-item-section side> {{ value.toString(LITER) }} </q-item-section>
           <q-item-section side class="print-hide">
-            <q-icon name="delete" color="negative" @click="onDelete(idx)" />
+            <q-icon
+              name="delete"
+              color="negative"
+              style="cursor: pointer"
+              @click="onDelete(idx)"
+              :title="$t('deleteRow')"
+            />
           </q-item-section>
         </q-item>
       </q-list>

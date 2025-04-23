@@ -19,11 +19,18 @@ export default {
   // Language description
   languageName: 'Français',
   languageSwitch: "Langue d'affichage",
+
   // Main layout
   mainTitle: "Tom's Toolbox",
   notamMapperTitle: 'Carte NOTAM',
   fuelComputerTitle: 'Carburant',
   timestampTitle: 'Dates',
+
+  // Common ARIA-related sentences
+  toggleSelectAll: 'Alterner la sélection intégrale',
+  addEntry: 'Ajouter une entrée',
+  deleteAll: 'Tout supprimer',
+  deleteRow: 'Supprimer la ligne',
 
   // Drawer
   aviationLinks: 'Aviation',
@@ -40,6 +47,7 @@ export default {
   notamEditLabel: 'Éditer les NOTAM',
   notamEditTitle: 'Édition des NOTAM',
   notamFilterLarge: 'Ignorer les NOTAM étendus',
+  notamFilterLargeSliderAria: 'Rayon maximum des NOTAM à afficher (en milles nautiques)',
   notamFilterLocated: "N'afficher que les NOTAM avec description d'objet(s)",
   notamFilterShowArea: "Afficher la zone d'influence",
   notamLimitLow: 'Plancher',
@@ -48,6 +56,7 @@ export default {
   notamTrafic: 'Traffic',
   notamObject: 'Objet',
   notamScope: 'Périmètre',
+  toggleSelectNotam: 'Alterner la sélection du NOTAM {notam}',
   aipEntriesLabel: 'AIP à analyser',
   aipEditLabel: 'Éditer les AIP',
   aipEditTitle: 'Édition des AIP',
@@ -66,14 +75,17 @@ export default {
   tablesPrintOption: 'Imprimer les tables',
   tableTimeTitle: 'Temps de vol',
   tableTimeTotal: '@:resultTotalTime',
+  timeInputLabel: '@:tableTimeTitle',
   tableFuelTitle: 'Avitaillement carburant',
   tableFuelTotal: '@:resultTotalFuelAdded',
+  fuelInputLabel: 'Carburant ajouté',
   resultTotalTime: 'Temps de vol total',
   resultTotalFuelConsumed: 'Carburant consommé',
   resultTotalFuelAdded: 'Carburant ajouté',
   resultEstimatedFuel: 'Carburant restant estimé',
   resultEstimatedUsableFuel: 'Carburant restant utilisable estimé',
   resultEstimatedRemainingTime: 'Temps de vol restant estimé',
+  printEditedOn: "Date d'édition: {date}",
 
   liter: 'litres',
   us_gal: 'gal US',

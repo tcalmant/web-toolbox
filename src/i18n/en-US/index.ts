@@ -26,6 +26,12 @@ export default {
   fuelComputerTitle: 'Fuel computer',
   timestampTitle: 'Timestamp',
 
+  // Common ARIA-related sentences
+  toggleSelectAll: 'Toggle table selection',
+  addEntry: 'Add entry',
+  deleteAll: 'Delete all',
+  deleteRow: 'Delete row',
+
   // Drawer
   aviationLinks: 'Aviation links',
   siaLinkSubtitle: 'French source for SUP-AIP and VAC',
@@ -41,6 +47,7 @@ export default {
   notamEditLabel: 'Set NOTAM',
   notamEditTitle: 'Set NOTAM content',
   notamFilterLarge: 'Ignore large NOTAM',
+  notamFilterLargeSliderAria: 'Maximum radius of shown NOTAM (in nautical miles)',
   notamFilterLocated: 'Only show NOTAM with located items',
   notamFilterShowArea: 'Show area of influence',
   notamLimitLow: 'Lower limit',
@@ -49,6 +56,7 @@ export default {
   notamTrafic: 'Trafic',
   notamObject: 'Object',
   notamScope: 'Scope',
+  toggleSelectNotam: 'Toggle selection of NOTAM {notam}',
   aipEntriesLabel: 'AIP entries',
   aipEditLabel: 'Set AIP',
   aipEditTitle: 'Set AIP content',
@@ -67,14 +75,17 @@ export default {
   tablesPrintOption: 'Print tables',
   tableTimeTitle: 'Flight times',
   tableTimeTotal: '@:resultTotalTime',
+  timeInputLabel: 'Flight time',
   tableFuelTitle: 'Added fuel',
   tableFuelTotal: 'Total added fuel',
+  fuelInputLabel: 'Added fuel',
   resultTotalTime: 'Total flight time',
   resultTotalFuelConsumed: 'Total consumed fuel',
   resultTotalFuelAdded: 'Total added fuel',
   resultEstimatedFuel: 'Estimated remaining fuel',
   resultEstimatedUsableFuel: 'Estimated usable fuel',
   resultEstimatedRemainingTime: 'Estimated remaining flight time',
+  printEditedOn: 'Edited on: {date}',
 
   liter: 'liters',
   us_gal: 'US Gal',
