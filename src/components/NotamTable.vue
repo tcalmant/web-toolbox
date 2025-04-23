@@ -36,7 +36,7 @@ under the License.
           <q-checkbox
             indeterminate-value="null"
             v-model="notamSelectAll"
-            aria-label="{{ $t('selectAll') }}"
+            :aria-label="$t('toggleSelectAll')"
           />
         </q-th>
         <q-th></q-th>
