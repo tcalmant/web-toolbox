@@ -23,9 +23,9 @@ under the License.
 <template>
   <q-page padding>
     <div class="col q-gutter-md q-pa-md">
-      <div class="row">
+      <div :class="{ row: !isPortrait, col: isPortrait }">
         <q-input
-          class="col"
+          :class="{ row: isPortrait, col: !isPortrait }"
           v-model.number="unixTimestamp"
           type="number"
           inputmode="numeric"
@@ -37,7 +37,7 @@ under the License.
           </template>
         </q-input>
         <q-select
-          class="col q-px-md"
+          :class="{ row: isPortrait, col: !isPortrait, 'q-mx-md': !isPortrait }"
           v-model="unixTimestampUnit"
           :options="TIMESTAMP_UNITS"
           :option-label="(opt) => opt.getLabel()"
@@ -84,9 +84,9 @@ under the License.
           </q-icon>
         </template>
       </q-input>
-      <div class="row">
+      <div :class="{ row: !isPortrait, col: isPortrait }">
         <q-input
-          class="col"
+          :class="{ row: isPortrait, col: !isPortrait }"
           v-model="dateLocalTZ"
           :label="$t('localDateLabel')"
           :hint="
@@ -131,7 +131,7 @@ under the License.
           </template>
         </q-input>
         <q-select
-          class="col q-mx-md"
+          :class="{ row: isPortrait, col: !isPortrait, 'q-mx-md': !isPortrait }"
           v-model="selectedTz"
           :options="tzList"
           :label="$t('timezoneLabel')"
@@ -159,10 +159,20 @@ under the License.
 
 <script setup lang="ts">
 import { dateToString, dateToUTCString, formatTzOffset } from 'src/components/timeUtils'
-import { ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+
+// Display configuration
+const isPortrait = ref(window.innerHeight > window.innerWidth)
+
+const updateOrientation = () => {
+  isPortrait.value = window.innerHeight > window.innerWidth
+}
+
+onMounted(() => window.addEventListener('resize', updateOrientation))
+onUnmounted(() => window.removeEventListener('resize', updateOrientation))
 
 /**
  * Representation of support timestamp units
