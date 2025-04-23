@@ -59,7 +59,7 @@ under the License.
     <q-separator />
     <div
       class="scroll"
-      style="position: absolute; bottom: 0ex; left: 0; right: 0; max-height: 85vh"
+      style="position: absolute; bottom: 0; left: 0; right: 0; max-height: 85vh; height: 100%"
     >
       <q-tab-panels v-model="tab">
         <q-tab-panel name="map" style="height: 85vh">
