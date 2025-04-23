@@ -21,7 +21,7 @@ under the License.
 -->
 
 <template>
-  <q-card class="q-pa-md">
+  <q-card class="q-pa-md" style="min-width: min-content">
     <div class="column q-gutter-md">
       <span v-if="title" class="text-subtitle1 text-center">{{ title }}</span>
       <q-form class="print-hide" @submit.prevent="onAdd">
@@ -84,7 +84,10 @@ const $q = useQuasar()
 const totalDuration = defineModel<TimePeriod>()
 withDefaults(defineProps<{ title?: string; showTotal?: boolean }>(), { showTotal: false })
 
-const allValues = ref<TimePeriod[]>([new TimePeriod(0)])
+const allValues = defineModel<TimePeriod[]>('entries', {
+  default: [new TimePeriod(0)],
+  required: false,
+})
 const inputValue = ref('0:30')
 const valueInputField = ref<QInput>()
 const errorMessage = ref<string | null>(null)

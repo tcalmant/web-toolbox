@@ -38,6 +38,7 @@ export default {
   // NOTAM Mapper
   notamEntriesLabel: 'NOTAM à analyser',
   notamEditLabel: 'Éditer les NOTAM',
+  notamEditTitle: 'Édition des NOTAM',
   notamFilterLarge: 'Ignorer les NOTAM étendus',
   notamFilterLocated: "N'afficher que les NOTAM avec description d'objet(s)",
   notamFilterShowArea: "Afficher la zone d'influence",
@@ -48,6 +49,10 @@ export default {
   notamObject: 'Objet',
   notamScope: 'Périmètre',
   aipEntriesLabel: 'AIP à analyser',
+  aipEditLabel: 'Éditer les AIP',
+  aipEditTitle: 'Édition des AIP',
+  notamTabMapTitle: 'Carte',
+  notamTabConfigurationTitle: 'Configuration',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',

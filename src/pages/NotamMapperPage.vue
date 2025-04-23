@@ -21,7 +21,7 @@ under the License.
 -->
 
 <template>
-  <q-page class="row q-gutter-md q-pa-md no-wrap" :style-fn="pageStyleFn">
+  <q-page v-if="!isPortrait" class="row q-gutter-md q-pa-md no-wrap" :style-fn="pageStyleFn">
     <div class="col-6">
       <div class="map-container">
         <MapView
@@ -31,204 +31,130 @@ under the License.
           v-model:show-area-of-influence="showAreaOfInfluence"
           v-model:hovered-notam="hoveredNotam"
         />
-        <q-form v-if="shownPanel === 'notamInput'" class="map-input-overlay">
-          <q-scroll-area class="fit">
-            <q-input
-              v-model="inputNOTAMText"
-              :label="$t('notamEntriesLabel')"
-              filled
-              type="textarea"
-              :autofocus="shownPanel === 'notamInput'"
-              autogrow
-            >
-              <template v-slot:append>
-                <div class="fixed-right">
-                  <div style="background: rgba(255, 255, 255, 0.75)">
-                    <q-btn
-                      icon="map"
-                      color="green"
-                      flat
-                      round
-                      unelevated
-                      @click.prevent="shownPanel = 'map'"
-                    />
-                    <q-btn
-                      icon="cancel"
-                      flat
-                      round
-                      unelevated
-                      @click.prevent="inputNOTAMText = ''"
-                    />
-                  </div>
-                </div>
-              </template>
-            </q-input>
-          </q-scroll-area>
-        </q-form>
       </div>
     </div>
     <div class="col-5 col column no-wrap">
-      <q-tabs v-model="selectedTab">
-        <q-tab name="notamTab" label="NOTAM" icon="timer" />
-        <q-tab name="aipTab" label="AIP" icon="menu_book" />
-      </q-tabs>
-      <q-tab-panels v-model="selectedTab" animated>
-        <q-tab-panel name="notamTab" class="q-pa-md col column no-wrap">
-          <div class="row">
-            <q-btn
-              class="col"
-              color="secondary"
-              icon="edit"
-              @click.prevent="shownPanel = shownPanel === 'map' ? 'notamInput' : 'map'"
-            >
-              {{ $t('notamEditLabel') }}
-            </q-btn>
-          </div>
-          <div class="row">
-            <q-checkbox class="col" v-model="ignoreLargeNotams" :label="$t('notamFilterLarge')" />
-            <q-slider
-              class="col-5"
-              v-model="maxNotamRadius"
-              :min="1"
-              :max="999"
-              label
-              switch-label-side
-              :label-always="ignoreLargeNotams"
-              :label-value="maxNotamRadius + ' NM'"
+      <NotamOptions
+        v-model:ignore-large-notams="ignoreLargeNotams"
+        v-model:max-notam-radius="maxNotamRadius"
+        v-model:only-with-positions="onlyWithPositions"
+        v-model:show-area-of-influence="showAreaOfInfluence"
+        @show-notam-edit="showNotamEdit = true"
+        @show-aip-edit="showAipEdit = true"
+      />
+      <NotamTable
+        v-model:focused-notam="focusedNotam"
+        v-model:hovered-notam="hoveredNotam"
+        v-model:notam-columns="notamColumns"
+        v-model:parsed-notams="parsedNotams"
+        v-model:selected-notams="selectedNotams"
+      />
+    </div>
+  </q-page>
+  <q-page v-else :style-fn="pageStyleFn">
+    <q-tabs v-model="tab">
+      <q-tab name="map" :label="$t('notamTabMapTitle')" />
+      <q-tab name="mapConfig" :label="$t('notamTabConfigurationTitle')" />
+    </q-tabs>
+    <q-separator />
+    <div
+      class="scroll"
+      style="position: absolute; bottom: 0ex; left: 0; right: 0; max-height: 85vh"
+    >
+      <q-tab-panels v-model="tab">
+        <q-tab-panel name="map" style="height: 85vh">
+          <div class="map-container">
+            <MapView
+              v-model:notam-list="selectedNotams as NOTAM[] | undefined"
+              v-model:notam-focus="focusedNotam"
+              v-model:aip="parsedAIP"
+              v-model:show-area-of-influence="showAreaOfInfluence"
+              v-model:hovered-notam="hoveredNotam"
             />
           </div>
-          <div class="row">
-            <q-checkbox v-model="onlyWithPositions" :label="$t('notamFilterLocated')" />
-          </div>
-          <div class="row">
-            <q-checkbox v-model="showAreaOfInfluence" :label="$t('notamFilterShowArea')" />
-          </div>
-          <q-table
-            class="col notam-table"
-            row-key="idx"
-            :rows="parsedNotams"
-            :columns="notamColumns"
-            selection="multiple"
-            v-model:selected="selectedNotams"
-            :rows-per-page-options="[0]"
-          >
-            <template v-slot:header="props">
-              <q-tr :props="props">
-                <q-th>
-                  <q-checkbox indeterminate-value="null" v-model="notamSelectAll" />
-                </q-th>
-                <q-th></q-th>
-                <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                  {{ col.label }}
-                </q-th>
-              </q-tr>
-            </template>
-            <template v-slot:body="props">
-              <q-tr
-                :id="notamRowId(props.row)"
-                :props="props"
-                :class="
-                  props.row.id === focusedNotam?.id || props.row.id === hoveredNotam?.id
-                    ? 'bg-info'
-                    : ''
-                "
-              >
-                <q-td>
-                  <q-checkbox v-model="props.selected" />
-                </q-td>
-                <q-td auto-width>
-                  <q-btn
-                    size="sm"
-                    color="primary"
-                    round
-                    dense
-                    @click="
-                      () => {
-                        if (props.row != focusedNotam) {
-                          props.expand = !props.expand
-                        }
-                      }
-                    "
-                    :icon="
-                      props.row == focusedNotam
-                        ? 'radio_button_unchecked'
-                        : props.expand
-                          ? 'remove'
-                          : 'add'
-                    "
-                  />
-                </q-td>
-                <q-td
-                  v-for="col in props.cols"
-                  :key="col.name"
-                  :props="props"
-                  @click="
-                    focusedNotam?.id === props.row.id
-                      ? (focusedNotam = undefined)
-                      : (focusedNotam = props.row)
-                  "
-                >
-                  {{ col.value }}
-                </q-td>
-              </q-tr>
-              <q-tr v-if="props.expand || props.row == focusedNotam" :props="props">
-                <q-td colspan="100%">
-                  <pre>{{ (props.row as NOTAM).text }}</pre>
-                </q-td>
-              </q-tr>
-            </template>
-          </q-table>
         </q-tab-panel>
-        <q-tab-panel name="aipTab">
-          <q-input
-            v-model="inputAIPText"
-            :label="$t('aipEntriesLabel')"
-            filled
-            type="textarea"
-            autofocus
-            autogrow
-          >
-            <template v-slot:append>
-              <q-icon name="close" @click="inputAIPText = ''" class="cursor-pointer" />
-            </template>
-          </q-input>
+        <q-tab-panel name="mapConfig">
+          <div class="col column no-wrap">
+            <NotamOptions
+              v-model:ignore-large-notams="ignoreLargeNotams"
+              v-model:max-notam-radius="maxNotamRadius"
+              v-model:only-with-positions="onlyWithPositions"
+              v-model:show-area-of-influence="showAreaOfInfluence"
+              @show-notam-edit="showNotamEdit = true"
+              @show-aip-edit="showAipEdit = true"
+            />
+            <NotamTable
+              v-model:focused-notam="focusedNotam"
+              v-model:hovered-notam="hoveredNotam"
+              v-model:notam-columns="notamColumns"
+              v-model:parsed-notams="parsedNotams"
+              v-model:selected-notams="selectedNotams"
+            />
+          </div>
         </q-tab-panel>
       </q-tab-panels>
     </div>
   </q-page>
+
+  <NotamTextAreaDialog
+    v-model="inputAIPText"
+    v-model:show-dialog="showAipEdit"
+    :input-label="$t('aipEntriesLabel')"
+    :title="$t('aipEditTitle')"
+  />
+
+  <NotamTextAreaDialog
+    v-model="inputNOTAMText"
+    v-model:show-dialog="showNotamEdit"
+    :input-label="$t('notamEntriesLabel')"
+    :title="$t('notamEditTitle')"
+  />
 </template>
 
 <script setup lang="ts">
-import type { QTable, QTableColumn } from 'quasar'
+import type { QTableColumn } from 'quasar'
 import { useQuasar } from 'quasar'
 import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
+import NotamOptions from 'src/components/NotamOptions.vue'
+import NotamTable from 'src/components/NotamTable.vue'
+import NotamTextAreaDialog from 'src/components/NotamTextAreaDialog.vue'
 import { NOTAM } from 'src/components/notamUtils'
 import { findFirstRegex } from 'src/components/stringUtils'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
 const { t } = useI18n()
+
+const tab = ref('mapConfig')
 
 function pageStyleFn(offset: number, height: number) {
   return { height: `${height - offset}px` }
 }
 
 // Display configuration
-const shownPanel = ref<'map' | 'notamInput' | 'aipInput'>('map')
-const selectedTab = ref('notamTab')
+const showAipEdit = ref<boolean>(false)
+const showNotamEdit = ref<boolean>(false)
+
+const isPortrait = ref(window.innerHeight > window.innerWidth)
+
+const updateOrientation = () => {
+  isPortrait.value = window.innerHeight > window.innerWidth
+}
+
+onMounted(() => window.addEventListener('resize', updateOrientation))
+onUnmounted(() => window.removeEventListener('resize', updateOrientation))
 
 // AIP
 const inputAIPText = ref('')
 const parsedAIP = ref<AIP>()
 
 // NOTAMs
-const parsedNotams = ref<NOTAM[]>([])
-const selectedNotams = ref<NOTAM[]>([])
+const parsedNotams = ref<NOTAM[]>()
+const selectedNotams = ref<NOTAM[]>()
 const hoveredNotam = ref<NOTAM>()
 const focusedNotam = ref<NOTAM>()
-const notamSelectAll = ref<boolean | null>(true)
 const inputNOTAMText = ref()
 const ignoreLargeNotams = ref<boolean>(true)
 const maxNotamRadius = ref<number>(100)
@@ -314,38 +240,10 @@ watch(inputNOTAMText, (newValue: string) => {
   handleNOTAMInput(newValue)
 })
 
-watch(notamSelectAll, (newState, oldState) => {
-  if (newState === true && oldState !== true) {
-    selectedNotams.value = parsedNotams.value
-    focusedNotam.value = undefined
-  } else if (newState === false && oldState !== false) {
-    selectedNotams.value = []
-    focusedNotam.value = undefined
-  }
-})
-
 watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
 
-watch(selectedNotams, (newSelection) => {
-  if (newSelection.length === parsedNotams.value.length) {
-    notamSelectAll.value = true
-  } else if (newSelection.length === 0) {
-    notamSelectAll.value = false
-  } else {
-    notamSelectAll.value = null
-  }
-})
-
-function notamRowId(notam: NOTAM): string {
-  return `notam-row-${notam.id}`
-}
-
-watch(focusedNotam, (newSelection) => {
-  if (newSelection) {
-    document
-      .getElementById(notamRowId(newSelection))
-      ?.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'start' })
-  }
+watch(focusedNotam, () => {
+  tab.value = tab.value == 'mapConfig' ? 'map' : 'mapConfig'
 })
 
 function handleAIPInput(fullText: string): void {
@@ -369,7 +267,7 @@ function handleNOTAMInput(fullText: string): void {
 }
 
 function updateSelectedNotams() {
-  let notams = parsedNotams.value
+  let notams = parsedNotams.value ?? []
   if (!notams) {
     selectedNotams.value = []
   }
@@ -420,26 +318,6 @@ function parseNotams(fullText: string): NOTAM[] {
 </script>
 
 <style lang="css">
-.notam-table {
-  overflow: auto;
-}
-
-.notam-table .q-table__top,
-.notam-table .q-table__bottom,
-.notam-table thead tr:first-child th {
-  /* bg color is important for th; just specify one */
-  background-color: #ffffff;
-}
-
-.notam-table thead tr th {
-  position: sticky;
-  z-index: 1;
-}
-
-.notam-table thead tr:first-child th {
-  top: 0;
-}
-
 .map-container {
   position: relative;
   width: 100%;
@@ -448,20 +326,5 @@ function parseNotams(fullText: string): NOTAM[] {
   bottom: 0;
   left: 0;
   right: 0;
-}
-
-.map-input-overlay {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 5000; /* Ensure it appears above the map and its controls */
-  background: white;
-  margin: 0;
-  padding: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -28,7 +28,7 @@ under the License.
 
         <q-toolbar-title> {{ $t('mainTitle') }} </q-toolbar-title>
 
-        <q-tabs>
+        <q-tabs outside-arrows mobile-arrows style="max-width: 66vw">
           <q-route-tab :label="$t('notamMapperTitle')" to="/notam-mapper" exact />
           <q-route-tab :label="$t('fuelComputerTitle')" to="/fuel-computer" exact />
           <q-route-tab :label="$t('timestampTitle')" to="/timestamp" exact />
