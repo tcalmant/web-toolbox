@@ -40,7 +40,14 @@ export function dateToString(date: Date, tzName: string): string {
   // Convert to FR locale: DD/MM/YYYY HH:mm:ss
   const formatter = new Intl.DateTimeFormat('en-US', options)
 
-  const partsArray = formatter.formatToParts(date)
+  let partsArray
+  try {
+    partsArray = formatter.formatToParts(date)
+  } catch (e) {
+    console.error(`Error parsing date: ${(e as Error).message}`)
+    return ''
+  }
+
   const parts: Record<string, string> = {}
   for (const item of partsArray) {
     parts[item.type] = item.value
@@ -72,7 +79,13 @@ export function formatTzOffset(date: Date, tzName: string): string {
   }
 
   const formatter = new Intl.DateTimeFormat(undefined, options)
-  const formattedDate = formatter.format(date)
+  let formattedDate
+  try {
+    formattedDate = formatter.format(date)
+  } catch (e) {
+    console.error(`Error computing timezone offset: ${(e as Error).message}`)
+    return ''
+  }
 
   const utcIdx = formattedDate.indexOf('UTC')
   if (utcIdx == -1) {
