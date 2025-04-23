@@ -19,11 +19,15 @@ export default {
   // Language description
   languageName: 'Français',
   languageSwitch: "Langue d'affichage",
+
   // Main layout
   mainTitle: "Tom's Toolbox",
   notamMapperTitle: 'Carte NOTAM',
   fuelComputerTitle: 'Carburant',
   timestampTitle: 'Dates',
+
+  // Common ARIA-related sentences
+  toggleSelectAll: 'Alterner la sélection intégrale',
 
   // Drawer
   aviationLinks: 'Aviation',
@@ -40,6 +44,7 @@ export default {
   notamEditLabel: 'Éditer les NOTAM',
   notamEditTitle: 'Édition des NOTAM',
   notamFilterLarge: 'Ignorer les NOTAM étendus',
+  notamFilterLargeSliderAria: 'Rayon maximum des NOTAM à afficher (en milles nautiques)',
   notamFilterLocated: "N'afficher que les NOTAM avec description d'objet(s)",
   notamFilterShowArea: "Afficher la zone d'influence",
   notamLimitLow: 'Plancher',
@@ -48,6 +53,7 @@ export default {
   notamTrafic: 'Traffic',
   notamObject: 'Objet',
   notamScope: 'Périmètre',
+  toggleSelectNotam: 'Alterner la sélection du NOTAM {notam}',
   aipEntriesLabel: 'AIP à analyser',
   aipEditLabel: 'Éditer les AIP',
   aipEditTitle: 'Édition des AIP',

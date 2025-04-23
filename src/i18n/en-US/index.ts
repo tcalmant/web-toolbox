@@ -26,6 +26,9 @@ export default {
   fuelComputerTitle: 'Fuel computer',
   timestampTitle: 'Timestamp',
 
+  // Common ARIA-related sentences
+  toggleSelectAll: 'Toggle table selection',
+
   // Drawer
   aviationLinks: 'Aviation links',
   siaLinkSubtitle: 'French source for SUP-AIP and VAC',
@@ -41,6 +44,7 @@ export default {
   notamEditLabel: 'Set NOTAM',
   notamEditTitle: 'Set NOTAM content',
   notamFilterLarge: 'Ignore large NOTAM',
+  notamFilterLargeSliderAria: 'Maximum radius of shown NOTAM (in nautical miles)',
   notamFilterLocated: 'Only show NOTAM with located items',
   notamFilterShowArea: 'Show area of influence',
   notamLimitLow: 'Lower limit',
@@ -49,6 +53,7 @@ export default {
   notamTrafic: 'Trafic',
   notamObject: 'Object',
   notamScope: 'Scope',
+  toggleSelectNotam: 'Toggle selection of NOTAM {notam}',
   aipEntriesLabel: 'AIP entries',
   aipEditLabel: 'Set AIP',
   aipEditTitle: 'Set AIP content',

@@ -33,7 +33,11 @@ under the License.
     <template v-slot:header="props">
       <q-tr :props="props">
         <q-th>
-          <q-checkbox indeterminate-value="null" v-model="notamSelectAll" />
+          <q-checkbox
+            indeterminate-value="null"
+            v-model="notamSelectAll"
+            aria-label="{{ $t('selectAll') }}"
+          />
         </q-th>
         <q-th></q-th>
         <q-th v-for="col in props.cols" :key="col.name" :props="props">
@@ -50,7 +54,10 @@ under the License.
         "
       >
         <q-td>
-          <q-checkbox v-model="props.selected" />
+          <q-checkbox
+            v-model="props.selected"
+            :aria-label="$t('toggleSelectNotam', { notam: (props.row as NOTAM).id })"
+          />
         </q-td>
         <q-td auto-width>
           <q-btn
