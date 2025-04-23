@@ -94,7 +94,7 @@ under the License.
 
 <script setup lang="ts">
 import { type QTableColumn } from 'quasar'
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { type NOTAM } from './notamUtils'
 
 const notamColumns = defineModel<QTableColumn[]>('notamColumns')
@@ -104,6 +104,14 @@ const hoveredNotam = defineModel<NOTAM | undefined>('hoveredNotam')
 const focusedNotam = defineModel<NOTAM | undefined>('focusedNotam')
 
 const notamSelectAll = ref<boolean | null>(true)
+
+onMounted(() => {
+  if (focusedNotam.value) {
+    document
+      .getElementById(notamRowId(focusedNotam.value))
+      ?.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'start' })
+  }
+})
 
 watch(notamSelectAll, (newState, oldState) => {
   if (newState === true && oldState !== true) {
