@@ -24,7 +24,14 @@ under the License.
   <q-layout view="hHh Lpr lFf">
     <q-header elevated class="print-hide">
       <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menu"
+          @click="leftDrawerOpen = !leftDrawerOpen"
+        />
 
         <q-toolbar-title> {{ $t('mainTitle') }} </q-toolbar-title>
 
@@ -36,18 +43,7 @@ under the License.
       </q-toolbar>
     </q-header>
 
-    <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered overlay>
-      <q-list>
-        <q-item-label header> {{ t('aviationLinks') }} </q-item-label>
-        <EssentialLink v-for="link in aviationLinks" :key="link.id" v-bind="link" />
-      </q-list>
-      <q-list>
-        <q-item-label header> {{ t('projectLinks') }} </q-item-label>
-        <EssentialLink v-for="link in projectLinks" :key="link.id" v-bind="link" />
-      </q-list>
-
-      <LanguageSwitcher style="position: absolute; bottom: 0" />
-    </q-drawer>
+    <MainDrawer v-model="leftDrawerOpen" />
 
     <q-page-container>
       <router-view />
@@ -56,57 +52,8 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue'
-import LanguageSwitcher from 'src/components/LanguageSwitcher.vue'
+import MainDrawer from 'src/components/MainDrawer.vue'
 import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-
-const { t } = useI18n()
-
-const aviationLinks: EssentialLinkProps[] = [
-  {
-    id: 'sia',
-    title: "Service de l'Information Aéronautique",
-    captionKey: 'siaLinkSubtitle',
-    icon: 'info',
-    link: 'https://www.sia.aviation-civile.gouv.fr/',
-  },
-  {
-    id: 'sofia',
-    title: 'Sofia Briefing',
-    captionKey: 'sofiaLinkSubtitle',
-    icon: 'timer',
-    link: 'https://sofia-briefing.aviation-civile.gouv.fr/',
-  },
-  {
-    id: 'aeroweb',
-    title: 'AeroWeb',
-    captionKey: 'aerowebLinkSubtitle',
-    icon: 'cloud',
-    link: 'https://aviation.meteo.fr/',
-  },
-]
-
-const projectLinks: EssentialLinkProps[] = [
-  {
-    id: 'bugReport',
-    titleKey: 'reportLink',
-    captionKey: 'reportLinkSubtitle',
-    icon: 'feedback',
-    link: 'https://github.com/tcalmant/web-toolbox/issues',
-  },
-  {
-    id: 'src',
-    titleKey: 'srcLink',
-    caption: 'github.com/tcalmant/web-toolbox',
-    icon: 'code',
-    link: 'https://github.com/tcalmant/web-toolbox',
-  },
-]
 
 const leftDrawerOpen = ref(false)
-
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value
-}
 </script>
