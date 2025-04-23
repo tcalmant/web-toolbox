@@ -52,7 +52,7 @@ export default defineConfig(() => {
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
       // publicPath: '/',
-      publicPath: '',
+      publicPath: process.env.PUBLIC_PATH || '',
       // analyze: true,
       // env: {},
       // rawDefine: {}
@@ -168,10 +168,10 @@ export default defineConfig(() => {
     pwa: {
       workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
       // swFilename: 'sw.js',
-      // manifestFilename: 'manifest.json',
+      manifestFilename: 'manifest.webmanifest',
       // extendManifestJson (json) {},
       // useCredentialsForManifestTag: true,
-      // injectPwaMetaTags: false,
+      // injectPwaMetaTags: true,
       // extendPWACustomSWConf (esbuildConf) {},
       // extendGenerateSWOptions (cfg) {},
       // extendInjectManifestOptions (cfg) {}
