@@ -25,6 +25,8 @@ export default {
   notamMapperTitle: 'NOTAM mapper',
   fuelComputerTitle: 'Fuel computer',
   timestampTitle: 'Timestamp',
+  aboutTitle: 'About',
+  helpTitle: 'Help',
 
   // Common ARIA-related sentences
   toggleSelectAll: 'Toggle table selection',

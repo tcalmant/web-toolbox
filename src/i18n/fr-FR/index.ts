@@ -25,6 +25,8 @@ export default {
   notamMapperTitle: 'Carte NOTAM',
   fuelComputerTitle: 'Carburant',
   timestampTitle: 'Dates',
+  aboutTitle: 'À propos',
+  helpTitle: 'Aide',
 
   // Common ARIA-related sentences
   toggleSelectAll: 'Alterner la sélection intégrale',

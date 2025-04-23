@@ -26,6 +26,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'timestamp', component: () => import('pages/TimestampPage.vue') },
       { path: 'fuel-computer', component: () => import('src/pages/FuelComputerPage.vue') },
       { path: 'notam-mapper', component: () => import('src/pages/NotamMapperPage.vue') },
+      { path: 'about', component: () => import('src/pages/AboutPage.vue') },
+      { path: 'help', component: () => import('src/pages/HelpPage.vue') },
     ],
   },
 

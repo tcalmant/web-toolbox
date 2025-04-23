@@ -72,6 +72,18 @@ const aviationLinks: EssentialLinkProps[] = [
 
 const projectLinks: EssentialLinkProps[] = [
   {
+    id: 'about',
+    titleKey: 'aboutTitle',
+    icon: 'info',
+    link: '#/about',
+  },
+  {
+    id: 'help',
+    titleKey: 'helpTitle',
+    icon: 'help',
+    link: '#/help',
+  },
+  {
     id: 'bugReport',
     titleKey: 'reportLink',
     captionKey: 'reportLinkSubtitle',
