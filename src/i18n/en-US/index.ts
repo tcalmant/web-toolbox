@@ -80,6 +80,7 @@ export default {
   resultEstimatedFuel: 'Estimated remaining fuel',
   resultEstimatedUsableFuel: 'Estimated usable fuel',
   resultEstimatedRemainingTime: 'Estimated remaining flight time',
+  printEditedOn: 'Edited on: {date}',
 
   liter: 'liters',
   us_gal: 'US Gal',

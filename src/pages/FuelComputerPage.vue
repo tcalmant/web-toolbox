@@ -69,14 +69,18 @@ under the License.
       </div>
       <div class="row q-gutter-md print-only">
         <span v-if="planeIdent" class="col-1">{{ planeIdent }}</span>
-        <span class="col"
-          >Fuel Consumption: {{ fuelPerHour }} {{ fuelUnit.label }}/h ({{
+        <span class="col">
+          {{ $t('fuelConsumptionLabel') }}: {{ fuelPerHour }} {{ $t(fuelUnit.label) }}/h ({{
             fuelPerMinutes.toFixed(2)
           }}
-          {{ fuelUnit.label }}/min)</span
-        >
-        <span class="col">Fuel capacity: {{ fuelCapacity }}&nbsp;{{ fuelUnit.label }}</span>
-        <span class="col">Consumable fuel: {{ fuelConsumable }}&nbsp;{{ fuelUnit.label }}</span>
+          {{ $t(fuelUnit.label) }}/min)
+        </span>
+        <span class="col">
+          {{ $t('fuelCapacityLabel') }}: {{ fuelCapacity }}&nbsp;{{ $t(fuelUnit.label) }}
+        </span>
+        <span class="col">
+          {{ $t('fuelConsumableLabel') }}: {{ fuelConsumable }}&nbsp;{{ $t(fuelUnit.label) }}
+        </span>
       </div>
       <q-separator />
       <div class="q-gutter-md">
@@ -157,7 +161,7 @@ under the License.
     </div>
   </q-page>
   <q-footer class="print-only">
-    <p>Edited on {{ new Date().toLocaleString() }}</p>
+    <p>{{ $t('printEditedOn', { date: new Date().toLocaleString() }) }}</p>
   </q-footer>
 </template>
 

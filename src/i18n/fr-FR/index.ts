@@ -80,6 +80,7 @@ export default {
   resultEstimatedFuel: 'Carburant restant estimé',
   resultEstimatedUsableFuel: 'Carburant restant utilisable estimé',
   resultEstimatedRemainingTime: 'Temps de vol restant estimé',
+  printEditedOn: "Date d'édition: {date}",
 
   liter: 'litres',
   us_gal: 'gal US',
