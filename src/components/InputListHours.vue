@@ -41,9 +41,9 @@ under the License.
             <span v-show="errorMessage" class="text-negative">{{ errorMessage }}</span>
           </div>
           <q-separator />
-          <q-btn class="col-1" icon="add" type="submit" />
+          <q-btn class="col-1" icon="add" type="submit" :title="$t('addEntry')" />
           <q-separator />
-          <q-btn class="col-1" @mousedown.prevent @click="onDeleteAll()">
+          <q-btn class="col-1" @mousedown.prevent @click="onDeleteAll()" :title="$t('deleteAll')">
             <q-icon name="delete_forever" color="negative" />
           </q-btn>
         </div>
@@ -64,7 +64,12 @@ under the License.
           </q-item-section>
           <q-item-section side> {{ Math.ceil(value.duration_s / 60) }}&nbsp;min </q-item-section>
           <q-item-section side class="print-hide">
-            <q-icon name="delete" color="negative" @click="onDelete(idx)" />
+            <q-icon
+              name="delete"
+              color="negative"
+              @click="onDelete(idx)"
+              :title="$t('deleteRow')"
+            />
           </q-item-section>
         </q-item>
       </q-list>

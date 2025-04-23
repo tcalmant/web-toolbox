@@ -28,6 +28,9 @@ export default {
 
   // Common ARIA-related sentences
   toggleSelectAll: 'Toggle table selection',
+  addEntry: 'Add entry',
+  deleteAll: 'Delete all',
+  deleteRow: 'Delete row',
 
   // Drawer
   aviationLinks: 'Aviation links',

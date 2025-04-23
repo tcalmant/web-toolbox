@@ -28,6 +28,9 @@ export default {
 
   // Common ARIA-related sentences
   toggleSelectAll: 'Alterner la sélection intégrale',
+  addEntry: 'Ajouter une entrée',
+  deleteAll: 'Tout supprimer',
+  deleteRow: 'Supprimer la ligne',
 
   // Drawer
   aviationLinks: 'Aviation',
