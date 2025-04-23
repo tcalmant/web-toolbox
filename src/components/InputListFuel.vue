@@ -71,6 +71,7 @@ under the License.
             <q-icon
               name="delete"
               color="negative"
+              style="cursor: pointer"
               @click="onDelete(idx)"
               :title="$t('deleteRow')"
             />
