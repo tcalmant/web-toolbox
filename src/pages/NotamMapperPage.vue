@@ -57,38 +57,43 @@ under the License.
       <q-tab name="mapConfig" :label="$t('notamTabConfigurationTitle')" />
     </q-tabs>
     <q-separator />
-    <q-tab-panels v-model="tab">
-      <q-tab-panel name="map" style="height: 80vh">
-        <div class="map-container">
-          <MapView
-            v-model:notam-list="selectedNotams as NOTAM[] | undefined"
-            v-model:notam-focus="focusedNotam"
-            v-model:aip="parsedAIP"
-            v-model:show-area-of-influence="showAreaOfInfluence"
-            v-model:hovered-notam="hoveredNotam"
-          />
-        </div>
-      </q-tab-panel>
-      <q-tab-panel name="mapConfig">
-        <div class="col column no-wrap">
-          <NotamOptions
-            v-model:ignore-large-notams="ignoreLargeNotams"
-            v-model:max-notam-radius="maxNotamRadius"
-            v-model:only-with-positions="onlyWithPositions"
-            v-model:show-area-of-influence="showAreaOfInfluence"
-            @show-notam-edit="showNotamEdit = true"
-            @show-aip-edit="showAipEdit = true"
-          />
-          <NotamTable
-            v-model:focused-notam="focusedNotam"
-            v-model:hovered-notam="hoveredNotam"
-            v-model:notam-columns="notamColumns"
-            v-model:parsed-notams="parsedNotams"
-            v-model:selected-notams="selectedNotams"
-          />
-        </div>
-      </q-tab-panel>
-    </q-tab-panels>
+    <div
+      class="scroll"
+      style="position: absolute; bottom: 0ex; left: 0; right: 0; max-height: 85vh"
+    >
+      <q-tab-panels v-model="tab">
+        <q-tab-panel name="map" style="height: 85vh">
+          <div class="map-container">
+            <MapView
+              v-model:notam-list="selectedNotams as NOTAM[] | undefined"
+              v-model:notam-focus="focusedNotam"
+              v-model:aip="parsedAIP"
+              v-model:show-area-of-influence="showAreaOfInfluence"
+              v-model:hovered-notam="hoveredNotam"
+            />
+          </div>
+        </q-tab-panel>
+        <q-tab-panel name="mapConfig">
+          <div class="col column no-wrap">
+            <NotamOptions
+              v-model:ignore-large-notams="ignoreLargeNotams"
+              v-model:max-notam-radius="maxNotamRadius"
+              v-model:only-with-positions="onlyWithPositions"
+              v-model:show-area-of-influence="showAreaOfInfluence"
+              @show-notam-edit="showNotamEdit = true"
+              @show-aip-edit="showAipEdit = true"
+            />
+            <NotamTable
+              v-model:focused-notam="focusedNotam"
+              v-model:hovered-notam="hoveredNotam"
+              v-model:notam-columns="notamColumns"
+              v-model:parsed-notams="parsedNotams"
+              v-model:selected-notams="selectedNotams"
+            />
+          </div>
+        </q-tab-panel>
+      </q-tab-panels>
+    </div>
   </q-page>
 
   <NotamTextAreaDialog
