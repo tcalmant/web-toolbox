@@ -99,7 +99,10 @@ const props = withDefaults(
 )
 const totalQuantity = defineModel<FuelQuantity>()
 
-const allValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
+const allValues = defineModel<FuelQuantity[]>('entries', {
+  default: [new FuelQuantity(0)],
+  required: false,
+})
 const inputValue = ref(Math.min(50, props.fuelCapacity.value.scalar))
 const inputUnit = ref(LITER)
 const fuelInputField = ref<QInput>()

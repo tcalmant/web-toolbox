@@ -113,10 +113,16 @@ under the License.
           :label="$t('tablesPrintOption')"
         />
         <div class="row q-gutter-md" :class="{ 'print-hide': !printInputTables }">
-          <InputListHours class="col" v-model="totalFlightDuration" :title="$t('tableTimeTitle')" />
+          <InputListHours
+            class="col"
+            v-model="totalFlightDuration"
+            v-model:entries="flightTimes"
+            :title="$t('tableTimeTitle')"
+          />
           <InputListFuel
             class="col"
             v-model="totalAddedFuel"
+            v-model:entries="fuelValues"
             :global-fuel-unit="fuelUnit"
             :fuel-capacity="typedFuelCapacity"
             :title="$t('tableFuelTitle')"
@@ -131,12 +137,17 @@ under the License.
         <q-separator />
         <q-tab-panels v-model="tab">
           <q-tab-panel name="flightTimeTable">
-            <InputListHours class="col" v-model="totalFlightDuration" />
+            <InputListHours
+              class="col"
+              v-model="totalFlightDuration"
+              v-model:entries="flightTimes"
+            />
           </q-tab-panel>
           <q-tab-panel name="fuelTable">
             <InputListFuel
               class="col"
               v-model="totalAddedFuel"
+              v-model:entries="fuelValues"
               :global-fuel-unit="fuelUnit"
               :fuel-capacity="typedFuelCapacity"
             />
@@ -212,9 +223,11 @@ const typedNonUsableFuel = computed(() => typedFuelCapacity.value.sub(typedFuelC
 
 // Informative
 const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
+const fuelValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
 
 // Flight duration
 const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
+const flightTimes = ref<TimePeriod[]>([new TimePeriod(0)])
 
 // Description updates
 watch(planeIdent, (newValue) =>
