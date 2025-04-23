@@ -29,6 +29,7 @@ under the License.
           <div class="col">
             <q-input
               ref="fuelInputField"
+              :label="$t('fuelInputLabel')"
               v-model.number="inputValue"
               type="number"
               inputmode="numeric"

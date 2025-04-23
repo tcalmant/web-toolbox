@@ -29,6 +29,7 @@ under the License.
           <div class="col">
             <q-input
               ref="valueInputField"
+              :label="$t('timeInputLabel')"
               v-model="inputValue"
               inputmode="numeric"
               mask="#:##"
