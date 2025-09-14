@@ -291,7 +291,7 @@ export class NOTAM {
       const lon = parseQAngle(strLon, strLonEW)
 
       let kind: PositionKind
-      const strKind = match.groups['psnFr'] ?? match.groups['psnEn']
+      const strKind = (match.groups['psnFr'] ?? match.groups['psnEn'])?.trim()?.toUpperCase()
       if (strKind !== undefined && ['AVG', 'AVERAGE', 'MOYENNE'].includes(strKind)) {
         kind = 'AVG'
       } else {

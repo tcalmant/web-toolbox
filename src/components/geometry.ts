@@ -45,9 +45,9 @@ export class Position {
         return L.circle(this.location, {
           radius: 1,
           color: 'maroon',
-          fillColor: '#30f',
+          fillColor: '#800',
           fillOpacity: 0.5,
-          weight: 5,
+          weight: 2,
         })
       default:
         return null
