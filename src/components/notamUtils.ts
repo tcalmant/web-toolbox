@@ -254,12 +254,16 @@ export class NOTAM {
 
     for (let row of header.split('\n')) {
       row = row.trim()
-      const match = row.match(/^([A-Za-z0-9/-]{4,})$/)
+      const match = row.match(/([A-Za-z0-9/-]{4,})$/)
       if (match != null && match[1]) {
         return match[1]
       }
     }
     return idx.toString()
+  }
+
+  knownPoint(knownPoints: LatLng[], point: LatLng): boolean {
+    return knownPoints.find((p) => p.equals(point, 1e-5)) !== undefined
   }
 
   findPolygons(text: string | undefined): Layer[] {
@@ -340,6 +344,9 @@ export class NOTAM {
       layers.push(fixingLayer)
     }
 
+    // Concatenate known points to ignore them later
+    const allKnownPoints = foundPSNPoints.concat(foundFixingPoints)
+
     // Look for other locations
     const latLngPattern =
       /(?<lat>\d{4,6}(?:.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:.\d*)?)(?<lonEW>E|W)/g
@@ -374,11 +381,40 @@ export class NOTAM {
 
       const separator = text.substring(lastEndIdx, match.index - 1).trim()
       // Consider spaces, commas and "TO" as polygon separators
-      if (separator.length != 0 && !separator.match(/\s*(?:AS|FROM|TO|AT|,|;|-)\s*$/)) {
-        // Found text between previous and current number
-        const layer = new Polygon(currentList).toLayer()
-        if (layer !== null) {
-          layers.push(layer)
+      if (
+        lastEndIdx != 0 &&
+        separator.length != 0 &&
+        !separator.match(/\s*(?:AS|FROM|TO|AT|,|;|-)\s*$/)
+      ) {
+        // Found text between previous and current number: consider the current list as a polygon
+        if (currentList.length == 1) {
+          // Check if the point is already represented as a position
+          if (!this.knownPoint(allKnownPoints, currentList[0]!)) {
+            // New point detected
+            const layer = new Position('POINT', currentList[0]!).toLayer()
+            if (layer !== null) {
+              layers.push(layer)
+            }
+          }
+        } else if (currentList.length == 2) {
+          // Check if the line is already represented as a fixing
+          if (
+            !this.knownPoint(allKnownPoints, currentList[0]!) &&
+            !this.knownPoint(allKnownPoints, currentList[1]!)
+          ) {
+            // New line detected
+            const layer = new Line(currentList).toLayer()
+            if (layer !== null) {
+              console.log('Adding line with %d points', currentList.length)
+              console.log(currentList)
+              layers.push(layer)
+            }
+          }
+        } else if (currentList.length > 2) {
+          const layer = new Polygon(currentList).toLayer()
+          if (layer !== null) {
+            layers.push(layer)
+          }
         }
 
         currentList = []
