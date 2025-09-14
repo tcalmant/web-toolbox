@@ -128,5 +128,21 @@ describe('Q section parser', () => {
     section = new SectionQ('LFMM / QPLLT / V / M / A / 000/999 / 8000N19050E005')
     expect(section.center).toBeNull()
     expect(section.radiusNM).toBeNull()
+
+    section = new SectionQ('LFMM / QPLLT / V / M / A / 000/999 / 484100213E001')
+    expect(section.center).toBeNull()
+    expect(section.radiusNM).toBeNull()
+
+    section = new SectionQ('LFMM / QPLLT / V / M / A / 000/999 / 48410N0213001')
+    expect(section.center).toBeNull()
+    expect(section.radiusNM).toBeNull()
+
+    section = new SectionQ('LFMM / QPLLT / V / M / A / 000/999 / 4841N00213E')
+    expect(section.center).toBeNull()
+    expect(section.radiusNM).toBeNull()
+
+    section = new SectionQ('LFMM / QPLLT / V / M / A / 000/999 / 484100213001')
+    expect(section.center).toBeNull()
+    expect(section.radiusNM).toBeNull()
   })
 })
