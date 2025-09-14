@@ -300,7 +300,7 @@ const resultRows = computed((): ResultRow[] => {
     new ResultRow('resultTotalFuelAdded', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
     new ResultRow(
       'resultEstimatedFuel',
-      `${totalRemainingFuel.value.toString(fuelUnit.value)}`,
+      `${totalRemainingFuel.value.toString(fuelUnit.value)} (${Math.floor(100.0 * totalRemainingFuel.value.value.div(typedFuelCapacity.value.value).scalar)} %)`,
       fuelLevelWarning,
       noFuelAlert,
     ),
