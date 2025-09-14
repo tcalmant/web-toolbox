@@ -36,7 +36,9 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
 
   // Ignore decimals on ultra-precise locations
   const dotIdx = strAngle.indexOf('.', nbDegreesDigits)
+  let extra = NaN
   if (dotIdx != -1) {
+    extra = parseFloat(strAngle.substring(dotIdx))
     strAngle = strAngle.substring(0, dotIdx)
   }
 
@@ -47,12 +49,18 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
   if (nextPart.length == 2) {
     // Minutes only
     minutes = parseInt(nextPart)
+    if (Number.isFinite(extra)) {
+      // Add decimal part as seconds
+      seconds = Math.round(extra * 60)
+    }
   } else if (nextPart.length == 4) {
     // Minutes and seconds
     minutes = parseInt(nextPart.substring(0, 2))
     seconds = parseInt(nextPart.substring(2))
-  } else {
-    console.warn("Couldn't parse minutes")
+    if (Number.isFinite(extra)) {
+      // Add decimal part to seconds
+      seconds += extra
+    }
   }
 
   const angle = degrees + minutes / 60 + seconds / 3600
@@ -69,7 +77,6 @@ function parseLocation(strLocation: string): LatLng | null {
   const match = /(\d+)(N|S)(\d+)(W|E)/.exec(strLocation)
   if (match == null) {
     // No location found in last segment
-    console.log('Invalid location %s', strLocation)
     return null
   }
 
@@ -78,11 +85,20 @@ function parseLocation(strLocation: string): LatLng | null {
   const lonNumbers = match[3]
   const lonEW = match[4]
   if (!latNumbers || !latNS || !lonNumbers || !lonEW) {
-    console.warn('Invalid location %s', strLocation)
     return null
   }
 
-  return new LatLng(parseQAngle(latNumbers, latNS), parseQAngle(lonNumbers, lonEW))
+  const latitude = parseQAngle(latNumbers, latNS)
+  if (isNaN(latitude) || Math.abs(latitude) > 90) {
+    return null
+  }
+
+  const longitude = parseQAngle(lonNumbers, lonEW)
+  if (isNaN(longitude) || Math.abs(longitude) > 180) {
+    return null
+  }
+
+  return new LatLng(latitude, longitude)
 }
 
 export class SectionA {
@@ -106,6 +122,15 @@ export class SectionQ {
 
   constructor(sectionText: string) {
     const parts = sectionText.split('/').map((s) => s.trim())
+    if (parts.length != 8) {
+      throw new Error('Invalid Q section: ' + sectionText)
+    }
+
+    if (parts.map((p) => p?.length != 0).filter((p) => p).length === 0) {
+      // All parts are empty
+      throw new Error('Empty Q section')
+    }
+
     this.fir = parts[0] ?? ''
     this.qCode = parts[1] ?? null
     this.trafic = parts[2] ?? null
@@ -131,7 +156,6 @@ export class SectionQ {
     const match = pattern.exec(locationPart)
     if (match == null) {
       // No location found in last segment
-      console.log('No match with location', locationPart)
       return { center: null, radius: null }
     }
 
@@ -143,7 +167,6 @@ export class SectionQ {
     // Check radius
     const rawRadius = match[5]
     if (rawRadius == undefined) {
-      console.error('No radius found in Q section')
       return { center: null, radius: null }
     }
 
@@ -223,12 +246,16 @@ export class NOTAM {
 
     for (let row of header.split('\n')) {
       row = row.trim()
-      const match = row.match(/^([A-Za-z0-9/-]{4,})$/)
+      const match = row.match(/([A-Za-z0-9/-]{4,})$/)
       if (match != null && match[1]) {
         return match[1]
       }
     }
     return idx.toString()
+  }
+
+  knownPoint(knownPoints: LatLng[], point: LatLng): boolean {
+    return knownPoints.find((p) => p.equals(point, 1e-5)) !== undefined
   }
 
   findPolygons(text: string | undefined): Layer[] {
@@ -249,7 +276,6 @@ export class NOTAM {
     while ((match = psnPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
-        console.warn('Match but no groups for position %s', match[0])
         continue
       }
 
@@ -265,7 +291,7 @@ export class NOTAM {
       const lon = parseQAngle(strLon, strLonEW)
 
       let kind: PositionKind
-      const strKind = match.groups['psnFr'] ?? match.groups['psnEn']
+      const strKind = (match.groups['psnFr'] ?? match.groups['psnEn'])?.trim()?.toUpperCase()
       if (strKind !== undefined && ['AVG', 'AVERAGE', 'MOYENNE'].includes(strKind)) {
         kind = 'AVG'
       } else {
@@ -284,7 +310,7 @@ export class NOTAM {
     // Look for fixing
     const foundFixingPoints: LatLng[] = []
     const fixingPattern =
-      /(?:(?:ANCRAGE(?:\s+(?<ancrage>\w+))?)|(?:(?<fixing>\w+\s+)?FIXING))(\s+[^:]+)?\s*:\s*(?<lat>\d+)(?<latNS>N|S)\s*(?<lon>\d+)(?<lonEW>E|W)\s*(?:(?:ALTITUDE|ELEV)\s*(?<alt>\d+)\s*(?<altUnit>FT|M))?/g
+      /(?:(?:ANCRAGE(?:\s+(?<ancrage>\w+))?)|(?:(?<fixing>\w+\s+)?FIXING))[\W]*(?<lat>\d+(\.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(\.\d+)?)(?<lonEW>E|W)\s*(?:(?:ALTITUDE|ELEV)\s*(?<alt>\d+)\s*(?<altUnit>FT|M))?/g
     while ((match = fixingPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
@@ -308,6 +334,9 @@ export class NOTAM {
     if (fixingLayer !== null) {
       layers.push(fixingLayer)
     }
+
+    // Concatenate known points to ignore them later
+    const allKnownPoints = foundPSNPoints.concat(foundFixingPoints)
 
     // Look for other locations
     const latLngPattern =
@@ -333,25 +362,57 @@ export class NOTAM {
       const lon = parseQAngle(strLon, strLonEW)
       const latLng = new LatLng(lat, lon)
 
-      if (foundPSNPoints.includes(latLng) || foundFixingPoints.includes(latLng)) {
+      if (this.knownPoint(allKnownPoints, latLng)) {
         // Ignore known points
         continue
       }
 
-      // Store the new point
-      currentList.push(latLng)
-
       const separator = text.substring(lastEndIdx, match.index - 1).trim()
       // Consider spaces, commas and "TO" as polygon separators
-      if (separator.length != 0 && !separator.match(/\s*(?:AS|FROM|TO|AT|,|;|-)\s*$/)) {
-        // Found text between previous and current number
-        const layer = new Polygon(currentList).toLayer()
-        if (layer !== null) {
-          layers.push(layer)
+      if (
+        lastEndIdx != 0 &&
+        separator.length != 0 &&
+        !separator.match(/\s*(?:AS|FROM|TO|AT|,|;|-)\s*$/)
+      ) {
+        // Found text between previous and current number: consider the current list as a polygon
+        if (currentList.length == 0) {
+          // Single point found between markers
+          currentList.push(latLng)
+        }
+
+        if (currentList.length == 1) {
+          // Check if the point is already represented as a position
+          if (!this.knownPoint(allKnownPoints, currentList[0]!)) {
+            // New point detected
+            const layer = new Position('POINT', currentList[0]!).toLayer()
+            if (layer !== null) {
+              layers.push(layer)
+            }
+          }
+        } else if (currentList.length == 2) {
+          // Check if the line is already represented as a fixing
+          if (
+            !this.knownPoint(allKnownPoints, currentList[0]!) &&
+            !this.knownPoint(allKnownPoints, currentList[1]!)
+          ) {
+            // New line detected
+            const layer = new Line(currentList).toLayer()
+            if (layer !== null) {
+              layers.push(layer)
+            }
+          }
+        } else if (currentList.length > 2) {
+          const layer = new Polygon(currentList).toLayer()
+          if (layer !== null) {
+            layers.push(layer)
+          }
         }
 
         currentList = []
       }
+
+      // Store the last point
+      currentList.push(latLng)
 
       lastEndIdx = match.index + match[0].length
     }
