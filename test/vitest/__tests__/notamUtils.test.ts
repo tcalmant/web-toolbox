@@ -210,7 +210,7 @@ describe('Known NOTAMs', () => {
 - E) CORRECTION DES COORDONNEES 'LTA FRANCE PARTIE 1'(REF ENR 2.1) LIRE : 510700N 0020000E 510521N 0023244E FRONTIERE FRANCO-BELGE 493247N 0054907E FRONTIERE FRANCO-LUXEMBOURGEOISE 492700N 0060000E 485700N 0044800E 481500N 0054400E 481000N 0051000E 472500N 0042000E 463000N 0045000E 463000N 0031600E 461943N 0025459E 454245N 0030016E 454249N 0025943E 443710N 0030226E 434254N 0024225E 431251N 0024224E 431521N 0023419E 430000N 0021630E 423528N 0024408E 422500N 0024255E FRONTIERE FRANCO-ESPAGNOLE 432100N 0014700W 433500N 0014700W 455853N 0013936W 461248N 0005631W 461818N 0004320W 463000N 0001500W 500000N 0001500W 504000N 0012800E 510000N 0012800E 510700N 0020000E
 `
 
-  const italianNotam = `
+  const italianGlidersNotam = `
 - LIIA-W1173/25
 - DU: 18 04 2025 09:00 AU: 27 04 2025 17:30
 - A) LIMM
@@ -240,7 +240,7 @@ E) MARBAIS 7 WIND TURBINES 503229N 0043047E - 503212N 0043123E -
 0042956E - 503149N 0043043E - 503212N 0043123E 119M AGL. OBST LGT U/S
 `
 
-  const faaShuttleNotam = `
+  const faaSpaceLaunchNotam = `
 !FDC 1/7006
 A) ZJX
 Q) .... / .... / IV / ... / ... / 000/999 / 2837N08030W030
@@ -632,5 +632,120 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(latlngs[8]!.lng).toBeCloseTo(1.467, 3)
     expect(latlngs[9]!.lat).toBeCloseTo(51.117, 3)
     expect(latlngs[9]!.lng).toBeCloseTo(2, 3)
+  })
+
+  it('should parse the Italian gliders NOTAM', () => {
+    const notam = new NOTAM(italianGlidersNotam, 8)
+    expect(notam.id).toEqual('LIIA-W1173/25')
+    expect(notam.sectionQ).not.toBeNull()
+    expect(notam.sectionQ?.fir).toEqual('LIMM')
+    expect(notam.sectionQ?.qCode).toEqual('QRTCA')
+    expect(notam.sectionQ?.trafic).toEqual('IV')
+    expect(notam.sectionQ?.object).toEqual('BO')
+    expect(notam.sectionQ?.scope).toEqual('W')
+    expect(notam.sectionQ?.limitLow).toEqual('000')
+    expect(notam.sectionQ?.limitHigh).toEqual('195')
+    expect(notam.sectionQ?.center).not.toBeNull()
+    expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.25)
+    expect(notam.sectionQ?.center?.lng).toBeCloseTo(7.8)
+    expect(notam.sectionQ?.center?.alt).toBeUndefined()
+    expect(notam.sectionQ?.radiusNM).toEqual(62)
+
+    // This NOTAM has upper/lower bound limit sections
+    expect(notam.rawSections.get('F')).not.toBeNull()
+    expect(notam.rawSections.get('F')).toEqual('GND')
+    expect(notam.rawSections.get('G')).not.toBeNull()
+    expect(notam.rawSections.get('G')).toEqual('FL195')
+
+    // We have a single polygon
+    expect(notam.polygons).not.toBeNull()
+    expect(notam.polygons.length).toEqual(1)
+    expect(notam.polygons[0] instanceof Polygon).toBeTruthy()
+    const polygon = notam.polygons[0] as Polygon
+    const polyLatLngs = polygon.getLatLngs() as LatLng[][]
+    expect(polyLatLngs.length).toEqual(1)
+    const latlngs = polyLatLngs[0] as LatLng[]
+
+    // The NOTAM text contains 12 points, but the first one is duplicated as the last one
+    expect(latlngs.length).toEqual(11)
+    expect(latlngs[0]!.lat).toBeCloseTo(46.202, 3)
+    expect(latlngs[0]!.lng).toBeCloseTo(8.242, 3)
+    expect(latlngs[1]!.lat).toBeCloseTo(46.216, 3)
+    expect(latlngs[1]!.lng).toBeCloseTo(8.322, 3)
+    expect(latlngs[2]!.lat).toBeCloseTo(46.135, 3)
+    expect(latlngs[2]!.lng).toBeCloseTo(8.466, 3)
+    expect(latlngs[3]!.lat).toBeCloseTo(45.884, 3)
+    expect(latlngs[3]!.lng).toBeCloseTo(8.458, 3)
+    expect(latlngs[4]!.lat).toBeCloseTo(45.29, 3)
+    expect(latlngs[4]!.lng).toBeCloseTo(7.505, 3)
+    expect(latlngs[5]!.lat).toBeCloseTo(45.106, 3)
+    expect(latlngs[5]!.lng).toBeCloseTo(7.483, 3)
+    expect(latlngs[6]!.lat).toBeCloseTo(44.89, 3)
+    expect(latlngs[6]!.lng).toBeCloseTo(7.318, 3)
+    expect(latlngs[7]!.lat).toBeCloseTo(44.653, 3)
+    expect(latlngs[7]!.lng).toBeCloseTo(7.393, 3)
+    expect(latlngs[8]!.lat).toBeCloseTo(44.363, 3)
+    expect(latlngs[8]!.lng).toBeCloseTo(7.864, 3)
+    expect(latlngs[9]!.lat).toBeCloseTo(44.314, 3)
+    expect(latlngs[9]!.lng).toBeCloseTo(7.303, 3)
+    expect(latlngs[10]!.lat).toBeCloseTo(45.075, 3)
+    expect(latlngs[10]!.lng).toBeCloseTo(6.711, 3)
+  })
+
+  it('should parse the FAA space launch NOTAM', () => {
+    const notam = new NOTAM(faaSpaceLaunchNotam, 9)
+    expect(notam.id).toEqual('1/7006')
+    expect(notam.sectionQ).not.toBeNull()
+    expect(notam.sectionQ?.fir).toEqual('....')
+    expect(notam.sectionQ?.qCode).toEqual('....')
+    expect(notam.sectionQ?.trafic).toEqual('IV')
+    expect(notam.sectionQ?.object).toEqual('...')
+    expect(notam.sectionQ?.scope).toEqual('...')
+    expect(notam.sectionQ?.limitLow).toEqual('000')
+    expect(notam.sectionQ?.limitHigh).toEqual('999')
+    expect(notam.sectionQ?.center).not.toBeNull()
+    expect(notam.sectionQ?.center?.lat).toBeCloseTo(28.617, 3)
+    expect(notam.sectionQ?.center?.lng).toBeCloseTo(-80.5, 3)
+    expect(notam.sectionQ?.center?.alt).toBeUndefined()
+    expect(notam.sectionQ?.radiusNM).toEqual(30)
+
+    // This NOTAM describes a polygon, then a circle, then a polygon.
+    // We are not able to parse the circle, as it's in natural language.
+    // It is seen as a single polygon as separating sentences all end with
+    // either AS, TO or AT, which are considered as continuation keywords.
+    // This behaviour may be improved in the future.
+
+    expect(notam.polygons).not.toBeNull()
+    expect(notam.polygons.length).toEqual(1)
+    expect(notam.polygons[0] instanceof Polygon).toBeTruthy()
+    const polygon = notam.polygons[0] as Polygon
+    const polyLatLngs = polygon.getLatLngs() as LatLng[][]
+    expect(polyLatLngs.length).toEqual(1)
+    const latlngs = polyLatLngs[0] as LatLng[]
+    expect(latlngs.length).toEqual(11)
+    expect(latlngs[0]!.lat).toBeCloseTo(28.854, 3)
+    expect(latlngs[0]!.lng).toBeCloseTo(-80.705, 3)
+    expect(latlngs[1]!.lat).toBeCloseTo(29.125, 3)
+    expect(latlngs[1]!.lng).toBeCloseTo(-80.5, 3)
+    // Center of the circle, detected as a polygon point
+    expect(latlngs[2]!.lat).toBeCloseTo(28.618, 3)
+    expect(latlngs[2]!.lng).toBeCloseTo(-80.613, 3)
+    // Back to polygon points
+    expect(latlngs[3]!.lat).toBeCloseTo(28.225, 3)
+    expect(latlngs[3]!.lng).toBeCloseTo(-80.267, 3)
+    expect(latlngs[4]!.lat).toBeCloseTo(28.417, 3)
+    expect(latlngs[4]!.lng).toBeCloseTo(-80.508, 3)
+    expect(latlngs[5]!.lat).toBeCloseTo(28.417, 3)
+    expect(latlngs[5]!.lng).toBeCloseTo(-80.633, 3)
+    expect(latlngs[6]!.lat).toBeCloseTo(28.417, 3)
+    expect(latlngs[6]!.lng).toBeCloseTo(-80.696, 3)
+    expect(latlngs[7]!.lat).toBeCloseTo(28.522, 3)
+    expect(latlngs[7]!.lng).toBeCloseTo(-80.73, 3)
+    expect(latlngs[8]!.lat).toBeCloseTo(28.634, 3)
+    expect(latlngs[8]!.lng).toBeCloseTo(-80.784, 3)
+    expect(latlngs[9]!.lat).toBeCloseTo(28.819, 3)
+    expect(latlngs[9]!.lng).toBeCloseTo(-80.846, 3)
+    expect(latlngs[10]!.lat).toBeCloseTo(28.854, 3)
+    expect(latlngs[10]!.lng).toBeCloseTo(-80.787, 3)
   })
 })

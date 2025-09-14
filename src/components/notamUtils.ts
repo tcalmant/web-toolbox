@@ -61,8 +61,6 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
       // Add decimal part to seconds
       seconds += extra
     }
-  } else {
-    console.warn("Couldn't parse minutes")
   }
 
   const angle = degrees + minutes / 60 + seconds / 3600
@@ -79,7 +77,6 @@ function parseLocation(strLocation: string): LatLng | null {
   const match = /(\d+)(N|S)(\d+)(W|E)/.exec(strLocation)
   if (match == null) {
     // No location found in last segment
-    console.log('Invalid location %s', strLocation)
     return null
   }
 
@@ -88,19 +85,16 @@ function parseLocation(strLocation: string): LatLng | null {
   const lonNumbers = match[3]
   const lonEW = match[4]
   if (!latNumbers || !latNS || !lonNumbers || !lonEW) {
-    console.warn('Invalid location %s', strLocation)
     return null
   }
 
   const latitude = parseQAngle(latNumbers, latNS)
   if (isNaN(latitude) || Math.abs(latitude) > 90) {
-    console.warn('Invalid latitude in location', strLocation)
     return null
   }
 
   const longitude = parseQAngle(lonNumbers, lonEW)
   if (isNaN(longitude) || Math.abs(longitude) > 180) {
-    console.warn('Invalid longitude in location', strLocation)
     return null
   }
 
@@ -162,7 +156,6 @@ export class SectionQ {
     const match = pattern.exec(locationPart)
     if (match == null) {
       // No location found in last segment
-      console.log('No match with location', locationPart)
       return { center: null, radius: null }
     }
 
@@ -174,7 +167,6 @@ export class SectionQ {
     // Check radius
     const rawRadius = match[5]
     if (rawRadius == undefined) {
-      console.error('No radius found in Q section')
       return { center: null, radius: null }
     }
 
@@ -284,7 +276,6 @@ export class NOTAM {
     while ((match = psnPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
-        console.warn('Match but no groups for position %s', match[0])
         continue
       }
 
