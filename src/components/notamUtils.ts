@@ -371,13 +371,10 @@ export class NOTAM {
       const lon = parseQAngle(strLon, strLonEW)
       const latLng = new LatLng(lat, lon)
 
-      if (foundPSNPoints.includes(latLng) || foundFixingPoints.includes(latLng)) {
+      if (this.knownPoint(allKnownPoints, latLng)) {
         // Ignore known points
         continue
       }
-
-      // Store the new point
-      currentList.push(latLng)
 
       const separator = text.substring(lastEndIdx, match.index - 1).trim()
       // Consider spaces, commas and "TO" as polygon separators
@@ -387,6 +384,11 @@ export class NOTAM {
         !separator.match(/\s*(?:AS|FROM|TO|AT|,|;|-)\s*$/)
       ) {
         // Found text between previous and current number: consider the current list as a polygon
+        if (currentList.length == 0) {
+          // Single point found between markers
+          currentList.push(latLng)
+        }
+
         if (currentList.length == 1) {
           // Check if the point is already represented as a position
           if (!this.knownPoint(allKnownPoints, currentList[0]!)) {
@@ -417,6 +419,9 @@ export class NOTAM {
 
         currentList = []
       }
+
+      // Store the last point
+      currentList.push(latLng)
 
       lastEndIdx = match.index + match[0].length
     }
