@@ -32,9 +32,26 @@ export class Position {
   }
 
   toLayer(): Layer | null {
-    return this.kind === 'POINT'
-      ? L.circle(this.location, { radius: 1, color: 'red', weight: 10 })
-      : null
+    switch (this.kind) {
+      case 'POINT':
+        return L.circle(this.location, {
+          radius: 1,
+          color: 'red',
+          fillColor: '#f03',
+          fillOpacity: 0.9,
+          weight: 10,
+        })
+      case 'AVG':
+        return L.circle(this.location, {
+          radius: 1,
+          color: 'maroon',
+          fillColor: '#30f',
+          fillOpacity: 0.5,
+          weight: 5,
+        })
+      default:
+        return null
+    }
   }
 }
 

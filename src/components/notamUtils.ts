@@ -319,7 +319,7 @@ export class NOTAM {
     // Look for fixing
     const foundFixingPoints: LatLng[] = []
     const fixingPattern =
-      /(?:(?:ANCRAGE(?:\s+(?<ancrage>\w+))?)|(?:(?<fixing>\w+\s+)?FIXING))(\s+[^:]+)?\s*:\s*(?<lat>\d+)(?<latNS>N|S)\s*(?<lon>\d+)(?<lonEW>E|W)\s*(?:(?:ALTITUDE|ELEV)\s*(?<alt>\d+)\s*(?<altUnit>FT|M))?/g
+      /(?:(?:ANCRAGE(?:\s+(?<ancrage>\w+))?)|(?:(?<fixing>\w+\s+)?FIXING))[\W]*(?<lat>\d+(\.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(\.\d+)?)(?<lonEW>E|W)\s*(?:(?:ALTITUDE|ELEV)\s*(?<alt>\d+)\s*(?<altUnit>FT|M))?/g
     while ((match = fixingPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
@@ -405,8 +405,6 @@ export class NOTAM {
             // New line detected
             const layer = new Line(currentList).toLayer()
             if (layer !== null) {
-              console.log('Adding line with %d points', currentList.length)
-              console.log(currentList)
               layers.push(layer)
             }
           }

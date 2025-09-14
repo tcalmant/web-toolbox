@@ -25,7 +25,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { NOTAM, SectionQ } from '../../../src/components/notamUtils'
-import { Polygon } from 'leaflet'
+import { Polygon, Polyline } from 'leaflet'
 import type { LatLng } from 'leaflet'
 import { Circle } from 'leaflet'
 
@@ -449,5 +449,78 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     // Duplicatioon of 2nd wind mill
     expect(latlngs[7]!.lat).toBeCloseTo(50.537, 3)
     expect(latlngs[7]!.lng).toBeCloseTo(4.523, 3)
+  })
+
+  it('should extract cables and high lines', () => {
+    let notam = new NOTAM(cableNotam, 5)
+    expect(notam.id).toEqual('LFFA-P4430/24')
+    expect(notam.sectionQ).not.toBeNull()
+    expect(notam.sectionQ?.fir).toEqual('LFMM')
+    expect(notam.sectionQ?.qCode).toEqual('QOBCE')
+    expect(notam.sectionQ?.trafic).toEqual('IV')
+    expect(notam.sectionQ?.object).toEqual('M')
+    expect(notam.sectionQ?.scope).toEqual('AE')
+    expect(notam.sectionQ?.limitLow).toEqual('000')
+    expect(notam.sectionQ?.limitHigh).toEqual('022')
+    expect(notam.sectionQ?.center).not.toBeNull()
+    expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.92)
+    expect(notam.sectionQ?.center?.lng).toBeCloseTo(6.2)
+    expect(notam.sectionQ?.center?.alt).toBeUndefined()
+    expect(notam.sectionQ?.radiusNM).toEqual(1)
+
+    expect(notam.polygons).not.toBeNull()
+    expect(notam.polygons.length).toEqual(2)
+
+    // First layer is the average location
+    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
+    let circle = notam.polygons[0] as Circle
+    expect(circle.getRadius()).toEqual(1)
+    let latlng = circle.getLatLng()
+    expect(latlng.lat).toBeCloseTo(45.913, 3)
+    expect(latlng.lng).toBeCloseTo(6.196, 3)
+
+    // Second layer is the cable itself
+    expect(notam.polygons[1] instanceof Polyline).toBeTruthy()
+    let polyline = notam.polygons[1] as Polyline
+    let latlngs = polyline.getLatLngs() as LatLng[]
+    expect(latlngs[0]!.lat).toBeCloseTo(45.913, 3)
+    expect(latlngs[0]!.lng).toBeCloseTo(6.198, 3)
+    expect(latlngs[1]!.lat).toBeCloseTo(45.913, 3)
+    expect(latlngs[1]!.lng).toBeCloseTo(6.195, 3)
+
+    notam = new NOTAM(highLineNotam, 6)
+    expect(notam.id).toEqual('LFFA-P1487/25')
+    expect(notam.sectionQ).not.toBeNull()
+    expect(notam.sectionQ?.fir).toEqual('LFMM')
+    expect(notam.sectionQ?.qCode).toEqual('QOBCE')
+    expect(notam.sectionQ?.trafic).toEqual('IV')
+    expect(notam.sectionQ?.object).toEqual('M')
+    expect(notam.sectionQ?.scope).toEqual('E')
+    expect(notam.sectionQ?.limitLow).toEqual('000')
+    expect(notam.sectionQ?.limitHigh).toEqual('059')
+    expect(notam.sectionQ?.center).not.toBeNull()
+    expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.85)
+    expect(notam.sectionQ?.center?.lng).toBeCloseTo(6.25)
+    expect(notam.sectionQ?.center?.alt).toBeUndefined()
+    expect(notam.sectionQ?.radiusNM).toEqual(1)
+
+    expect(notam.polygons).not.toBeNull()
+    expect(notam.polygons.length).toEqual(2)
+    // First layer is the average location
+    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
+    circle = notam.polygons[0] as Circle
+    expect(circle.getRadius()).toEqual(1)
+    latlng = circle.getLatLng()
+    expect(latlng.lat).toBeCloseTo(45.857, 3)
+    expect(latlng.lng).toBeCloseTo(6.243, 3)
+
+    // Second layer is the cable itself
+    expect(notam.polygons[1] instanceof Polyline).toBeTruthy()
+    polyline = notam.polygons[1] as Polyline
+    latlngs = polyline.getLatLngs() as LatLng[]
+    expect(latlngs[0]!.lat).toBeCloseTo(45.858, 3)
+    expect(latlngs[0]!.lng).toBeCloseTo(6.242, 3)
+    expect(latlngs[1]!.lat).toBeCloseTo(45.857, 3)
+    expect(latlngs[1]!.lng).toBeCloseTo(6.244, 3)
   })
 })
