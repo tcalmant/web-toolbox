@@ -82,7 +82,19 @@ function parseLocation(strLocation: string): LatLng | null {
     return null
   }
 
-  return new LatLng(parseQAngle(latNumbers, latNS), parseQAngle(lonNumbers, lonEW))
+  const latitude = parseQAngle(latNumbers, latNS)
+  if (isNaN(latitude) || Math.abs(latitude) > 90) {
+    console.warn('Invalid latitude in location', strLocation)
+    return null
+  }
+
+  const longitude = parseQAngle(lonNumbers, lonEW)
+  if (isNaN(longitude) || Math.abs(longitude) > 180) {
+    console.warn('Invalid longitude in location', strLocation)
+    return null
+  }
+
+  return new LatLng(latitude, longitude)
 }
 
 export class SectionA {
@@ -106,6 +118,15 @@ export class SectionQ {
 
   constructor(sectionText: string) {
     const parts = sectionText.split('/').map((s) => s.trim())
+    if (parts.length != 8) {
+      throw new Error('Invalid Q section: ' + sectionText)
+    }
+
+    if (parts.map((p) => p?.length != 0).filter((p) => p).length === 0) {
+      // All parts are empty
+      throw new Error('Empty Q section')
+    }
+
     this.fir = parts[0] ?? ''
     this.qCode = parts[1] ?? null
     this.trafic = parts[2] ?? null
