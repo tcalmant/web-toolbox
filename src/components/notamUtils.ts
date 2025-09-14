@@ -36,7 +36,9 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
 
   // Ignore decimals on ultra-precise locations
   const dotIdx = strAngle.indexOf('.', nbDegreesDigits)
+  let extra = NaN
   if (dotIdx != -1) {
+    extra = parseFloat(strAngle.substring(dotIdx))
     strAngle = strAngle.substring(0, dotIdx)
   }
 
@@ -47,10 +49,18 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
   if (nextPart.length == 2) {
     // Minutes only
     minutes = parseInt(nextPart)
+    if (Number.isFinite(extra)) {
+      // Add decimal part as seconds
+      seconds = Math.round(extra * 60)
+    }
   } else if (nextPart.length == 4) {
     // Minutes and seconds
     minutes = parseInt(nextPart.substring(0, 2))
     seconds = parseInt(nextPart.substring(2))
+    if (Number.isFinite(extra)) {
+      // Add decimal part to seconds
+      seconds += extra
+    }
   } else {
     console.warn("Couldn't parse minutes")
   }
