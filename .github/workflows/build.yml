@@ -27,7 +27,7 @@ jobs:
       - name: Install
         run: npm ci
       - name: Test
-        run: npm test:unit:ci
+        run: npm run test:unit:ci
       - name: Build
         run: |
           npm run build
