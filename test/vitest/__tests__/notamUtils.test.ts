@@ -446,7 +446,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(latlngs[5]!.lng).toBeCloseTo(4.499, 3)
     expect(latlngs[6]!.lat).toBeCloseTo(50.53, 3)
     expect(latlngs[6]!.lng).toBeCloseTo(4.512, 3)
-    // Duplicatioon of 2nd wind mill
+    // Duplication of 2nd wind mill
     expect(latlngs[7]!.lat).toBeCloseTo(50.537, 3)
     expect(latlngs[7]!.lng).toBeCloseTo(4.523, 3)
   })
