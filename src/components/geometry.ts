@@ -18,7 +18,7 @@
 import type { LatLng, Layer } from 'leaflet'
 import L from 'leaflet'
 
-export type PositionKind = 'POINT' | 'AVG'
+export type PositionKind = 'POINT' | 'AVG' | 'AREA'
 
 export class Position {
   location: LatLng
@@ -48,6 +48,14 @@ export class Position {
           fillColor: '#800',
           fillOpacity: 0.5,
           weight: 2,
+        })
+      case 'AREA':
+        return L.circle(this.location, {
+          radius: 1852, // 1 NM
+          color: '#FF4500',
+          fillColor: 'orange',
+          fillOpacity: 0.3,
+          weight: 4,
         })
       default:
         return null

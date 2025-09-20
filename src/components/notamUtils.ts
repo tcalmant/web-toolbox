@@ -17,6 +17,7 @@
 
 import type { Layer } from 'leaflet'
 import { LatLng } from 'leaflet'
+import KnownAirfields, { type Airfield } from './airfields'
 import type { PositionKind } from './geometry'
 import { Line, Polygon, Position } from './geometry'
 
@@ -258,6 +259,82 @@ export class IrSeraRef {
   }
 }
 
+/**
+ * Relative location from a point, e.g. 030/5NM
+ */
+export class RelativeLocation {
+  /**
+   * Azimuth in degrees (0-360)
+   */
+  readonly azimuth: number
+
+  /**
+   * Distance in NM
+   */
+  readonly distanceNM: number
+
+  /**
+   * Base airfield used as reference
+   */
+  readonly baseAirfield: Airfield
+
+  /**
+   * @param azimuth Azimuth in degrees (0-360)
+   * @param distanceNM Distance in NM
+   * @param baseAirfield Base airfield ICAO code
+   */
+  constructor(azimuth: number, distanceNM: number, baseAirfield: Airfield) {
+    this.azimuth = azimuth
+    this.distanceNM = distanceNM
+    this.baseAirfield = baseAirfield
+  }
+
+  /**
+   * Converts the relative location to a LatLng object.
+   *
+   * @returns The referenced location as LatLng or null if inputs are invalid.
+   */
+  toLatLng(): LatLng | null {
+    // Validate inputs
+    if (this.distanceNM <= 0 || this.distanceNM > 1000) {
+      console.warn('Invalid distance: must be between 0 and 1000 NM')
+      return null
+    }
+    if (this.azimuth < 0 || this.azimuth >= 360) {
+      console.warn('Invalid azimuth: must be between 0 and 360 degrees')
+      return null
+    }
+
+    // Constants
+    const EARTH_RADIUS_NM = 3440.065 // Earth radius in nautical miles
+    // Convert degrees to radians
+    const bearingRad = (this.azimuth * Math.PI) / 180
+    const lat1Rad = (this.baseAirfield.latitude * Math.PI) / 180
+    const lon1Rad = (this.baseAirfield.longitude * Math.PI) / 180
+
+    // Calculate the destination latitude
+    const angularDistance = this.distanceNM / EARTH_RADIUS_NM
+    const lat2Rad = Math.asin(
+      Math.sin(lat1Rad) * Math.cos(angularDistance) +
+        Math.cos(lat1Rad) * Math.sin(angularDistance) * Math.cos(bearingRad),
+    )
+
+    // Calculate the destination longitude
+    const lon2Rad =
+      lon1Rad +
+      Math.atan2(
+        Math.sin(bearingRad) * Math.sin(angularDistance) * Math.cos(lat1Rad),
+        Math.cos(angularDistance) - Math.sin(lat1Rad) * Math.sin(lat2Rad),
+      )
+
+    // Convert back to degrees and normalize longitude
+    const lat2Deg = (lat2Rad * 180) / Math.PI
+    const lon2Deg = (((lon2Rad * 180) / Math.PI + 540) % 360) - 180
+
+    return new LatLng(lat2Deg, lon2Deg)
+  }
+}
+
 export class NOTAM {
   readonly idx: number
   readonly id: string
@@ -287,7 +364,7 @@ export class NOTAM {
     this.sectionQ = sectionContent ? new SectionQ(sectionContent) : null
 
     // Find polygons
-    this.polygons = this.findPolygons(this.rawSections.get('E'))
+    this.polygons = this.findPolygons(this.sectionA?.target, this.rawSections.get('E'))
 
     // Find linked SUP/AIP references
     this.linkedSupAIPs = this.findSupAIPRefs(this.rawSections.get('E'))
@@ -346,7 +423,7 @@ export class NOTAM {
     return knownPoints.find((p) => p.equals(point, 1e-5)) !== undefined
   }
 
-  findPolygons(text: string | undefined): Layer[] {
+  findPolygons(target: string | undefined, text: string | undefined): Layer[] {
     if (!text) {
       // No E section given
       return []
@@ -510,6 +587,93 @@ export class NOTAM {
       const layer = new Polygon(currentList).toLayer()
       if (layer !== null) {
         layers.push(layer)
+      }
+    }
+
+    // Look for relative locations, only if no other location has been found
+    if (layers.length == 0) {
+      const relativePlacePattern =
+        /RDL\s*(?<azimuth>\d{3})\s*\/\s*(?<distance>\d+([.,]\d+))\s*(?<unit>\w+)/gm
+
+      while ((match = relativePlacePattern.exec(text)) != null) {
+        if (match.groups === undefined) {
+          // Unexpected
+          continue
+        }
+
+        const strAzimuth = match.groups['azimuth']
+        const strDistance = match.groups['distance']
+        const strUnit = match.groups['unit']
+        if (!strAzimuth || !strDistance || !strUnit) {
+          continue
+        }
+
+        const azimuth = parseInt(strAzimuth)
+        if (isNaN(azimuth) || azimuth < 0 || azimuth >= 360) {
+          // Invalid azimuth
+          continue
+        }
+
+        let distance = parseFloat(strDistance.replace(',', '.'))
+        if (isNaN(distance) || distance <= 0) {
+          // Invalid distance
+          continue
+        }
+
+        const unit = strUnit.toUpperCase()
+        if (unit == 'M' || unit == 'METERS' || unit == 'METRES') {
+          // Convert meters to NM
+          distance /= 1852
+        } else if (unit == 'KM' || unit == 'KILOMETERS' || unit == 'KILOMETRES') {
+          // Convert kilometers to NM
+          distance /= 1.852
+        } else if (unit != 'NM' && unit != 'NAUTICALMILES') {
+          // Unknown unit
+          continue
+        }
+
+        // Find the base airfield: look for the ICAO code right after the match
+        const afterMatch = text.substring(match.index + match[0].length)
+        const airfieldMatch = afterMatch.match(/\b([A-Z]{4})\b/)
+        let baseAirfield: string
+        if (
+          airfieldMatch == null ||
+          airfieldMatch.index === undefined ||
+          airfieldMatch[1] === undefined ||
+          airfieldMatch?.index > 10
+        ) {
+          if (!target) {
+            // No target airfield given: ignore
+            continue
+          }
+          // No airfield found, or airfield index is too far: use section A
+          baseAirfield = target
+        } else {
+          // Use the found airfield
+          baseAirfield = airfieldMatch[1]
+        }
+
+        if (!baseAirfield || ['FATO', 'LFFF', 'LFXX'].includes(baseAirfield)) {
+          // Ignore FATO references and nation-wide NOTAMs
+          continue
+        }
+
+        // Check if the base airfield is known
+        const airfieldData = KnownAirfields[baseAirfield]
+        if (airfieldData === undefined) {
+          // Unknown airfield
+          continue
+        }
+
+        // Create the relative location
+        const relativeLocation = new RelativeLocation(azimuth, distance, airfieldData)
+        const center = relativeLocation.toLatLng()
+        if (center !== null) {
+          const layer = new Position('AREA', center).toLayer()
+          if (layer !== null) {
+            layers.push(layer)
+          }
+        }
       }
     }
 
