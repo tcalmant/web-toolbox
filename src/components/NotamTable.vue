@@ -93,6 +93,36 @@ under the License.
       <q-tr v-if="props.expand || props.row == focusedNotam" :props="props">
         <q-td colspan="100%">
           <pre>{{ (props.row as NOTAM).text }}</pre>
+          <div v-if="(props.row as NOTAM).linkedSupAIPs.length">
+            <hr />
+            <p>
+              <strong>{{ $t('supAipRefsLabel') }}</strong>
+            </p>
+            <ul>
+              <li v-for="supAip in (props.row as NOTAM).linkedSupAIPs" :key="supAip.toString()">
+                <a
+                  :href="`https://www.sia.aviation-civile.gouv.fr/media/store/documents/file/l/f/${supAip.toPdfName()}`"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ supAip.toString() }}
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div v-if="(props.row as NOTAM).linkedIrSera.length">
+            <hr />
+            <p>
+              <strong>{{ $t('irSeraRefsLabel') }}</strong>
+            </p>
+            <ul>
+              <li v-for="irSera in (props.row as NOTAM).linkedIrSera" :key="irSera.toString()">
+                <a :href="irSera.toUrl()" target="_blank" rel="noopener noreferrer">
+                  {{ irSera.toString() }}
+                </a>
+              </li>
+            </ul>
+          </div>
         </q-td>
       </q-tr>
     </template>
