@@ -208,10 +208,11 @@ export class SupAipRef {
   }
 
   toString(): string {
+    const strId = `${this.id.toString().padStart(3, '0')}/${this.year - 2000}`
     if (this.isAirac) {
-      return `${this.id.toString().padStart(3, '0')}/${this.year} (AIRAC)`
+      return `SUP AIP AIRAC ${strId}`
     }
-    return `${this.id.toString().padStart(3, '0')}/${this.year}`
+    return `SUP AIP ${strId}`
   }
 
   /**
