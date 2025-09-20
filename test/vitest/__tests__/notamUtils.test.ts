@@ -748,4 +748,110 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(latlngs[10]!.lat).toBeCloseTo(28.854, 3)
     expect(latlngs[10]!.lng).toBeCloseTo(-80.787, 3)
   })
+
+  it('should find SUP AIP AIRAC references', () => {
+    const supAipAiracNotam = `
+LFFA-D0929/25
+DU: 26 02 2025 12:00 AU: 16 04 2026 23:59
+A) LFMO
+Q) LFMM / QATTT / IV / BO / AE / 000/065 / 4410N00449E018
+E) NOTAM TRIGGER - SUP AIP AIRAC 004/25 MODIFIE.
+EXPERIMENTATION DE MODIFICATION DES ESPACES AERIENS D'ORANGE
+NECESSITANT LA CREATION D'1 TMA TEMPORAIRE ET DE 2 CTR TEMPORAIRES.
+-----------------------------------------------------------------
+NOUVELLE DATE DE DEBUT DE VALIDITE : 20 MAR 2025
+DATE DE FIN DE VALIDITE MAINTENUE AU 16 AVR 2026
+-----------------------------------------------------------------
+CE SUP AIP AIRAC EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
+`
+
+    const notam = new NOTAM(supAipAiracNotam, 1)
+    expect(notam.id).toEqual('LFFA-D0929/25')
+    expect(notam.linkedIrSera).toEqual([])
+    expect(notam.linkedSupAIPs?.length).toEqual(1)
+    expect(notam.linkedSupAIPs?.[0]).toEqual({ year: 2025, id: 4, isAirac: true })
+  })
+
+  it('should find SUP AIP references', () => {
+    const supAipNotam = `
+LFFA-R2095/25
+DU: 18 09 2025 05:00 AU: 21 09 2025 17:36
+A)  LFLG
+Q)  LFMM / QRTTT / IV / BO / AW / 000/115 / 4518N00553E003
+E)  NOTAM TRIGGER - SUP AIP 158/25 : MANIFESTATION AERIENNE 'COUPE ICARE 2025' DANS LA REGION DE GRENOBLE NECESSITANT LA CREATION D'UNE ZONE
+REGLEMENTEE TEMPORAIRE.
+CE SUP AIP EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
+F)  SFC
+G)  FL115
+`
+
+    const notam = new NOTAM(supAipNotam, 1)
+    expect(notam.id).toEqual('LFFA-R2095/25')
+    expect(notam.linkedIrSera).toEqual([])
+    expect(notam.linkedSupAIPs?.length).toEqual(1)
+    expect(notam.linkedSupAIPs?.[0]).toEqual({ year: 2025, id: 158, isAirac: false })
+  })
+
+  it('should parse a NOTAM with an IR SERA reference', () => {
+    const notamWithIrSeraReference = `
+LFFA-F0627/25
+DU: 01 05 2025 00:00 AU: PERM
+A) LFBB LFEE LFFF LFMM LFRR
+Q) LFXX / QPRCH / IV / BO / E / 000/999 / 4412N00040E460
+E) APPLICATION DE LA NOUVELLE REGLEMENTATION EUROPEENNE IR SERA
+2024/404 EN VIGUEUR LE 1ER MAI 2025 AVEC L'INTRODUCTION DU POINT
+SERA.14083 RELATIF AUX PROCEDURES EN CAS DE PANNE DE COMMUNICATION
+RADIO.
+MODIFICATION DE LA PROCEDURE PANNE RADIO : INTRODUCTION DU NOUVEAU
+CODE D'URGENCE 7601 ET MODIFICATION DE LA REGLE DES 7MIN EN 20MIN.
+REF AIP ENR1.1
+`
+    const notam = new NOTAM(notamWithIrSeraReference, 1)
+    expect(notam.id).toEqual('LFFA-F0627/25')
+    // No SUP AIP reference
+    expect(notam.linkedSupAIPs).toEqual([])
+    // One IR SERA reference
+    expect(notam.linkedIrSera?.length).toEqual(1)
+    expect(notam.linkedIrSera?.[0]).toEqual({ year: 2024, id: 404 })
+  })
+
+  it('should sort multiple SUP AIP and IR SERA references', () => {
+    const multipleRefsInNotam = `
+XXXX-X0000/00
+A)  LFXX
+Q)  LFXX / XX / IV / BO / AW / 000/115 / 4518N00553E003
+E)  NOTAM TRIGGER - SUP AIP 158/25 : MANIFESTATION AERIENNE
+NOTAM TRIGGER - SUP AIP 201/24.
+NOTAM TRIGGER - SUP AIP 039/25
+CONSTRUCTION DE LA TOUR 'TRIANGLE' - SUP AIP 120/24.
+NOTAM TRIGGER - SUP AIP 221/24 MODIFIE :
+ARRIVEES ET DEPARTS D'HELICOPTERES AUTORISES SUR L'AD DE 'VILLACOUBLAY' - SUP AIP 196/24.
+NOTAM TRIGGER - SUP AIP 238/24 :
+SUP AIP 120/24 - PHASE 2 ACTIVE
+CONSTRUCTION DE LA TOUR 'TRIANGLE' - SUP AIP 120/24.
+NOTAM TRIGGER - SUP AIP AIRAC 013/25.
+NOTAM TRIGGER - SUP AIP AIRAC 005/25.
+APPLICATION DE LA NOUVELLE REGLEMENTATION EUROPEENNE IR SERA
+2024/404
+F)  SFC
+G)  FL115
+`
+    const notam = new NOTAM(multipleRefsInNotam, 1)
+    expect(notam.id).toEqual('XXXX-X0000/00')
+    // SUP AIP references are sorted by year then id
+    // Duplicates are removed
+    expect(notam.linkedSupAIPs?.length).toEqual(9)
+    expect(notam.linkedSupAIPs?.[0]).toEqual({ year: 2024, id: 120, isAirac: false })
+    expect(notam.linkedSupAIPs?.[1]).toEqual({ year: 2024, id: 196, isAirac: false })
+    expect(notam.linkedSupAIPs?.[2]).toEqual({ year: 2024, id: 201, isAirac: false })
+    expect(notam.linkedSupAIPs?.[3]).toEqual({ year: 2024, id: 221, isAirac: false })
+    expect(notam.linkedSupAIPs?.[4]).toEqual({ year: 2024, id: 238, isAirac: false })
+    expect(notam.linkedSupAIPs?.[5]).toEqual({ year: 2025, id: 5, isAirac: true })
+    expect(notam.linkedSupAIPs?.[6]).toEqual({ year: 2025, id: 13, isAirac: true })
+    expect(notam.linkedSupAIPs?.[7]).toEqual({ year: 2025, id: 39, isAirac: false })
+    expect(notam.linkedSupAIPs?.[8]).toEqual({ year: 2025, id: 158, isAirac: false })
+    // One IR SERA reference
+    expect(notam.linkedIrSera?.length).toEqual(1)
+    expect(notam.linkedIrSera?.[0]).toEqual({ year: 2024, id: 404 })
+  })
 })
