@@ -95,7 +95,9 @@ under the License.
           <pre>{{ (props.row as NOTAM).text }}</pre>
           <div v-if="(props.row as NOTAM).linkedSupAIPs.length">
             <hr />
-            <p><strong>Linked SUP AIP:</strong></p>
+            <p>
+              <strong>{{ $t('supAipRefsLabel') }}</strong>
+            </p>
             <ul>
               <li v-for="supAip in props.row.linkedSupAIPs" :key="supAip">
                 <a

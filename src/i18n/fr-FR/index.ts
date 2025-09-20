@@ -62,6 +62,7 @@ export default {
   aipEditTitle: 'Édition des AIP',
   notamTabMapTitle: 'Carte',
   notamTabConfigurationTitle: 'Configuration',
+  supAipRefsLabel: 'Références SUP-AIP',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',

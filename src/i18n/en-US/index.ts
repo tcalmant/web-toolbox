@@ -62,6 +62,7 @@ export default {
   aipEditTitle: 'Set AIP content',
   notamTabMapTitle: 'Map',
   notamTabConfigurationTitle: 'Options',
+  supAipRefsLabel: 'Linked SUP-AIP',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',
