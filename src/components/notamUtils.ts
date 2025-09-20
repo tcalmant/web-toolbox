@@ -364,7 +364,7 @@ export class NOTAM {
     this.sectionQ = sectionContent ? new SectionQ(sectionContent) : null
 
     // Find polygons
-    this.polygons = this.findPolygons(this.rawSections.get('E'))
+    this.polygons = this.findPolygons(this.sectionA?.target, this.rawSections.get('E'))
 
     // Find linked SUP/AIP references
     this.linkedSupAIPs = this.findSupAIPRefs(this.rawSections.get('E'))
@@ -423,7 +423,7 @@ export class NOTAM {
     return knownPoints.find((p) => p.equals(point, 1e-5)) !== undefined
   }
 
-  findPolygons(text: string | undefined): Layer[] {
+  findPolygons(target: string | undefined, text: string | undefined): Layer[] {
     if (!text) {
       // No E section given
       return []
@@ -635,17 +635,26 @@ export class NOTAM {
         // Find the base airfield: look for the ICAO code right after the match
         const afterMatch = text.substring(match.index + match[0].length)
         const airfieldMatch = afterMatch.match(/\b([A-Z]{4})\b/)
-        if (airfieldMatch == null || airfieldMatch[1] == undefined) {
-          // No airfield found: ignore
-          continue
-        } else if (airfieldMatch.index === undefined || airfieldMatch.index > 10) {
-          // Airfield index is too far: ignore
-          continue
+        let baseAirfield: string
+        if (
+          airfieldMatch == null ||
+          airfieldMatch.index === undefined ||
+          airfieldMatch[1] === undefined ||
+          airfieldMatch?.index > 10
+        ) {
+          if (!target) {
+            // No target airfield given: ignore
+            continue
+          }
+          // No airfield found, or airfield index is too far: use section A
+          baseAirfield = target
+        } else {
+          // Use the found airfield
+          baseAirfield = airfieldMatch[1]
         }
 
-        const baseAirfield = airfieldMatch[1]
-        if (baseAirfield == 'FATO') {
-          // Ignore FATO references
+        if (!baseAirfield || ['FATO', 'LFFF', 'LFXX'].includes(baseAirfield)) {
+          // Ignore FATO references and nation-wide NOTAMs
           continue
         }
 
@@ -653,7 +662,6 @@ export class NOTAM {
         const airfieldData = KnownAirfields[baseAirfield]
         if (airfieldData === undefined) {
           // Unknown airfield
-          console.debug('Ignoring relative location with unknown airfield: ' + baseAirfield)
           continue
         }
 
