@@ -225,6 +225,38 @@ export class SupAipRef {
   }
 }
 
+/**
+ * Reference to a SERA Implementing Regulation
+ */
+export class IrSeraRef {
+  /**
+   * IR SERA number
+   */
+  readonly id: number
+
+  /**
+   * IR SERA year
+   */
+  readonly year: number
+
+  /**
+   * @param id The IR SERA number
+   * @param year The IR SERA year (4 digits)
+   */
+  constructor(id: number, year: number) {
+    this.id = id
+    this.year = year
+  }
+
+  toString(): string {
+    return `IR SERA ${this.year}/${this.id.toString().padStart(3, '0')}`
+  }
+
+  toUrl(): string {
+    return `https://eur-lex.europa.eu/eli/reg_impl/${this.year}/${this.id}/oj`
+  }
+}
+
 export class NOTAM {
   readonly idx: number
   readonly id: string
@@ -234,6 +266,7 @@ export class NOTAM {
   readonly sectionA: SectionA | null
   readonly sectionQ: SectionQ | null
   readonly linkedSupAIPs: SupAipRef[] = []
+  readonly linkedIrSera: IrSeraRef[] = []
 
   constructor(fullText: string, idx: number) {
     this.idx = idx
@@ -257,6 +290,8 @@ export class NOTAM {
 
     // Find linked SUP/AIP references
     this.linkedSupAIPs = this.findSupAIPRefs(this.rawSections.get('E'))
+    // ... and IR SERA references
+    this.linkedIrSera = this.findIrSeraRefs(this.rawSections.get('E'))
   }
 
   splitSections(text: string): Map<string, string> {
@@ -553,5 +588,78 @@ export class NOTAM {
     })
 
     return foundSupAipRefs
+  }
+
+  /**
+   * Looks for IR SERA references in the given text.
+   *
+   * @param text Section E text
+   * @returns The list of IR SERA references found in the text
+   */
+  findIrSeraRefs(text: string | undefined): IrSeraRef[] {
+    if (!text) {
+      return []
+    }
+
+    const irSeraPattern = /IR SERA\s*(?<year>\d{2,4})\/(?<id>\d+)/gim
+
+    let match
+
+    const foundIrSeraRefs: IrSeraRef[] = []
+    while ((match = irSeraPattern.exec(text)) !== null) {
+      if (match.groups === undefined) {
+        // Unexpected
+        continue
+      }
+
+      const strId = match.groups['id']
+      if (!strId) {
+        // No ID: ignore
+        continue
+      }
+
+      const strYear = match.groups['year']
+      if (!strYear) {
+        // No year: ignore
+        continue
+      }
+
+      const id = parseInt(strId)
+      if (isNaN(id) || id < 1) {
+        // Invalid ID
+        console.debug('Ignoring invalid SUP AIP ID: ' + strId)
+        continue
+      }
+
+      let year = parseInt(strYear)
+      if (isNaN(year) || year < 0) {
+        // Invalid year
+        console.debug('Ignoring invalid SUP AIP year: ' + strYear)
+        continue
+      }
+
+      if (year < 100) {
+        // Two-digit year: convert to four-digit
+        year += 2000
+      }
+
+      const irSera = new IrSeraRef(id, year)
+      // Avoid duplicates
+      if (foundIrSeraRefs.find((s) => s.id == irSera.id && s.year == irSera.year) !== undefined) {
+        continue
+      }
+
+      foundIrSeraRefs.push(irSera)
+    }
+
+    // Sort by year then ID
+    foundIrSeraRefs.sort((a, b) => {
+      if (a.year != b.year) {
+        return a.year - b.year
+      }
+      return a.id - b.id
+    })
+
+    return foundIrSeraRefs
   }
 }

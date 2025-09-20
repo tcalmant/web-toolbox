@@ -63,6 +63,7 @@ export default {
   notamTabMapTitle: 'Carte',
   notamTabConfigurationTitle: 'Configuration',
   supAipRefsLabel: 'Références SUP-AIP',
+  irSeraRefsLabel: 'Références IR SERA',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',
