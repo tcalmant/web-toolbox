@@ -24,10 +24,9 @@
 
 import { describe, expect, it } from 'vitest'
 
+import { LatLng } from 'leaflet'
+import { Circle, Polygon, Polyline } from 'leaflet'
 import { NOTAM, SectionQ } from '../../../src/components/notamUtils'
-import { Polygon, Polyline } from 'leaflet'
-import type { LatLng } from 'leaflet'
-import { Circle } from 'leaflet'
 
 /**
  * Tests for the Q section parser
@@ -853,5 +852,46 @@ G)  FL115
     // One IR SERA reference
     expect(notam.linkedIrSera?.length).toEqual(1)
     expect(notam.linkedIrSera?.[0]).toEqual({ year: 2024, id: 404 })
+  })
+
+  it('should ignore invalid positions', () => {
+    const notamText = `
+LFFA-W2003/25
+DU: 26 09 2025 06:00 AU: 28 09 2025 17:22
+A) LFMM
+Q) LFMM / QWPLW / IV / M / W / 000/115 / 4522N00558E001
+D) 0600-SS
+E) PARACHUTAGES SUR COMMUNE DE ST VINCENT DE MERCUZE DANS RAYON DE 01NM SUR PSN: 452208N 0055812N
+-RDL28/10.4NM LFLG ARP
+-RDL180/11.5NM LFLE ARP
+LYON INFO: 135.525MHZ
+F) SFC
+G) FL115
+`
+    const notam = new NOTAM(notamText, 1)
+    expect(notam.id).toEqual('LFFA-W2003/25')
+    expect(notam.text).not.toBeNull()
+
+    const invalidPoint = new LatLng(45.369, 5.97)
+
+    expect(notam.polygons).not.toBeNull()
+    // We should have detected only the RDL entries, not the invalid position
+    expect(notam.polygons.length).toEqual(2)
+    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
+    let circle = notam.polygons[0] as Circle
+    expect(circle.getRadius()).toEqual(1852)
+    let latlng = circle.getLatLng()
+    expect(latlng.lat).toBeCloseTo(45.371, 3)
+    expect(latlng.lng).toBeCloseTo(5.964, 3)
+
+    // Check that the invalid position is in the circle
+    expect(latlng.distanceTo(invalidPoint)).toBeLessThan(circle.getRadius())
+
+    circle = notam.polygons[1] as Circle
+    expect(circle.getRadius()).toEqual(1852)
+    latlng = circle.getLatLng()
+    expect(latlng.lat).toBeCloseTo(45.369, 3)
+    expect(latlng.lng).toBeCloseTo(5.976, 3)
+    expect(latlng.distanceTo(invalidPoint)).toBeLessThan(circle.getRadius())
   })
 })
