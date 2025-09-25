@@ -63,6 +63,7 @@ export default {
   notamTabMapTitle: 'Map',
   notamTabConfigurationTitle: 'Options',
   supAipRefsLabel: 'Linked SUP-AIP',
+  supAipRefsFallbackLink: 'alternate link',
   irSeraRefsLabel: 'Linked IR SERA',
 
   // Fuel Computer
