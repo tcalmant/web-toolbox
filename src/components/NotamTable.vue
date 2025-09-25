@@ -100,13 +100,21 @@ under the License.
             </p>
             <ul>
               <li v-for="supAip in (props.row as NOTAM).linkedSupAIPs" :key="supAip.toString()">
-                <a
-                  :href="`https://www.sia.aviation-civile.gouv.fr/media/store/documents/file/l/f/${supAip.toPdfName()}`"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <template
+                  v-for="(name, index) in supAip
+                    .toPdfNames(($t('supAipLang') as 'en' | 'fr') ?? 'fr')
+                    .slice(0, 2)"
+                  :key="index"
                 >
-                  {{ supAip.toString() }}
-                </a>
+                  <template v-if="index === 1"><span class="q-ml-sm"></span></template>
+                  <a
+                    :href="`https://www.sia.aviation-civile.gouv.fr/media/store/documents/file/l/f/${name}`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{ index === 0 ? supAip.toString() : `(${$t('supAipRefsFallbackLink')})` }}
+                  </a>
+                </template>
               </li>
             </ul>
           </div>
@@ -127,6 +135,8 @@ under the License.
       </q-tr>
     </template>
   </q-table>
+  <!-- Hidden iframe to test PDFs -->
+  <iframe ref="iframeRef" style="display: none" />
 </template>
 
 <script setup lang="ts">
@@ -141,6 +151,8 @@ const hoveredNotam = defineModel<NOTAM | undefined>('hoveredNotam')
 const focusedNotam = defineModel<NOTAM | undefined>('focusedNotam')
 
 const notamSelectAll = ref<boolean | null>(true)
+
+const iframeRef = ref<HTMLIFrameElement | null>(null)
 
 onMounted(() => {
   if (focusedNotam.value) {

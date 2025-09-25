@@ -894,4 +894,55 @@ G) FL115
     expect(latlng.lng).toBeCloseTo(5.976, 3)
     expect(latlng.distanceTo(invalidPoint)).toBeLessThan(circle.getRadius())
   })
+
+  it('should generate 1 link for a AIRAC SUP AIP references', () => {
+    const supAipAiracNotam = `
+LFFA-D0929/25
+DU: 26 02 2025 12:00 AU: 16 04 2026 23:59
+A) LFMO
+Q) LFMM / QATTT / IV / BO / AE / 000/065 / 4410N00449E018
+E) NOTAM TRIGGER - SUP AIP AIRAC 004/25 MODIFIE.
+EXPERIMENTATION DE MODIFICATION DES ESPACES AERIENS D'ORANGE
+NECESSITANT LA CREATION D'1 TMA TEMPORAIRE ET DE 2 CTR TEMPORAIRES.
+-----------------------------------------------------------------
+NOUVELLE DATE DE DEBUT DE VALIDITE : 20 MAR 2025
+DATE DE FIN DE VALIDITE MAINTENUE AU 16 AVR 2026
+-----------------------------------------------------------------
+CE SUP AIP AIRAC EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
+`
+
+    const notam = new NOTAM(supAipAiracNotam, 1)
+    expect(notam.id).toEqual('LFFA-D0929/25')
+    expect(notam.linkedSupAIPs?.length).toEqual(1)
+    expect(notam.linkedSupAIPs?.[0]).toEqual({ year: 2025, id: 4, isAirac: true })
+    for (const lang of ['fr', 'en'] as ('fr' | 'en')[]) {
+      const pdfNames = notam.linkedSupAIPs[0]!.toPdfNames(lang)
+      expect(pdfNames.length).toEqual(1)
+      expect(pdfNames[0]).toEqual(`lf_sup_a_2025_004_${lang}.pdf`)
+    }
+  })
+
+  it('should generate 2 links for a non-AIRAC SUP AIP reference', () => {
+    const notamText = `
+LFFA-D4774/25
+DU: 07 10 2025 09:00 AU: 09 10 2025 09:30
+A)  LFMQ
+Q)  LFMM / QFALT / IV / NBO / A / 000/999 / 4315N00547E005
+E)  TIR DE MISSILE SUR CIBLE - SUP AIP 144/25.
+OBJET : CREATION D'UNE ZONE REGLEMENTEE TEMPORAIRE, D'UNE ZONE
+DANGEREUSE TEMPORAIRE ('ZRT/ZDT SUPERSTAR'), D'UNE FBZ ASSOCIEE ET
+RESTRICTIONS UTILISATION AD.
+CE SUP AIP EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
+`
+    const notam = new NOTAM(notamText, 1)
+    expect(notam.id).toEqual('LFFA-D4774/25')
+    expect(notam.linkedSupAIPs?.length).toEqual(1)
+    expect(notam.linkedSupAIPs?.[0]).toEqual({ year: 2025, id: 144, isAirac: false })
+    for (const lang of ['fr', 'en'] as ('fr' | 'en')[]) {
+      const pdfNames = notam.linkedSupAIPs[0]!.toPdfNames(lang)
+      expect(pdfNames.length).toEqual(2)
+      expect(pdfNames[0]).toEqual(`lf_sup_2025_144_${lang}.pdf`)
+      expect(pdfNames[1]).toEqual(`lf_sup_a_2025_144_${lang}.pdf`)
+    }
+  })
 })

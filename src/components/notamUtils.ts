@@ -217,13 +217,16 @@ export class SupAipRef {
   }
 
   /**
-   * @returns The name of the corresponding PDF file on the SIA website
+   * @param lang Language code ('fr' or 'en')
+   * @returns The names of the corresponding PDF file on the SIA website, in order of probability
    */
-  toPdfName(): string {
+  toPdfNames(lang: 'fr' | 'en' = 'fr'): string[] {
+    const airacName = `lf_sup_a_${this.year}_${this.id.toString().padStart(3, '0')}_${lang}.pdf`
     if (this.isAirac) {
-      return `lf_sup_a_${this.year}_${this.id.toString().padStart(3, '0')}_fr.pdf`
+      return [airacName]
+    } else {
+      return [`lf_sup_${this.year}_${this.id.toString().padStart(3, '0')}_${lang}.pdf`, airacName]
     }
-    return `lf_sup_${this.year}_${this.id.toString().padStart(3, '0')}_fr.pdf`
   }
 }
 
