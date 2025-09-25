@@ -1,0 +1,172 @@
+{
+  "F-BNIF": {
+    "brand": "Jodel",
+    "model": "D140",
+    "fuel": {
+      "capacity": 215,
+      "consumable": 215,
+      "hourlyConsumption": 40,
+      "unit": "liters"
+    }
+  },
+  "F-BOPT": {
+    "brand": "Jodel",
+    "model": "D140",
+    "fuel": {
+      "capacity": 215,
+      "consumable": 215,
+      "hourlyConsumption": 40,
+      "unit": "liters"
+    }
+  },
+  "F-GDTA": {
+    "brand": "Mudry",
+    "model": "CAP 10",
+    "fuel": {
+      "capacity": 150,
+      "consumable": 150,
+      "hourlyConsumption": 42,
+      "unit": "liters"
+    }
+  },
+  "F-GNXT": {
+    "brand": "Robin",
+    "model": "DR401 155 CDI",
+    "fuel": {
+      "capacity": 110,
+      "consumable": 109,
+      "hourlyConsumption": 26,
+      "unit": "liters"
+    }
+  },
+  "F-GSRE": {
+    "brand": "Robin",
+    "model": "DR400 160",
+    "fuel": {
+      "capacity": 190,
+      "consumable": 189,
+      "hourlyConsumption": 32,
+      "unit": "liters"
+    }
+  },
+  "F-GTPT": {
+    "brand": "Robin",
+    "model": "DR400 180",
+    "fuel": {
+      "capacity": 190,
+      "consumable": 189,
+      "hourlyConsumption": 38,
+      "unit": "liters"
+    }
+  },
+  "F-GTPY": {
+    "brand": "Robin",
+    "model": "DR400 120",
+    "fuel": {
+      "capacity": 110,
+      "consumable": 109,
+      "hourlyConsumption": 25,
+      "unit": "liters"
+    }
+  },
+  "F-GTZI": {
+    "brand": "Robin",
+    "model": "DR400 120",
+    "fuel": {
+      "capacity": 110,
+      "consumable": 109,
+      "hourlyConsumption": 25,
+      "unit": "liters"
+    }
+  },
+  "F-HAGR": {
+    "brand": "Robin",
+    "model": "DR400 135 CDI",
+    "fuel": {
+      "capacity": 110,
+      "consumable": 109,
+      "hourlyConsumption": 21,
+      "unit": "liters"
+    }
+  },
+  "F-HCEN": {
+    "brand": "Robin",
+    "model": "DR400 135 CDI",
+    "fuel": {
+      "capacity": 110,
+      "consumable": 109,
+      "hourlyConsumption": 21,
+      "unit": "liters"
+    }
+  },
+  "F-HFLG": {
+    "brand": "Robin",
+    "model": "DR401 120",
+    "fuel": {
+      "capacity": 110,
+      "consumable": 109,
+      "hourlyConsumption": 25,
+      "unit": "liters"
+    }
+  },
+  "F-HGPC": {
+    "brand": "Robin",
+    "model": "DR401 155 CDI",
+    "fuel": {
+      "capacity": 160,
+      "consumable": 159,
+      "hourlyConsumption": 26,
+      "unit": "liters"
+    }
+  },
+  "F-HGUY": {
+    "brand": "Robin",
+    "model": "DR400 120",
+    "fuel": {
+      "capacity": 110,
+      "consumable": 109,
+      "hourlyConsumption": 25,
+      "unit": "liters"
+    }
+  },
+  "F-JBNS": {
+    "brand": "ICP",
+    "model": "Savannah S",
+    "fuel": {
+      "capacity": 72,
+      "consumable": 72,
+      "hourlyConsumption": 20,
+      "unit": "liters"
+    }
+  },
+  "F-JGKP": {
+    "brand": "ICP",
+    "model": "Savannah S",
+    "fuel": {
+      "capacity": 72,
+      "consumable": 72,
+      "hourlyConsumption": 18,
+      "unit": "liters"
+    }
+  },
+  "F-PJDP": {
+    "brand": "Jodel",
+    "model": "D113",
+    "fuel": {
+      "capacity": 115,
+      "consumable": 115,
+      "hourlyConsumption": 24,
+      "unit": "liters"
+    }
+  },
+  "F-PZPM": {
+    "brand": "Dopouridis / Jodel",
+    "model": "DV219",
+    "fuel": {
+      "capacity": 115,
+      "consumable": 115,
+      "hourlyConsumption": 30,
+      "unit": "liters"
+    }
+  }
+}
