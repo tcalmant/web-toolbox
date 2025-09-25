@@ -120,7 +120,7 @@ export default defineConfig(() => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Dialog', 'SessionStorage'],
+      plugins: ['Dialog', 'LocalStorage', 'SessionStorage'],
     },
 
     // animations: 'all', // --- includes all animations
