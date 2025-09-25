@@ -63,6 +63,7 @@ export default {
   notamTabMapTitle: 'Carte',
   notamTabConfigurationTitle: 'Configuration',
   supAipRefsLabel: 'Références SUP-AIP',
+  supAipLang: 'fr',
   supAipRefsFallbackLink: 'lien alternatif',
   irSeraRefsLabel: 'Références IR SERA',
 

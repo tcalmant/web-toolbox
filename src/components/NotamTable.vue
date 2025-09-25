@@ -100,7 +100,12 @@ under the License.
             </p>
             <ul>
               <li v-for="supAip in (props.row as NOTAM).linkedSupAIPs" :key="supAip.toString()">
-                <template v-for="(name, index) in supAip.toPdfNames().slice(0, 2)" :key="index">
+                <template
+                  v-for="(name, index) in supAip
+                    .toPdfNames(($t('supAipLang') as 'en' | 'fr') ?? 'fr')
+                    .slice(0, 2)"
+                  :key="index"
+                >
                   <template v-if="index === 1"><span class="q-ml-sm"></span></template>
                   <a
                     :href="`https://www.sia.aviation-civile.gouv.fr/media/store/documents/file/l/f/${name}`"
