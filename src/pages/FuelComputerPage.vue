@@ -73,8 +73,8 @@ under the License.
           :label="$t('fuelConsumableLabel')"
           :hint="$t('fuelConsumableHint')"
         />
-        <q-btn v-if="planeIsCustom" class="col1" @click="onPlaneSave">
-          <q-icon name="save" color="primary" />
+        <q-btn v-if="planeIsCustom" class="col1" @click="onPlaneDelete">
+          <q-icon name="delete_forever" color="negative" />
         </q-btn>
       </div>
       <div class="row q-gutter-md print-only">
@@ -245,12 +245,14 @@ const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
 const flightTimes = ref<TimePeriod[]>([new TimePeriod(0)])
 
 // Description updates
-watch(fuelUnit, (newValue) =>
-  $q.sessionStorage?.setItem('fuel_computer.input.fuelUnit', newValue.label),
-)
-watch(fuelPerHour, (newValue) =>
-  $q.sessionStorage?.setItem('fuel_computer.input.fuelPerHour', newValue),
-)
+watch(fuelUnit, (newValue) => {
+  $q.sessionStorage?.setItem('fuel_computer.input.fuelUnit', newValue.label)
+  onPlaneSave()
+})
+watch(fuelPerHour, (newValue) => {
+  $q.sessionStorage?.setItem('fuel_computer.input.fuelPerHour', newValue)
+  onPlaneSave()
+})
 
 watch(
   [planeIdent, fuelCapacity, fuelConsumable],
@@ -263,6 +265,7 @@ watch(
 
     $q.sessionStorage?.setItem('fuel_computer.input.fuelCapacity', newCapacity)
     $q.sessionStorage?.setItem('fuel_computer.input.fuelConsumable', newConsumable)
+    onPlaneSave()
   },
 )
 
@@ -373,7 +376,29 @@ function onPlaneSave() {
   currentPlane.value.fuelConsumable = fuelConsumable.value
   currentPlane.value.fuelConsumption = fuelPerHour.value
 
-  $q.sessionStorage?.setItem('fuel_computer.input.planes', JSON.stringify(customPlanes.value))
+  $q.localStorage?.setItem('fuel_computer.input.planes', JSON.stringify(customPlanes.value))
+}
+
+function onPlaneDelete() {
+  if (!currentPlane.value || !currentPlane.value.isCustom) {
+    return
+  }
+
+  const index = customPlanes.value.findIndex(
+    (p) => p.immatriculation === currentPlane.value?.immatriculation,
+  )
+  if (index >= 0) {
+    customPlanes.value.splice(index, 1)
+    $q.localStorage?.setItem('fuel_computer.input.planes', JSON.stringify(customPlanes.value))
+  }
+
+  // Reset the current plane
+  if (planeOptions.value[0]) {
+    onPlaneSelect(planeOptions.value[0])
+  } else {
+    currentPlane.value = null
+    planeIdent.value = ''
+  }
 }
 
 function onPlaneFilter(value: string, update: (callback: () => void) => void) {
@@ -449,7 +474,7 @@ onMounted(() => {
 
   // Reload custom planes
   customPlanes.value = (
-    JSON.parse($q.sessionStorage.getItem('fuel_computer.input.planes') ?? '[]') as AirPlane[]
+    JSON.parse($q.localStorage.getItem('fuel_computer.input.planes') ?? '[]') as AirPlane[]
   ).map((p) => {
     const plane = new AirPlane(
       p.immatriculation,
@@ -473,6 +498,8 @@ onMounted(() => {
     if (matchingPlane) {
       onPlaneSelect(matchingPlane)
     }
+  } else if (planeOptions.value[0]) {
+    onPlaneSelect(planeOptions.value[0])
   }
 })
 </script>
