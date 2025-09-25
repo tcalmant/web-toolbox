@@ -24,11 +24,18 @@ under the License.
   <q-page padding class="col">
     <div class="q-gutter-md">
       <div class="row q-gutter-md print-hide">
-        <q-input
+        <q-select
           class="col"
           v-model="planeIdent"
           :label="$t('immatriculationLabel')"
           :hint="$t('immatriculationHint')"
+          :options="filterOptions"
+          use-chips
+          use-input
+          input-class="0"
+          @new-value="onNewPlane"
+          @update:model-value="onPlaneSelect"
+          @filter="onPlaneFilter"
         />
         <q-select
           class="col-1"
@@ -66,6 +73,9 @@ under the License.
           :label="$t('fuelConsumableLabel')"
           :hint="$t('fuelConsumableHint')"
         />
+        <q-btn v-if="planeIsCustom" class="col1" @click="onPlaneSave">
+          <q-icon name="save" color="primary" />
+        </q-btn>
       </div>
       <div class="row q-gutter-md print-only">
         <span v-if="planeIdent" class="col-1">{{ planeIdent }}</span>
@@ -167,6 +177,7 @@ under the License.
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar'
+import KnowAirplanes, { AirPlane } from 'src/components/airplanes'
 import { FUEL_UNITS, FuelQuantity, LITER } from 'src/components/fuelUtils'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import InputListHours from 'src/components/InputListHours.vue'
@@ -234,9 +245,6 @@ const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
 const flightTimes = ref<TimePeriod[]>([new TimePeriod(0)])
 
 // Description updates
-watch(planeIdent, (newValue) =>
-  $q.sessionStorage?.setItem('fuel_computer.input.planeIdent', newValue),
-)
 watch(fuelUnit, (newValue) =>
   $q.sessionStorage?.setItem('fuel_computer.input.fuelUnit', newValue.label),
 )
@@ -245,9 +253,9 @@ watch(fuelPerHour, (newValue) =>
 )
 
 watch(
-  [fuelCapacity, fuelConsumable],
-  ([newCapacity, newConsumable], [oldCapacity, oldConsumable]) => {
-    if (newCapacity != oldCapacity) {
+  [planeIdent, fuelCapacity, fuelConsumable],
+  ([newPlaneIdent, newCapacity, newConsumable], [oldPlaneIdent, oldCapacity, oldConsumable]) => {
+    if (newPlaneIdent == oldPlaneIdent && newCapacity != oldCapacity) {
       const oldNonConsumable = oldCapacity - oldConsumable
       newConsumable = Math.max(0, newCapacity - oldNonConsumable)
       fuelConsumable.value = newConsumable
@@ -282,6 +290,106 @@ const usableRemainingFuel = computed(() =>
 const usableRemainingTime = computed(
   () => new TimePeriod((usableRemainingFuel.value.value.scalar / fuelPerMinutes.value) * 60),
 )
+
+// Known airplanes
+class PlaneOption {
+  label: string
+  value: AirPlane
+
+  constructor(value: AirPlane) {
+    this.label = value.toString()
+    this.value = value
+  }
+}
+
+const customPlanes = ref<AirPlane[]>([])
+
+const planeOptions = computed(() =>
+  Object.values(KnowAirplanes)
+    .concat(customPlanes.value)
+    .sort((a, b) => a.immatriculation.localeCompare(b.immatriculation))
+    .map((plane: AirPlane) => new PlaneOption(plane)),
+)
+
+const filterOptions = ref<PlaneOption[]>(planeOptions.value)
+
+const currentPlane = ref(null as AirPlane | null)
+const planeIsCustom = computed(() => currentPlane.value?.isCustom ?? false)
+
+function onPlaneSelect(value: PlaneOption) {
+  currentPlane.value = value?.value ?? null
+
+  if (currentPlane.value) {
+    const plane = currentPlane.value as AirPlane
+
+    planeIdent.value = plane.immatriculation
+
+    const inputFuelUnit = FUEL_UNITS.find((f) => f.label === plane.fuelUnit)
+    if (inputFuelUnit) {
+      fuelUnit.value = inputFuelUnit
+    }
+
+    fuelCapacity.value = plane.fuelCapacity
+    fuelConsumable.value = plane.fuelConsumable
+    fuelPerHour.value = plane.fuelConsumption
+
+    $q.sessionStorage?.setItem('fuel_computer.input.planeIdent', plane.immatriculation)
+    console.log('Selected plane:', plane)
+  }
+}
+
+function onNewPlane(
+  value: string,
+  done: (item: PlaneOption, mode?: 'add' | 'add-unique' | 'toggle') => void,
+) {
+  if (!value) {
+    return
+  }
+
+  // Prepare the new Airplane object
+  const newPlane = new AirPlane(
+    value.toUpperCase().trim(),
+    '',
+    'custom',
+    fuelUnit.value.label,
+    fuelCapacity.value,
+    fuelConsumable.value,
+    fuelPerHour.value,
+  )
+  newPlane.isCustom = true
+  customPlanes.value.push(newPlane)
+
+  planeIdent.value = newPlane.immatriculation
+  done(new PlaneOption(newPlane))
+}
+
+function onPlaneSave() {
+  if (!currentPlane.value || !currentPlane.value.isCustom) {
+    return
+  }
+
+  currentPlane.value.fuelUnit = fuelUnit.value.label
+  currentPlane.value.fuelCapacity = fuelCapacity.value
+  currentPlane.value.fuelConsumable = fuelConsumable.value
+  currentPlane.value.fuelConsumption = fuelPerHour.value
+
+  $q.sessionStorage?.setItem('fuel_computer.input.planes', JSON.stringify(customPlanes.value))
+}
+
+function onPlaneFilter(value: string, update: (callback: () => void) => void) {
+  // Always show all options
+  update(() => {
+    // No filter
+    if (!value) {
+      filterOptions.value = planeOptions.value
+    } else {
+      const needle = value.toUpperCase().trim()
+      filterOptions.value = planeOptions.value.filter((opt) =>
+        opt.value.immatriculation.toUpperCase().includes(needle),
+      )
+    }
+  })
+}
 
 // Result display
 const resultRows = computed((): ResultRow[] => {
@@ -325,8 +433,6 @@ const printInputTables = ref(false)
 // Load previous details from session storage
 onMounted(() => {
   // Reload data from session storage
-  planeIdent.value = $q.sessionStorage.getItem('fuel_computer.input.planeIdent') ?? planeIdent.value
-
   const fuelUnitLabel = $q.sessionStorage.getItem('fuel_computer.input.fuelUnit')
   if (fuelUnitLabel) {
     fuelUnit.value = FUEL_UNITS.find((f) => f.label === fuelUnitLabel) ?? fuelUnit.value
@@ -340,5 +446,33 @@ onMounted(() => {
     $q.sessionStorage.getItem('fuel_computer.input.fuelConsumable') ?? fuelConsumable.value
   fuelCapacity.value =
     $q.sessionStorage.getItem('fuel_computer.input.fuelCapacity') ?? fuelCapacity.value
+
+  // Reload custom planes
+  customPlanes.value = (
+    JSON.parse($q.sessionStorage.getItem('fuel_computer.input.planes') ?? '[]') as AirPlane[]
+  ).map((p) => {
+    const plane = new AirPlane(
+      p.immatriculation,
+      p.brand,
+      p.model,
+      p.fuelUnit,
+      p.fuelCapacity,
+      p.fuelConsumable,
+      p.fuelConsumption,
+    )
+    plane.isCustom = true
+    return plane
+  })
+
+  // Select the previously selected plane, if any
+  const savedPlaneIdent = $q.sessionStorage.getItem('fuel_computer.input.planeIdent')
+  if (savedPlaneIdent) {
+    const matchingPlane = planeOptions.value.find(
+      (p) => p.value.immatriculation === savedPlaneIdent,
+    )
+    if (matchingPlane) {
+      onPlaneSelect(matchingPlane)
+    }
+  }
 })
 </script>
