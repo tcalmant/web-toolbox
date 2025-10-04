@@ -945,4 +945,54 @@ CE SUP AIP EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
       expect(pdfNames[1]).toEqual(`lf_sup_a_2025_144_${lang}.pdf`)
     }
   })
+
+  it('should handle RDL entry with degrees and decimals', () => {
+    const rdlNotamSection = `
+- LFFA-P2172/24
+- DU: 10 06 2024 09:33 AU: 31 05 2025 23:59
+- A) LFLB
+- Q) LFMM / QOBCE / IV / M / A / 000/999 / 4538N00553E005
+- E) GRUE A TOUR ERIGEE A LA MOTTE SERVOLEX :
+    RDL/D : 192/2.40 NM ARP LFLB
+    ALT AU SOMMET : 984FT
+    HAUT : 86FT
+    BAL : JOUR ET NUIT.
+`
+    const notam = new NOTAM(rdlNotamSection, 1)
+    expect(notam.id).toEqual('LFFA-P2172/24')
+    expect(notam.polygons).not.toBeNull()
+    expect(notam.polygons.length).toEqual(1)
+    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
+    const circle = notam.polygons[0] as Circle
+    expect(circle.getRadius()).toEqual(1852) // 1 NM in meters
+    const latlng = circle.getLatLng()
+    // RDL are not very precise, so we use 1 decimal place
+    expect(latlng.lat).toBeCloseTo(45.63, 1)
+    expect(latlng.lng).toBeCloseTo(5.88, 1)
+  })
+
+  it('should handle RDL in text with degrees and decimals', () => {
+    const rdlNotamSection = `
+LFFA-R0629/25
+DU: 19 04 2025 15:00 AU: 21 04 2025 04:00
+A) LFPM
+Q) LFFF / QRTCA / IV / BO / AW / 000/009 / 4842N00241E003
+D) 1500-0400
+E) ZONE REGLEMENTEE TEMPORAIRE (ZRT) A COUBERT :
+-SURVEILLANCE DE LIGNES FERROVIAIRES PAR AERONEF SANS EQUIPAGE A BORD
+HORS VUE :
+CENTRE ZRT : RDL006/5.8NM ARP LFPM AD.
+`
+    const notam = new NOTAM(rdlNotamSection, 1)
+    expect(notam.id).toEqual('LFFA-R0629/25')
+    expect(notam.polygons).not.toBeNull()
+    expect(notam.polygons.length).toEqual(1)
+    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
+    const circle = notam.polygons[0] as Circle
+    expect(circle.getRadius()).toEqual(1852) // 1 NM in meters
+    const latlng = circle.getLatLng()
+    // RDL are not very precise, so we use 1 decimal place
+    expect(latlng.lat).toBeCloseTo(48.7, 1)
+    expect(latlng.lng).toBeCloseTo(2.7, 1)
+  })
 })
