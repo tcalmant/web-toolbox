@@ -596,7 +596,7 @@ export class NOTAM {
     // Look for relative locations, only if no other location has been found
     if (layers.length == 0) {
       const relativePlacePattern =
-        /RDL\s*(?<azimuth>\d{2,3})\s*\/\s*(?<distance>\d+([.,]\d+))\s*(?<unit>\w+)/gm
+        /RDL(\/D)?\s*:?\s*(?<azimuth>\d{2,3})\s*\/\s*(?<distance>\d+([.,]\d+))\s*(?<unit>\w+)/gm
 
       while ((match = relativePlacePattern.exec(text)) != null) {
         if (match.groups === undefined) {
@@ -637,13 +637,21 @@ export class NOTAM {
 
         // Find the base airfield: look for the ICAO code right after the match
         const afterMatch = text.substring(match.index + match[0].length)
-        const airfieldMatch = afterMatch.match(/\b([A-Z]{4})\b/)
+        // Ignore FATO and FIR references
+        const airfieldMatch = afterMatch.match(
+          /\b(?!FATO|LFXX|LFBB|LFEE|LFFF|LFMM|LFRR\b)([A-Z]{4})\b/,
+        )
+        const nextSeparatorIdx = afterMatch.search(/[\n,;:$]/)
+        console.debug('Next separator at index: ' + (match.index + nextSeparatorIdx))
+        console.debug('Airfield match: ' + airfieldMatch?.index)
         let baseAirfield: string
         if (
-          airfieldMatch == null ||
+          airfieldMatch === null ||
+          airfieldMatch === undefined ||
           airfieldMatch.index === undefined ||
           airfieldMatch[1] === undefined ||
-          airfieldMatch?.index > 10
+          (nextSeparatorIdx == -1 && airfieldMatch.index > 10) ||
+          (nextSeparatorIdx != -1 && airfieldMatch.index > match.index + nextSeparatorIdx)
         ) {
           if (!target) {
             // No target airfield given: ignore
@@ -656,7 +664,7 @@ export class NOTAM {
           baseAirfield = airfieldMatch[1]
         }
 
-        if (!baseAirfield || ['FATO', 'LFFF', 'LFXX'].includes(baseAirfield)) {
+        if (!baseAirfield) {
           // Ignore FATO references and nation-wide NOTAMs
           continue
         }
