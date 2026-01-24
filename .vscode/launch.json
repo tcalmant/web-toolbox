@@ -2,11 +2,30 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "msedge",
+      "type": "firefox",
       "request": "launch",
-      "name": "Démarrer Microsoft Edge à l’utilisation de localhost",
+      "name": "Quasar App: Firefox",
       "url": "http://localhost:9000",
-      "webRoot": "${workspaceFolder}"
+      "webRoot": "${workspaceFolder}",
+      "pathMappings": [
+        {
+          "url": "/src",
+          "path": "${workspaceFolder}/src"
+        },
+        {
+          "url": "http://localhost:9000/src",
+          "path": "${workspaceFolder}/src"
+        },
+        {
+          "url": "vite://",
+          "path": "${workspaceFolder}"
+        },
+        {
+          "url": "webpack://",
+          "path": "${workspaceFolder}"
+        }
+      ],
+      "reAttach": true
     }
   ]
 }
