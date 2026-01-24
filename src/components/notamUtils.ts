@@ -375,6 +375,22 @@ export class NOTAM {
     this.linkedIrSera = this.findIrSeraRefs(this.rawSections.get('E'))
   }
 
+  /**
+   * Returns true if the NOTAM matches the given search string.
+   *
+   * @param search Search string
+   * @returns True if the NOTAM matches the search string
+   */
+  public matchesSearch(search: string): boolean {
+    // Check ID
+    if (this.id.toLowerCase().includes(search)) {
+      return true
+    }
+
+    // Check text
+    return this.text.toLowerCase().includes(search)
+  }
+
   splitSections(text: string): Map<string, string> {
     let currentSection: string = 'HEADER'
     let currentBlock: string[] = []

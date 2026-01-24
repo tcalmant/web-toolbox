@@ -47,7 +47,7 @@ under the License.
           <q-input
             dense
             filled
-            debounce="300"
+            debounce="100"
             v-model="searchQuery"
             :label="$t('searchLabel')"
             :placeholder="$t('searchPlaceholder')"
@@ -251,15 +251,15 @@ onMounted(() => {
   inputNOTAMText.value = $q.sessionStorage.getItem('notam.input.notam') ?? inputNOTAMText.value
 
   handleAIPInput(inputAIPText.value)
-  handleNOTAMInput(inputNOTAMText.value)
+  handleNOTAMInput(inputNOTAMText.value, searchQuery.value)
 })
 watch(inputAIPText, (newValue: string) => {
   $q.sessionStorage?.setItem('notam.input.aip', newValue)
   handleAIPInput(newValue)
 })
-watch(inputNOTAMText, (newValue: string) => {
-  $q.sessionStorage?.setItem('notam.input.notam', newValue)
-  handleNOTAMInput(newValue)
+watch([inputNOTAMText, searchQuery], ([newNotamValue, newSearchValue]) => {
+  $q.sessionStorage?.setItem('notam.input.notam', newNotamValue)
+  handleNOTAMInput(newNotamValue, newSearchValue)
 })
 
 watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
@@ -272,15 +272,25 @@ function handleAIPInput(fullText: string): void {
   parsedAIP.value = fullText ? new AIP(fullText) : undefined
 }
 
-function handleNOTAMInput(fullText: string): void {
-  let notams = (parsedNotams.value = fullText ? parseNotams(fullText) : [])
+function handleNOTAMInput(fullText: string, search: string): void {
+  let notams = fullText ? parseNotams(fullText) : []
+  // Apply search filter if necessary
+  if (search && search.trim().length > 0) {
+    const trimmedSearch = search.trim()
+    notams = notams.filter((n) => n.matchesSearch(trimmedSearch))
+  }
 
+  // Update parsed NOTAMs
+  parsedNotams.value = notams
+
+  // Select out large NOTAMs
   if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
     notams = notams.filter(
       (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
     )
   }
 
+  // Select out NOTAMs without positions
   if (onlyWithPositions.value) {
     notams = notams.filter((n) => n.polygons.length != 0)
   }
