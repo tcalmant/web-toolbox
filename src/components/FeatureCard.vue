@@ -22,8 +22,13 @@ under the License.
 
 <template>
   <div class="q-pa-md row items-start q-gutter-md">
-
-    <q-card v-ripple dark bordered class="bg-grey-9 cursor-pointer q-hoverable card-width" @click="$router.push(page)">
+    <q-card
+      v-ripple
+      dark
+      bordered
+      class="bg-grey-9 cursor-pointer q-hoverable card-width"
+      @click="$router.push(page)"
+    >
       <span class="q-focus-helper"></span>
       <q-card-section>
         <div class="text-h6">{{ title }}</div>
