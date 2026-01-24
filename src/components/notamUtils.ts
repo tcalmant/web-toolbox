@@ -642,8 +642,6 @@ export class NOTAM {
           /\b(?!FATO|LFXX|LFBB|LFEE|LFFF|LFMM|LFRR\b)([A-Z]{4})\b/,
         )
         const nextSeparatorIdx = afterMatch.search(/[\n,;:$]/)
-        console.debug('Next separator at index: ' + (match.index + nextSeparatorIdx))
-        console.debug('Airfield match: ' + airfieldMatch?.index)
         let baseAirfield: string
         if (
           airfieldMatch === null ||
