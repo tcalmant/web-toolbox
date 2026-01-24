@@ -39,28 +39,10 @@ under the License.
         v-model:max-notam-radius="maxNotamRadius"
         v-model:only-with-positions="onlyWithPositions"
         v-model:show-area-of-influence="showAreaOfInfluence"
+        v-model:search-query="searchQuery"
         @show-notam-edit="showNotamEdit = true"
         @show-aip-edit="showAipEdit = true"
       />
-      <div class="row">
-        <div class="col">
-          <q-input
-            dense
-            filled
-            debounce="100"
-            v-model="searchQuery"
-            :label="$t('searchLabel')"
-            :placeholder="$t('searchPlaceholder')"
-            clearable
-            clear-icon="close"
-            :aria-label="$t('searchAriaLabel')"
-          >
-            <template v-slot:prepend>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-        </div>
-      </div>
       <NotamTable
         v-model:focused-notam="focusedNotam"
         v-model:hovered-notam="hoveredNotam"
