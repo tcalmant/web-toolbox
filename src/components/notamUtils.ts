@@ -596,7 +596,7 @@ export class NOTAM {
     // Look for relative locations, only if no other location has been found
     if (layers.length == 0) {
       const relativePlacePattern =
-        /RDL(\/D)?\s*:?\s*(?<azimuth>\d{2,3})\s*\/\s*(?<distance>\d+([.,]\d+))\s*(?<unit>\w+)/gm
+        /RDL(\/D)?\s*:?\s*(?<azimuth>\d{2,3})\s*\/\s*(?<distance>\d+([.,]\d+)?)\s*(?<unit>\w+)/gm
 
       while ((match = relativePlacePattern.exec(text)) != null) {
         if (match.groups === undefined) {
