@@ -152,8 +152,6 @@ const focusedNotam = defineModel<NOTAM | undefined>('focusedNotam')
 
 const notamSelectAll = ref<boolean | null>(true)
 
-const iframeRef = ref<HTMLIFrameElement | null>(null)
-
 onMounted(() => {
   if (focusedNotam.value) {
     document
