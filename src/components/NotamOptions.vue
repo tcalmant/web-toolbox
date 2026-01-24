@@ -53,6 +53,25 @@ under the License.
   <div class="row">
     <q-checkbox v-model="showAreaOfInfluence" :label="$t('notamFilterShowArea')" />
   </div>
+  <div class="row">
+    <div class="col">
+      <q-input
+        dense
+        filled
+        debounce="100"
+        v-model="searchQuery"
+        :label="$t('searchLabel')"
+        :placeholder="$t('searchPlaceholder')"
+        clearable
+        clear-icon="close"
+        :aria-label="$t('searchAriaLabel')"
+      >
+        <template v-slot:prepend>
+          <q-icon name="search" />
+        </template>
+      </q-input>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -62,6 +81,7 @@ const ignoreLargeNotams = defineModel<boolean>('ignoreLargeNotams', { default: t
 const maxNotamRadius = defineModel<number>('maxNotamRadius', { default: 100 })
 const onlyWithPositions = defineModel<boolean>('onlyWithPositions', { default: true })
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence', { default: true })
+const searchQuery = defineModel<string>('searchQuery', { default: '' })
 const emit = defineEmits(['showNotamEdit', 'showAipEdit'])
 
 const isPortrait = ref(window.innerHeight > window.innerWidth)
