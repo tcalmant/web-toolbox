@@ -42,6 +42,25 @@ under the License.
         @show-notam-edit="showNotamEdit = true"
         @show-aip-edit="showAipEdit = true"
       />
+      <div class="row">
+        <div class="col">
+          <q-input
+            dense
+            filled
+            debounce="300"
+            v-model="searchQuery"
+            :label="$t('searchLabel')"
+            :placeholder="$t('searchPlaceholder')"
+            clearable
+            clear-icon="close"
+            :aria-label="$t('searchAriaLabel')"
+          >
+            <template v-slot:prepend>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+        </div>
+      </div>
       <NotamTable
         v-model:focused-notam="focusedNotam"
         v-model:hovered-notam="hoveredNotam"
@@ -160,6 +179,9 @@ const ignoreLargeNotams = ref<boolean>(true)
 const maxNotamRadius = ref<number>(100)
 const onlyWithPositions = ref<boolean>(true)
 const showAreaOfInfluence = ref<boolean>(true)
+
+// ... search
+const searchQuery = ref<string>('')
 
 // ... table
 const notamColumns = computed<QTableColumn[]>(() => [

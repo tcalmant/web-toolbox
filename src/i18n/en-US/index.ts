@@ -66,6 +66,9 @@ export default {
   supAipLang: 'en',
   supAipRefsFallbackLink: 'alternate link',
   irSeraRefsLabel: 'Linked IR SERA',
+  searchLabel: 'Search',
+  searchPlaceholder: 'Type to search...',
+  searchAriaLabel: 'Search NOTAM table',
 
   // Fuel Computer
   immatriculationLabel: 'Immatriculation',
