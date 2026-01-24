@@ -382,6 +382,9 @@ export class NOTAM {
    * @returns True if the NOTAM matches the search string
    */
   public matchesSearch(search: string): boolean {
+    // Normalize search string
+    search = search.toLowerCase()
+
     // Check ID
     if (this.id.toLowerCase().includes(search)) {
       return true
