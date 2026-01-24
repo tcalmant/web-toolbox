@@ -150,11 +150,63 @@ const initMap = () => {
   // Register to base layer change events
   map.on('baselayerchange', (e) => $q.sessionStorage.setItem('mapViewer.selectedBaseLayer', e.name))
 
+  // Display mouse coordinates at the bottom
+  map.addControl(new MapCoordinatesViewer({position: 'bottomleft'}))
+
   L.control.scale().addTo(map)
 
   mapRef.value = map
   aipLayer.value.addTo(map)
   notamLayer.value.addTo(map)
+}
+
+class MapCoordinatesViewer extends L.Control {
+
+  private container!: HTMLElement
+
+  constructor (options?: L.ControlOptions) {
+    super(options)
+  }
+
+  degreesToDMS(deg: number, isLat: boolean): string {
+    const absolute = Math.abs(deg)
+    const degrees = Math.floor(absolute)
+    const minutesNotTruncated = (absolute - degrees) * 60
+    const minutes = Math.floor(minutesNotTruncated)
+    const seconds = Math.floor((minutesNotTruncated - minutes) * 60)
+
+    const direction = isLat
+      ? deg >= 0
+        ? 'N'
+        : 'S'
+      : deg >= 0
+        ? 'E'
+        : 'W'
+
+    return `${String(degrees).padStart( isLat ? 2 : 3, '0')}°${String(minutes).padStart(2, '0')}'${String(seconds).padStart(2, '0')}" ${direction}`
+  }
+
+  override onAdd(map: L.Map): HTMLElement {
+    this.container = L.DomUtil.create('div', 'leaflet-control-attribution leaflet-control')
+    this.container.hidden = true
+
+    map.on('mousemove', (e) => {
+      const coords = e.latlng.wrap()
+      const coordsDegrees = `${coords.lat.toFixed(4)}° , ${coords.lng.toFixed(4)}°`
+      const coordsDMS = `${this.degreesToDMS(coords.lat, true)} , ${this.degreesToDMS(coords.lng,false)}`
+
+      this.container.innerHTML = `&nbsp; ${coordsDMS}&nbsp; | &nbsp;${coordsDegrees}&nbsp;`
+      this.container.hidden = false
+    })
+    map.on('mouseout', () => {
+      this.container.hidden = true
+    })
+    return this.container
+  }
+
+  override onRemove(map: L.Map): void {
+    map.off('mousemove')
+  }
 }
 
 const aipLayer = computed<FeatureGroup>(() => {
