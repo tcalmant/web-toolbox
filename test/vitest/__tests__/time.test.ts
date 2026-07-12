@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Thomas Calmant
+ * Copyright (c) 2026 Thomas Calmant
  * All rights reserved.
  *
  * Tests for domain/time.ts
