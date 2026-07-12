@@ -80,14 +80,14 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import { QInput, useQuasar } from 'quasar'
+import { QInput } from 'quasar'
+import { useDeletableList } from 'src/composables/useDeletableList'
+import { TimePeriod } from 'src/domain/time'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { TimePeriod } from './timeUtils'
 
 const { t } = useI18n()
 
-const $q = useQuasar()
 const totalDuration = defineModel<TimePeriod>()
 withDefaults(defineProps<{ title?: string; showTotal?: boolean }>(), { showTotal: false })
 
@@ -100,13 +100,19 @@ const valueInputField = ref<QInput>()
 const errorMessage = ref<string | null>(null)
 const totalValue = ref(new TimePeriod(0).toString())
 
+const { onDelete, onDeleteAll } = useDeletableList({
+  values: allValues,
+  inputField: valueInputField,
+  recompute,
+})
+
 function onAdd() {
   const [strHours, strMinutes] = (inputValue.value ?? '0').split(':')
   const hours = parseInt(strHours ?? '0')
   const minutes = parseInt(strMinutes ?? '0')
 
   if (minutes < 0 || minutes >= 60) {
-    errorMessage.value = 'Invalid number of minutes'
+    errorMessage.value = t('invalidMinutes')
   } else {
     const duration_s = hours * 3600 + minutes * 60
     let localValues
@@ -123,34 +129,6 @@ function onAdd() {
   }
   valueInputField.value?.focus()
   valueInputField.value?.select()
-}
-
-function onDelete(idx: number) {
-  const currentValues = allValues.value ?? []
-  const newValues = [...currentValues.slice(0, idx), ...currentValues.slice(idx + 1)]
-  recompute(newValues)
-}
-
-function onDeleteAll() {
-  if (allValues.value?.length > 1) {
-    $q.dialog({
-      title: t('confirmTitle'),
-      message: t('confirmDeleteAllMessage'),
-      cancel: true,
-      persistent: false,
-    })
-      .onOk(() => {
-        recompute([])
-      })
-      .onDismiss(() => {
-        valueInputField.value?.focus()
-        valueInputField.value?.select()
-      })
-  } else {
-    recompute([])
-    valueInputField.value?.focus()
-    valueInputField.value?.select()
-  }
 }
 
 function recompute(localValues: TimePeriod[]) {

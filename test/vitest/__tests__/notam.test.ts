@@ -19,14 +19,14 @@
  * specific language governing permissions and limitations
  * under the License.
  *
- * Tests for notamUtils.ts
+ * Tests for domain/notam.ts
  */
 
 import { describe, expect, it } from 'vitest'
 
-import { LatLng } from 'leaflet'
-import { Circle, Polygon, Polyline } from 'leaflet'
-import { NOTAM, SectionQ } from '../../../src/components/notamUtils'
+import { haversineDistanceMeters } from '../../../src/domain/geo'
+import { Line, Polygon, Position } from '../../../src/domain/geometry'
+import { NOTAM, SectionQ } from '../../../src/domain/notam'
 
 /**
  * Tests for the Q section parser
@@ -45,7 +45,6 @@ describe('Q section parser', () => {
     expect(section.center).not.toBeNull()
     expect(section.center?.lat).toBeCloseTo(45.22)
     expect(section.center?.lng).toBeCloseTo(5.85)
-    expect(section.center?.alt).toBeUndefined()
     expect(section.radiusNM).toEqual(5)
 
     // Something near Paris Orly
@@ -60,7 +59,6 @@ describe('Q section parser', () => {
     expect(section.center).not.toBeNull()
     expect(section.center?.lat).toBeCloseTo(48.68)
     expect(section.center?.lng).toBeCloseTo(2.22)
-    expect(section.center?.alt).toBeUndefined()
     expect(section.radiusNM).toEqual(1)
 
     // Something near Brest, no spaces
@@ -75,7 +73,6 @@ describe('Q section parser', () => {
     expect(section.center).not.toBeNull()
     expect(section.center?.lat).toBeCloseTo(48.45)
     expect(section.center?.lng).toBeCloseTo(-4.42)
-    expect(section.center?.alt).toBeUndefined()
     expect(section.radiusNM).toEqual(25)
 
     // Something near the borders
@@ -90,7 +87,6 @@ describe('Q section parser', () => {
     expect(section.center).not.toBeNull()
     expect(section.center?.lat).toBeCloseTo(46.75)
     expect(section.center?.lng).toBeCloseTo(2.08)
-    expect(section.center?.alt).toBeUndefined()
     expect(section.radiusNM).toEqual(266)
   })
   it('should accept precise locations', () => {
@@ -99,7 +95,6 @@ describe('Q section parser', () => {
     expect(section.center).not.toBeNull()
     expect(section.center?.lat).toBeCloseTo(45.218, 3)
     expect(section.center?.lng).toBeCloseTo(5.851, 3)
-    expect(section.center?.alt).toBeUndefined()
   })
   it('should reject empty Q sections', () => {
     // Invalid number of parts
@@ -121,7 +116,6 @@ describe('Q section parser', () => {
     expect(section.center).not.toBeNull()
     expect(section.center?.lat).toBeCloseTo(48.68)
     expect(section.center?.lng).toBeCloseTo(2.22)
-    expect(section.center?.alt).toBeUndefined()
     expect(section.radiusNM).toEqual(1)
   })
   it('should nullify invalid Q locations', () => {
@@ -274,7 +268,6 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
       expect(notam.sectionQ?.center).not.toBeNull()
       expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.22)
       expect(notam.sectionQ?.center?.lng).toBeCloseTo(5.85)
-      expect(notam.sectionQ?.center?.alt).toBeUndefined()
       expect(notam.sectionQ?.radiusNM).toEqual(5)
 
       // Check raw sections
@@ -317,16 +310,14 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.63)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(5.88)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(5)
 
-    // Single point => Circle of 1m radius
-    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
-    let circle = notam.polygons[0] as Circle
-    expect(circle.getRadius()).toEqual(1)
-    let latlng = circle.getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.6, 3)
-    expect(latlng.lng).toBeCloseTo(5.868, 3)
+    // Single point => a single POINT position
+    expect(notam.polygons[0]).toBeInstanceOf(Position)
+    let position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('POINT')
+    expect(position.location.lat).toBeCloseTo(45.6, 3)
+    expect(position.location.lng).toBeCloseTo(5.868, 3)
 
     notam = new NOTAM(swissCraneNotam, 2)
     expect(notam.id).toEqual('LSSN-A0094/25')
@@ -341,18 +332,16 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(46.183)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(6.133)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(1)
 
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
 
-    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
-    circle = notam.polygons[0] as Circle
-    expect(circle.getRadius()).toEqual(1)
-    latlng = circle.getLatLng()
-    expect(latlng.lat).toBeCloseTo(46.188, 3)
-    expect(latlng.lng).toBeCloseTo(6.131, 3)
+    expect(notam.polygons[0]).toBeInstanceOf(Position)
+    position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('POINT')
+    expect(position.location.lat).toBeCloseTo(46.188, 3)
+    expect(position.location.lng).toBeCloseTo(6.131, 3)
   })
 
   it('should extract wind mill locations', () => {
@@ -369,35 +358,34 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.33)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(-0.23)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(2)
 
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(6)
 
-    let latlng = (notam.polygons[0] as Circle).getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.33, 3)
-    expect(latlng.lng).toBeCloseTo(-0.232, 3)
+    let position = notam.polygons[0] as Position
+    expect(position.location.lat).toBeCloseTo(45.33, 3)
+    expect(position.location.lng).toBeCloseTo(-0.232, 3)
 
-    latlng = (notam.polygons[1] as Circle).getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.336, 3)
-    expect(latlng.lng).toBeCloseTo(-0.238, 3)
+    position = notam.polygons[1] as Position
+    expect(position.location.lat).toBeCloseTo(45.336, 3)
+    expect(position.location.lng).toBeCloseTo(-0.238, 3)
 
-    latlng = (notam.polygons[2] as Circle).getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.341, 3)
-    expect(latlng.lng).toBeCloseTo(-0.237, 3)
+    position = notam.polygons[2] as Position
+    expect(position.location.lat).toBeCloseTo(45.341, 3)
+    expect(position.location.lng).toBeCloseTo(-0.237, 3)
 
-    latlng = (notam.polygons[3] as Circle).getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.342, 3)
-    expect(latlng.lng).toBeCloseTo(-0.227, 3)
+    position = notam.polygons[3] as Position
+    expect(position.location.lat).toBeCloseTo(45.342, 3)
+    expect(position.location.lng).toBeCloseTo(-0.227, 3)
 
-    latlng = (notam.polygons[4] as Circle).getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.346, 3)
-    expect(latlng.lng).toBeCloseTo(-0.23, 3)
+    position = notam.polygons[4] as Position
+    expect(position.location.lat).toBeCloseTo(45.346, 3)
+    expect(position.location.lng).toBeCloseTo(-0.23, 3)
 
-    latlng = (notam.polygons[5] as Circle).getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.346, 3)
-    expect(latlng.lng).toBeCloseTo(-0.213, 3)
+    position = notam.polygons[5] as Position
+    expect(position.location.lat).toBeCloseTo(45.346, 3)
+    expect(position.location.lng).toBeCloseTo(-0.213, 3)
 
     // Note that this NOTAM contains a duplicated location (2 and 8)
     // This is ignored by the parser
@@ -414,40 +402,35 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(50.53)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(4.52)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(2)
 
     expect(notam.polygons).not.toBeNull()
     // Due to the wind mills locations being separated by a dash (-),
     // it is considered as a single polygon, not a set of points
     expect(notam.polygons.length).toEqual(1)
-    expect(notam.polygons[0] instanceof Polygon).toBeTruthy()
+    expect(notam.polygons[0]).toBeInstanceOf(Polygon)
     const polygon = notam.polygons[0] as Polygon
 
-    // Polygons are polylines, here we have 1 line
-    // with 8 points (7 wind mills + duplicated point)
-    let latlngs = polygon.getLatLngs()
-    expect(latlngs.length).toEqual(1)
-    expect((latlngs[0] as LatLng[]).length).toEqual(8)
-
-    latlngs = latlngs[0] as LatLng[]
-    expect(latlngs[0]!.lat).toBeCloseTo(50.541, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(4.513, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(50.537, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(4.523, 3)
-    expect(latlngs[2]!.lat).toBeCloseTo(50.534, 3)
-    expect(latlngs[2]!.lng).toBeCloseTo(4.526, 3)
-    expect(latlngs[3]!.lat).toBeCloseTo(50.537, 3)
-    expect(latlngs[3]!.lng).toBeCloseTo(4.509, 3)
-    expect(latlngs[4]!.lat).toBeCloseTo(50.532, 3)
-    expect(latlngs[4]!.lng).toBeCloseTo(4.518, 3)
-    expect(latlngs[5]!.lat).toBeCloseTo(50.538, 3)
-    expect(latlngs[5]!.lng).toBeCloseTo(4.499, 3)
-    expect(latlngs[6]!.lat).toBeCloseTo(50.53, 3)
-    expect(latlngs[6]!.lng).toBeCloseTo(4.512, 3)
+    // Polygon has 8 points (7 wind mills + duplicated point)
+    const locations = polygon.locations
+    expect(locations.length).toEqual(8)
+    expect(locations[0]!.lat).toBeCloseTo(50.541, 3)
+    expect(locations[0]!.lng).toBeCloseTo(4.513, 3)
+    expect(locations[1]!.lat).toBeCloseTo(50.537, 3)
+    expect(locations[1]!.lng).toBeCloseTo(4.523, 3)
+    expect(locations[2]!.lat).toBeCloseTo(50.534, 3)
+    expect(locations[2]!.lng).toBeCloseTo(4.526, 3)
+    expect(locations[3]!.lat).toBeCloseTo(50.537, 3)
+    expect(locations[3]!.lng).toBeCloseTo(4.509, 3)
+    expect(locations[4]!.lat).toBeCloseTo(50.532, 3)
+    expect(locations[4]!.lng).toBeCloseTo(4.518, 3)
+    expect(locations[5]!.lat).toBeCloseTo(50.538, 3)
+    expect(locations[5]!.lng).toBeCloseTo(4.499, 3)
+    expect(locations[6]!.lat).toBeCloseTo(50.53, 3)
+    expect(locations[6]!.lng).toBeCloseTo(4.512, 3)
     // Duplication of 2nd wind mill
-    expect(latlngs[7]!.lat).toBeCloseTo(50.537, 3)
-    expect(latlngs[7]!.lng).toBeCloseTo(4.523, 3)
+    expect(locations[7]!.lat).toBeCloseTo(50.537, 3)
+    expect(locations[7]!.lng).toBeCloseTo(4.523, 3)
   })
 
   it('should extract cables and high lines', () => {
@@ -464,28 +447,25 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.92)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(6.2)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(1)
 
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(2)
 
-    // First layer is the average location
-    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
-    let circle = notam.polygons[0] as Circle
-    expect(circle.getRadius()).toEqual(1)
-    let latlng = circle.getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.913, 3)
-    expect(latlng.lng).toBeCloseTo(6.196, 3)
+    // First feature is the average location
+    expect(notam.polygons[0]).toBeInstanceOf(Position)
+    let position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AVG')
+    expect(position.location.lat).toBeCloseTo(45.913, 3)
+    expect(position.location.lng).toBeCloseTo(6.196, 3)
 
-    // Second layer is the cable itself
-    expect(notam.polygons[1] instanceof Polyline).toBeTruthy()
-    let polyline = notam.polygons[1] as Polyline
-    let latlngs = polyline.getLatLngs() as LatLng[]
-    expect(latlngs[0]!.lat).toBeCloseTo(45.913, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(6.198, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(45.913, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(6.195, 3)
+    // Second feature is the cable itself
+    expect(notam.polygons[1]).toBeInstanceOf(Line)
+    let line = notam.polygons[1] as Line
+    expect(line.locations[0]!.lat).toBeCloseTo(45.913, 3)
+    expect(line.locations[0]!.lng).toBeCloseTo(6.198, 3)
+    expect(line.locations[1]!.lat).toBeCloseTo(45.913, 3)
+    expect(line.locations[1]!.lng).toBeCloseTo(6.195, 3)
 
     notam = new NOTAM(highLineNotam, 6)
     expect(notam.id).toEqual('LFFA-P1487/25')
@@ -500,27 +480,24 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.85)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(6.25)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(1)
 
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(2)
-    // First layer is the average location
-    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
-    circle = notam.polygons[0] as Circle
-    expect(circle.getRadius()).toEqual(1)
-    latlng = circle.getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.857, 3)
-    expect(latlng.lng).toBeCloseTo(6.243, 3)
+    // First feature is the average location
+    expect(notam.polygons[0]).toBeInstanceOf(Position)
+    position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AVG')
+    expect(position.location.lat).toBeCloseTo(45.857, 3)
+    expect(position.location.lng).toBeCloseTo(6.243, 3)
 
-    // Second layer is the cable itself
-    expect(notam.polygons[1] instanceof Polyline).toBeTruthy()
-    polyline = notam.polygons[1] as Polyline
-    latlngs = polyline.getLatLngs() as LatLng[]
-    expect(latlngs[0]!.lat).toBeCloseTo(45.858, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(6.242, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(45.857, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(6.244, 3)
+    // Second feature is the cable itself
+    expect(notam.polygons[1]).toBeInstanceOf(Line)
+    line = notam.polygons[1] as Line
+    expect(line.locations[0]!.lat).toBeCloseTo(45.858, 3)
+    expect(line.locations[0]!.lng).toBeCloseTo(6.242, 3)
+    expect(line.locations[1]!.lat).toBeCloseTo(45.857, 3)
+    expect(line.locations[1]!.lng).toBeCloseTo(6.244, 3)
   })
 
   it('should extract border coordinates', () => {
@@ -537,7 +514,6 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(46.75)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(2.08)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(266)
 
     // We have 4 blocks of coordinates
@@ -545,92 +521,86 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.polygons.length).toEqual(4)
 
     // First block: two points => line
-    expect(notam.polygons[0] instanceof Polyline).toBeTruthy()
-    const polyline = notam.polygons[0] as Polyline
-    let latlngs = polyline.getLatLngs() as LatLng[]
-    expect(latlngs.length).toEqual(2)
-    expect(latlngs[0]!.lat).toBeCloseTo(51.117, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(2, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(51.089, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(2.546, 3)
+    expect(notam.polygons[0]).toBeInstanceOf(Line)
+    const line = notam.polygons[0] as Line
+    expect(line.locations.length).toEqual(2)
+    expect(line.locations[0]!.lat).toBeCloseTo(51.117, 3)
+    expect(line.locations[0]!.lng).toBeCloseTo(2, 3)
+    expect(line.locations[1]!.lat).toBeCloseTo(51.089, 3)
+    expect(line.locations[1]!.lng).toBeCloseTo(2.546, 3)
 
-    // 2nd block: 1 point => circle
-    expect(notam.polygons[1] instanceof Circle).toBeTruthy()
-    const circle = notam.polygons[1] as Circle
-    expect(circle.getRadius()).toEqual(1)
-    const latlng = circle.getLatLng()
-    expect(latlng.lat).toBeCloseTo(49.546, 3)
-    expect(latlng.lng).toBeCloseTo(5.819, 3)
+    // 2nd block: 1 point => a single POINT position
+    expect(notam.polygons[1]).toBeInstanceOf(Position)
+    const position = notam.polygons[1] as Position
+    expect(position.kind).toEqual('POINT')
+    expect(position.location.lat).toBeCloseTo(49.546, 3)
+    expect(position.location.lng).toBeCloseTo(5.819, 3)
 
     // 3rd block: 17 points => polygon
-    expect(notam.polygons[2] instanceof Polygon).toBeTruthy()
+    expect(notam.polygons[2]).toBeInstanceOf(Polygon)
     let polygon = notam.polygons[2] as Polygon
-    let polyLatLngs = polygon.getLatLngs() as LatLng[][]
-    expect(polyLatLngs.length).toEqual(1)
-    latlngs = polyLatLngs[0] as LatLng[]
-    expect(latlngs.length).toEqual(17)
-    expect(latlngs[0]!.lat).toBeCloseTo(49.45, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(6, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(48.95, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(4.8, 3)
-    expect(latlngs[2]!.lat).toBeCloseTo(48.25, 3)
-    expect(latlngs[2]!.lng).toBeCloseTo(5.733, 3)
-    expect(latlngs[3]!.lat).toBeCloseTo(48.167, 3)
-    expect(latlngs[3]!.lng).toBeCloseTo(5.167, 3)
-    expect(latlngs[4]!.lat).toBeCloseTo(47.417, 3)
-    expect(latlngs[4]!.lng).toBeCloseTo(4.333, 3)
-    expect(latlngs[5]!.lat).toBeCloseTo(46.5, 3)
-    expect(latlngs[5]!.lng).toBeCloseTo(4.833, 3)
-    expect(latlngs[6]!.lat).toBeCloseTo(46.5, 3)
-    expect(latlngs[6]!.lng).toBeCloseTo(3.267, 3)
-    expect(latlngs[7]!.lat).toBeCloseTo(46.329, 3)
-    expect(latlngs[7]!.lng).toBeCloseTo(2.916, 3)
-    expect(latlngs[8]!.lat).toBeCloseTo(45.7125, 3)
-    expect(latlngs[8]!.lng).toBeCloseTo(3.004, 3)
-    expect(latlngs[9]!.lat).toBeCloseTo(45.714, 3)
-    expect(latlngs[9]!.lng).toBeCloseTo(2.995, 3)
-    expect(latlngs[10]!.lat).toBeCloseTo(44.619, 3)
-    expect(latlngs[10]!.lng).toBeCloseTo(3.041, 3)
-    expect(latlngs[11]!.lat).toBeCloseTo(43.715, 3)
-    expect(latlngs[11]!.lng).toBeCloseTo(2.707, 3)
-    expect(latlngs[12]!.lat).toBeCloseTo(43.214, 3)
-    expect(latlngs[12]!.lng).toBeCloseTo(2.707, 3)
-    expect(latlngs[13]!.lat).toBeCloseTo(43.256, 3)
-    expect(latlngs[13]!.lng).toBeCloseTo(2.572, 3)
-    expect(latlngs[14]!.lat).toBeCloseTo(43, 3)
-    expect(latlngs[14]!.lng).toBeCloseTo(2.275, 3)
-    expect(latlngs[15]!.lat).toBeCloseTo(42.591, 3)
-    expect(latlngs[15]!.lng).toBeCloseTo(2.736, 3)
-    expect(latlngs[16]!.lat).toBeCloseTo(42.417, 3)
-    expect(latlngs[16]!.lng).toBeCloseTo(2.715, 3)
+    let locations = polygon.locations
+    expect(locations.length).toEqual(17)
+    expect(locations[0]!.lat).toBeCloseTo(49.45, 3)
+    expect(locations[0]!.lng).toBeCloseTo(6, 3)
+    expect(locations[1]!.lat).toBeCloseTo(48.95, 3)
+    expect(locations[1]!.lng).toBeCloseTo(4.8, 3)
+    expect(locations[2]!.lat).toBeCloseTo(48.25, 3)
+    expect(locations[2]!.lng).toBeCloseTo(5.733, 3)
+    expect(locations[3]!.lat).toBeCloseTo(48.167, 3)
+    expect(locations[3]!.lng).toBeCloseTo(5.167, 3)
+    expect(locations[4]!.lat).toBeCloseTo(47.417, 3)
+    expect(locations[4]!.lng).toBeCloseTo(4.333, 3)
+    expect(locations[5]!.lat).toBeCloseTo(46.5, 3)
+    expect(locations[5]!.lng).toBeCloseTo(4.833, 3)
+    expect(locations[6]!.lat).toBeCloseTo(46.5, 3)
+    expect(locations[6]!.lng).toBeCloseTo(3.267, 3)
+    expect(locations[7]!.lat).toBeCloseTo(46.329, 3)
+    expect(locations[7]!.lng).toBeCloseTo(2.916, 3)
+    expect(locations[8]!.lat).toBeCloseTo(45.7125, 3)
+    expect(locations[8]!.lng).toBeCloseTo(3.004, 3)
+    expect(locations[9]!.lat).toBeCloseTo(45.714, 3)
+    expect(locations[9]!.lng).toBeCloseTo(2.995, 3)
+    expect(locations[10]!.lat).toBeCloseTo(44.619, 3)
+    expect(locations[10]!.lng).toBeCloseTo(3.041, 3)
+    expect(locations[11]!.lat).toBeCloseTo(43.715, 3)
+    expect(locations[11]!.lng).toBeCloseTo(2.707, 3)
+    expect(locations[12]!.lat).toBeCloseTo(43.214, 3)
+    expect(locations[12]!.lng).toBeCloseTo(2.707, 3)
+    expect(locations[13]!.lat).toBeCloseTo(43.256, 3)
+    expect(locations[13]!.lng).toBeCloseTo(2.572, 3)
+    expect(locations[14]!.lat).toBeCloseTo(43, 3)
+    expect(locations[14]!.lng).toBeCloseTo(2.275, 3)
+    expect(locations[15]!.lat).toBeCloseTo(42.591, 3)
+    expect(locations[15]!.lng).toBeCloseTo(2.736, 3)
+    expect(locations[16]!.lat).toBeCloseTo(42.417, 3)
+    expect(locations[16]!.lng).toBeCloseTo(2.715, 3)
 
     // 4th block: 10 points => polygon
-    expect(notam.polygons[3] instanceof Polygon).toBeTruthy()
+    expect(notam.polygons[3]).toBeInstanceOf(Polygon)
     polygon = notam.polygons[3] as Polygon
-    polyLatLngs = polygon.getLatLngs() as LatLng[][]
-    expect(polyLatLngs.length).toEqual(1)
-    latlngs = polyLatLngs[0] as LatLng[]
-    expect(latlngs.length).toEqual(10)
-    expect(latlngs[0]!.lat).toBeCloseTo(43.35, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(-1.783, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(43.583, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(-1.783, 3)
-    expect(latlngs[2]!.lat).toBeCloseTo(45.981, 3)
-    expect(latlngs[2]!.lng).toBeCloseTo(-1.66, 3)
-    expect(latlngs[3]!.lat).toBeCloseTo(46.213, 3)
-    expect(latlngs[3]!.lng).toBeCloseTo(-0.942, 3)
-    expect(latlngs[4]!.lat).toBeCloseTo(46.305, 3)
-    expect(latlngs[4]!.lng).toBeCloseTo(-0.722, 3)
-    expect(latlngs[5]!.lat).toBeCloseTo(46.5, 3)
-    expect(latlngs[5]!.lng).toBeCloseTo(-0.25, 3)
-    expect(latlngs[6]!.lat).toBeCloseTo(50, 3)
-    expect(latlngs[6]!.lng).toBeCloseTo(-0.25, 3)
-    expect(latlngs[7]!.lat).toBeCloseTo(50.667, 3)
-    expect(latlngs[7]!.lng).toBeCloseTo(1.467, 3)
-    expect(latlngs[8]!.lat).toBeCloseTo(51, 3)
-    expect(latlngs[8]!.lng).toBeCloseTo(1.467, 3)
-    expect(latlngs[9]!.lat).toBeCloseTo(51.117, 3)
-    expect(latlngs[9]!.lng).toBeCloseTo(2, 3)
+    locations = polygon.locations
+    expect(locations.length).toEqual(10)
+    expect(locations[0]!.lat).toBeCloseTo(43.35, 3)
+    expect(locations[0]!.lng).toBeCloseTo(-1.783, 3)
+    expect(locations[1]!.lat).toBeCloseTo(43.583, 3)
+    expect(locations[1]!.lng).toBeCloseTo(-1.783, 3)
+    expect(locations[2]!.lat).toBeCloseTo(45.981, 3)
+    expect(locations[2]!.lng).toBeCloseTo(-1.66, 3)
+    expect(locations[3]!.lat).toBeCloseTo(46.213, 3)
+    expect(locations[3]!.lng).toBeCloseTo(-0.942, 3)
+    expect(locations[4]!.lat).toBeCloseTo(46.305, 3)
+    expect(locations[4]!.lng).toBeCloseTo(-0.722, 3)
+    expect(locations[5]!.lat).toBeCloseTo(46.5, 3)
+    expect(locations[5]!.lng).toBeCloseTo(-0.25, 3)
+    expect(locations[6]!.lat).toBeCloseTo(50, 3)
+    expect(locations[6]!.lng).toBeCloseTo(-0.25, 3)
+    expect(locations[7]!.lat).toBeCloseTo(50.667, 3)
+    expect(locations[7]!.lng).toBeCloseTo(1.467, 3)
+    expect(locations[8]!.lat).toBeCloseTo(51, 3)
+    expect(locations[8]!.lng).toBeCloseTo(1.467, 3)
+    expect(locations[9]!.lat).toBeCloseTo(51.117, 3)
+    expect(locations[9]!.lng).toBeCloseTo(2, 3)
   })
 
   it('should parse the Italian gliders NOTAM', () => {
@@ -647,7 +617,6 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(45.25)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(7.8)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(62)
 
     // This NOTAM has upper/lower bound limit sections
@@ -659,36 +628,37 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     // We have a single polygon
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
-    expect(notam.polygons[0] instanceof Polygon).toBeTruthy()
+    expect(notam.polygons[0]).toBeInstanceOf(Polygon)
     const polygon = notam.polygons[0] as Polygon
-    const polyLatLngs = polygon.getLatLngs() as LatLng[][]
-    expect(polyLatLngs.length).toEqual(1)
-    const latlngs = polyLatLngs[0] as LatLng[]
+    const locations = polygon.locations
 
-    // The NOTAM text contains 12 points, but the first one is duplicated as the last one
-    expect(latlngs.length).toEqual(11)
-    expect(latlngs[0]!.lat).toBeCloseTo(46.202, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(8.242, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(46.216, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(8.322, 3)
-    expect(latlngs[2]!.lat).toBeCloseTo(46.135, 3)
-    expect(latlngs[2]!.lng).toBeCloseTo(8.466, 3)
-    expect(latlngs[3]!.lat).toBeCloseTo(45.884, 3)
-    expect(latlngs[3]!.lng).toBeCloseTo(8.458, 3)
-    expect(latlngs[4]!.lat).toBeCloseTo(45.29, 3)
-    expect(latlngs[4]!.lng).toBeCloseTo(7.505, 3)
-    expect(latlngs[5]!.lat).toBeCloseTo(45.106, 3)
-    expect(latlngs[5]!.lng).toBeCloseTo(7.483, 3)
-    expect(latlngs[6]!.lat).toBeCloseTo(44.89, 3)
-    expect(latlngs[6]!.lng).toBeCloseTo(7.318, 3)
-    expect(latlngs[7]!.lat).toBeCloseTo(44.653, 3)
-    expect(latlngs[7]!.lng).toBeCloseTo(7.393, 3)
-    expect(latlngs[8]!.lat).toBeCloseTo(44.363, 3)
-    expect(latlngs[8]!.lng).toBeCloseTo(7.864, 3)
-    expect(latlngs[9]!.lat).toBeCloseTo(44.314, 3)
-    expect(latlngs[9]!.lng).toBeCloseTo(7.303, 3)
-    expect(latlngs[10]!.lat).toBeCloseTo(45.075, 3)
-    expect(latlngs[10]!.lng).toBeCloseTo(6.711, 3)
+    // The NOTAM text contains 12 points; the last one closes the polygon by
+    // repeating the first one
+    expect(locations.length).toEqual(12)
+    expect(locations[0]!.lat).toBeCloseTo(46.202, 3)
+    expect(locations[0]!.lng).toBeCloseTo(8.242, 3)
+    expect(locations[1]!.lat).toBeCloseTo(46.216, 3)
+    expect(locations[1]!.lng).toBeCloseTo(8.322, 3)
+    expect(locations[2]!.lat).toBeCloseTo(46.135, 3)
+    expect(locations[2]!.lng).toBeCloseTo(8.466, 3)
+    expect(locations[3]!.lat).toBeCloseTo(45.884, 3)
+    expect(locations[3]!.lng).toBeCloseTo(8.458, 3)
+    expect(locations[4]!.lat).toBeCloseTo(45.29, 3)
+    expect(locations[4]!.lng).toBeCloseTo(7.505, 3)
+    expect(locations[5]!.lat).toBeCloseTo(45.106, 3)
+    expect(locations[5]!.lng).toBeCloseTo(7.483, 3)
+    expect(locations[6]!.lat).toBeCloseTo(44.89, 3)
+    expect(locations[6]!.lng).toBeCloseTo(7.318, 3)
+    expect(locations[7]!.lat).toBeCloseTo(44.653, 3)
+    expect(locations[7]!.lng).toBeCloseTo(7.393, 3)
+    expect(locations[8]!.lat).toBeCloseTo(44.363, 3)
+    expect(locations[8]!.lng).toBeCloseTo(7.864, 3)
+    expect(locations[9]!.lat).toBeCloseTo(44.314, 3)
+    expect(locations[9]!.lng).toBeCloseTo(7.303, 3)
+    expect(locations[10]!.lat).toBeCloseTo(45.075, 3)
+    expect(locations[10]!.lng).toBeCloseTo(6.711, 3)
+    expect(locations[11]!.lat).toBeCloseTo(46.202, 3)
+    expect(locations[11]!.lng).toBeCloseTo(8.242, 3)
   })
 
   it('should parse the FAA space launch NOTAM', () => {
@@ -705,7 +675,6 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center).not.toBeNull()
     expect(notam.sectionQ?.center?.lat).toBeCloseTo(28.617, 3)
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(-80.5, 3)
-    expect(notam.sectionQ?.center?.alt).toBeUndefined()
     expect(notam.sectionQ?.radiusNM).toEqual(30)
 
     // This NOTAM describes a polygon, then a circle, then a polygon.
@@ -716,36 +685,34 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
 
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
-    expect(notam.polygons[0] instanceof Polygon).toBeTruthy()
+    expect(notam.polygons[0]).toBeInstanceOf(Polygon)
     const polygon = notam.polygons[0] as Polygon
-    const polyLatLngs = polygon.getLatLngs() as LatLng[][]
-    expect(polyLatLngs.length).toEqual(1)
-    const latlngs = polyLatLngs[0] as LatLng[]
-    expect(latlngs.length).toEqual(11)
-    expect(latlngs[0]!.lat).toBeCloseTo(28.854, 3)
-    expect(latlngs[0]!.lng).toBeCloseTo(-80.705, 3)
-    expect(latlngs[1]!.lat).toBeCloseTo(29.125, 3)
-    expect(latlngs[1]!.lng).toBeCloseTo(-80.5, 3)
+    const locations = polygon.locations
+    expect(locations.length).toEqual(11)
+    expect(locations[0]!.lat).toBeCloseTo(28.854, 3)
+    expect(locations[0]!.lng).toBeCloseTo(-80.705, 3)
+    expect(locations[1]!.lat).toBeCloseTo(29.125, 3)
+    expect(locations[1]!.lng).toBeCloseTo(-80.5, 3)
     // Center of the circle, detected as a polygon point
-    expect(latlngs[2]!.lat).toBeCloseTo(28.618, 3)
-    expect(latlngs[2]!.lng).toBeCloseTo(-80.613, 3)
+    expect(locations[2]!.lat).toBeCloseTo(28.618, 3)
+    expect(locations[2]!.lng).toBeCloseTo(-80.613, 3)
     // Back to polygon points
-    expect(latlngs[3]!.lat).toBeCloseTo(28.225, 3)
-    expect(latlngs[3]!.lng).toBeCloseTo(-80.267, 3)
-    expect(latlngs[4]!.lat).toBeCloseTo(28.417, 3)
-    expect(latlngs[4]!.lng).toBeCloseTo(-80.508, 3)
-    expect(latlngs[5]!.lat).toBeCloseTo(28.417, 3)
-    expect(latlngs[5]!.lng).toBeCloseTo(-80.633, 3)
-    expect(latlngs[6]!.lat).toBeCloseTo(28.417, 3)
-    expect(latlngs[6]!.lng).toBeCloseTo(-80.696, 3)
-    expect(latlngs[7]!.lat).toBeCloseTo(28.522, 3)
-    expect(latlngs[7]!.lng).toBeCloseTo(-80.73, 3)
-    expect(latlngs[8]!.lat).toBeCloseTo(28.634, 3)
-    expect(latlngs[8]!.lng).toBeCloseTo(-80.784, 3)
-    expect(latlngs[9]!.lat).toBeCloseTo(28.819, 3)
-    expect(latlngs[9]!.lng).toBeCloseTo(-80.846, 3)
-    expect(latlngs[10]!.lat).toBeCloseTo(28.854, 3)
-    expect(latlngs[10]!.lng).toBeCloseTo(-80.787, 3)
+    expect(locations[3]!.lat).toBeCloseTo(28.225, 3)
+    expect(locations[3]!.lng).toBeCloseTo(-80.267, 3)
+    expect(locations[4]!.lat).toBeCloseTo(28.417, 3)
+    expect(locations[4]!.lng).toBeCloseTo(-80.508, 3)
+    expect(locations[5]!.lat).toBeCloseTo(28.417, 3)
+    expect(locations[5]!.lng).toBeCloseTo(-80.633, 3)
+    expect(locations[6]!.lat).toBeCloseTo(28.417, 3)
+    expect(locations[6]!.lng).toBeCloseTo(-80.696, 3)
+    expect(locations[7]!.lat).toBeCloseTo(28.522, 3)
+    expect(locations[7]!.lng).toBeCloseTo(-80.73, 3)
+    expect(locations[8]!.lat).toBeCloseTo(28.634, 3)
+    expect(locations[8]!.lng).toBeCloseTo(-80.784, 3)
+    expect(locations[9]!.lat).toBeCloseTo(28.819, 3)
+    expect(locations[9]!.lng).toBeCloseTo(-80.846, 3)
+    expect(locations[10]!.lat).toBeCloseTo(28.854, 3)
+    expect(locations[10]!.lng).toBeCloseTo(-80.787, 3)
   })
 
   it('should find SUP AIP AIRAC references', () => {
@@ -872,27 +839,25 @@ G) FL115
     expect(notam.id).toEqual('LFFA-W2003/25')
     expect(notam.text).not.toBeNull()
 
-    const invalidPoint = new LatLng(45.369, 5.97)
+    const invalidPoint = { lat: 45.369, lng: 5.97 }
 
     expect(notam.polygons).not.toBeNull()
     // We should have detected only the RDL entries, not the invalid position
     expect(notam.polygons.length).toEqual(2)
-    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
-    let circle = notam.polygons[0] as Circle
-    expect(circle.getRadius()).toEqual(1852)
-    let latlng = circle.getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.371, 3)
-    expect(latlng.lng).toBeCloseTo(5.964, 3)
+    expect(notam.polygons[0]).toBeInstanceOf(Position)
+    let position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AREA') // radius 1852m (1 NM)
+    expect(position.location.lat).toBeCloseTo(45.371, 3)
+    expect(position.location.lng).toBeCloseTo(5.964, 3)
 
-    // Check that the invalid position is in the circle
-    expect(latlng.distanceTo(invalidPoint)).toBeLessThan(circle.getRadius())
+    // Check that the invalid position is within 1 NM of the circle
+    expect(haversineDistanceMeters(position.location, invalidPoint)).toBeLessThan(1852)
 
-    circle = notam.polygons[1] as Circle
-    expect(circle.getRadius()).toEqual(1852)
-    latlng = circle.getLatLng()
-    expect(latlng.lat).toBeCloseTo(45.369, 3)
-    expect(latlng.lng).toBeCloseTo(5.976, 3)
-    expect(latlng.distanceTo(invalidPoint)).toBeLessThan(circle.getRadius())
+    position = notam.polygons[1] as Position
+    expect(position.kind).toEqual('AREA')
+    expect(position.location.lat).toBeCloseTo(45.369, 3)
+    expect(position.location.lng).toBeCloseTo(5.976, 3)
+    expect(haversineDistanceMeters(position.location, invalidPoint)).toBeLessThan(1852)
   })
 
   it('should generate 1 link for a AIRAC SUP AIP references', () => {
@@ -962,13 +927,12 @@ CE SUP AIP EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
     expect(notam.id).toEqual('LFFA-P2172/24')
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
-    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
-    const circle = notam.polygons[0] as Circle
-    expect(circle.getRadius()).toEqual(1852) // 1 NM in meters
-    const latlng = circle.getLatLng()
+    expect(notam.polygons[0]).toBeInstanceOf(Position)
+    const position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AREA') // radius 1852m (1 NM)
     // RDL are not very precise, so we use 1 decimal place
-    expect(latlng.lat).toBeCloseTo(45.63, 1)
-    expect(latlng.lng).toBeCloseTo(5.88, 1)
+    expect(position.location.lat).toBeCloseTo(45.63, 1)
+    expect(position.location.lng).toBeCloseTo(5.88, 1)
   })
 
   it('should handle RDL in text with degrees and decimals', () => {
@@ -987,12 +951,11 @@ CENTRE ZRT : RDL006/5.8NM ARP LFPM AD.
     expect(notam.id).toEqual('LFFA-R0629/25')
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
-    expect(notam.polygons[0] instanceof Circle).toBeTruthy()
-    const circle = notam.polygons[0] as Circle
-    expect(circle.getRadius()).toEqual(1852) // 1 NM in meters
-    const latlng = circle.getLatLng()
+    expect(notam.polygons[0]).toBeInstanceOf(Position)
+    const position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AREA') // radius 1852m (1 NM)
     // RDL are not very precise, so we use 1 decimal place
-    expect(latlng.lat).toBeCloseTo(48.7, 1)
-    expect(latlng.lng).toBeCloseTo(2.7, 1)
+    expect(position.location.lat).toBeCloseTo(48.7, 1)
+    expect(position.location.lng).toBeCloseTo(2.7, 1)
   })
 })

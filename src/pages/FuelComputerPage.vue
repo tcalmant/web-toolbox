@@ -177,24 +177,19 @@ under the License.
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar'
-import KnowAirplanes, { AirPlane } from 'src/components/airplanes'
-import { FUEL_UNITS, FuelQuantity, LITER } from 'src/components/fuelUtils'
+import KnowAirplanes from 'src/adapters/data/airplanesRepository'
 import InputListFuel from 'src/components/InputListFuel.vue'
 import InputListHours from 'src/components/InputListHours.vue'
-import { TimePeriod } from 'src/components/timeUtils'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useOrientation } from 'src/composables/useOrientation'
+import { AirPlane } from 'src/domain/airplanes'
+import { findFuelUnit, FUEL_UNITS, FuelQuantity, LITER } from 'src/domain/fuel'
+import { TimePeriod } from 'src/domain/time'
+import { computed, onMounted, ref, watch } from 'vue'
 
 const $q = useQuasar()
 
 // Display configuration
-const isPortrait = ref(window.innerHeight > window.innerWidth)
-
-const updateOrientation = () => {
-  isPortrait.value = window.innerHeight > window.innerWidth
-}
-
-onMounted(() => window.addEventListener('resize', updateOrientation))
-onUnmounted(() => window.removeEventListener('resize', updateOrientation))
+const { isPortrait } = useOrientation()
 
 const tab = ref('flightTimeTable')
 
@@ -206,18 +201,12 @@ class ResultRow {
 
   constructor(
     labelKey: string,
-    value: string | number | null | undefined,
+    value: string | null | undefined,
     showWarning: boolean = false,
     showAlert: boolean = false,
   ) {
     this.labelKey = labelKey
-    if (value === null || value === undefined) {
-      this.value = 'n/a'
-    } else if (typeof value === 'number') {
-      this.value = Math.ceil(value).toString()
-    } else {
-      this.value = value.toString()
-    }
+    this.value = value === null || value === undefined ? 'n/a' : value
 
     this.showAlert = showAlert
     this.showWarning = !showAlert && showWarning
@@ -327,7 +316,7 @@ function onPlaneSelect(value: PlaneOption) {
 
     planeIdent.value = plane.immatriculation
 
-    const inputFuelUnit = FUEL_UNITS.find((f) => f.label === plane.fuelUnit)
+    const inputFuelUnit = findFuelUnit(plane.fuelUnit)
     if (inputFuelUnit) {
       fuelUnit.value = inputFuelUnit
     }

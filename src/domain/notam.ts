@@ -15,10 +15,11 @@
  *   limitations under the License.
  */
 
-import type { Layer } from 'leaflet'
-import { LatLng } from 'leaflet'
-import KnownAirfields, { type Airfield } from './airfields'
-import type { PositionKind } from './geometry'
+import type { Airfield } from './airfields'
+import KnownAirfields from 'src/adapters/data/airfieldsRepository'
+import type { GeoPoint } from './geo'
+import { geoPointsEqual } from './geo'
+import type { GeometryFeature, PositionKind } from './geometry'
 import { Line, Polygon, Position } from './geometry'
 
 /**
@@ -69,12 +70,33 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
 }
 
 /**
+ * Reads lat/lon angle groups out of a regex match and turns them into a GeoPoint.
+ *
+ * @param groups Named capture groups, expected to contain lat/latNS/lon/lonEW
+ * @returns The parsed point, or null if any group is missing
+ */
+function latLngFromGroups(groups: Record<string, string | undefined>): GeoPoint | null {
+  const strLat = groups['lat']
+  const strLatNS = groups['latNS']
+  const strLon = groups['lon']
+  const strLonEW = groups['lonEW']
+  if (!strLat || !strLatNS || !strLon || !strLonEW) {
+    return null
+  }
+
+  return {
+    lat: parseQAngle(strLat, strLatNS),
+    lng: parseQAngle(strLon, strLonEW),
+  }
+}
+
+/**
  * Parses a location, i.e. two angles
  *
  * @param strLocation Location as a string
  * @returns The parsed location or null
  */
-function parseLocation(strLocation: string): LatLng | null {
+function parseLocation(strLocation: string): GeoPoint | null {
   const match = /(\d+)(N|S)(\d+)(W|E)/.exec(strLocation)
   if (match == null) {
     // No location found in last segment
@@ -99,7 +121,49 @@ function parseLocation(strLocation: string): LatLng | null {
     return null
   }
 
-  return new LatLng(latitude, longitude)
+  return { lat: latitude, lng: longitude }
+}
+
+/**
+ * Parses a "id/year" pair as found in SUP AIP and IR SERA references.
+ *
+ * @param strId The raw id
+ * @param strYear The raw year (2 or 4 digits)
+ * @param context Label used in debug messages (e.g. "SUP AIP" or "IR SERA")
+ * @returns The parsed id/year, or null if invalid
+ */
+function parseIdYear(
+  strId: string | undefined,
+  strYear: string | undefined,
+  context: string,
+): { id: number; year: number } | null {
+  if (!strId) {
+    // No ID: ignore
+    return null
+  }
+  if (!strYear) {
+    // No year: ignore
+    return null
+  }
+
+  const id = parseInt(strId)
+  if (isNaN(id) || id < 1) {
+    console.debug(`Ignoring invalid ${context} ID: ` + strId)
+    return null
+  }
+
+  let year = parseInt(strYear)
+  if (isNaN(year) || year < 0) {
+    console.debug(`Ignoring invalid ${context} year: ` + strYear)
+    return null
+  }
+
+  if (year < 100) {
+    // Two-digit year: convert to four-digit
+    year += 2000
+  }
+
+  return { id, year }
 }
 
 export class SectionA {
@@ -118,7 +182,7 @@ export class SectionQ {
   readonly scope: string | null // 'A' | 'E' | 'W' | 'AE' | 'AW'
   readonly limitLow: string | null
   readonly limitHigh: string | null
-  readonly center: LatLng | null
+  readonly center: GeoPoint | null
   readonly radiusNM: number | null
 
   constructor(sectionText: string) {
@@ -146,7 +210,7 @@ export class SectionQ {
   }
 
   extractCenter(locationPart: string | null | undefined): {
-    center: LatLng | null
+    center: GeoPoint | null
     radius: number | null
   } {
     if (!locationPart) {
@@ -293,11 +357,11 @@ export class RelativeLocation {
   }
 
   /**
-   * Converts the relative location to a LatLng object.
+   * Converts the relative location to a GeoPoint.
    *
-   * @returns The referenced location as LatLng or null if inputs are invalid.
+   * @returns The referenced location, or null if inputs are invalid.
    */
-  toLatLng(): LatLng | null {
+  toPoint(): GeoPoint | null {
     // Validate inputs
     if (this.distanceNM <= 0 || this.distanceNM > 1000) {
       console.warn('Invalid distance: must be between 0 and 1000 NM')
@@ -334,7 +398,7 @@ export class RelativeLocation {
     const lat2Deg = (lat2Rad * 180) / Math.PI
     const lon2Deg = (((lon2Rad * 180) / Math.PI + 540) % 360) - 180
 
-    return new LatLng(lat2Deg, lon2Deg)
+    return { lat: lat2Deg, lng: lon2Deg }
   }
 }
 
@@ -343,7 +407,7 @@ export class NOTAM {
   readonly id: string
   readonly text: string
   readonly rawSections: Map<string, string>
-  readonly polygons: Layer[]
+  readonly polygons: GeometryFeature[]
   readonly sectionA: SectionA | null
   readonly sectionQ: SectionQ | null
   readonly linkedSupAIPs: SupAipRef[] = []
@@ -441,41 +505,35 @@ export class NOTAM {
     return idx.toString()
   }
 
-  knownPoint(knownPoints: LatLng[], point: LatLng): boolean {
-    return knownPoints.find((p) => p.equals(point, 1e-5)) !== undefined
+  knownPoint(knownPoints: GeoPoint[], point: GeoPoint): boolean {
+    return knownPoints.find((p) => geoPointsEqual(p, point)) !== undefined
   }
 
-  findPolygons(target: string | undefined, text: string | undefined): Layer[] {
+  findPolygons(target: string | undefined, text: string | undefined): GeometryFeature[] {
     if (!text) {
       // No E section given
       return []
     }
 
-    const layers: Layer[] = []
+    const features: GeometryFeature[] = []
 
     // Look for PSNs
     const psnPattern =
-      /(?:(?<psnEn>\w+)\s+)?PSN(?:\s+(?<psnFr>[^:]+))?\s*:\s*(?<lat>\d+(.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(.\d+)?)(?<lonEW>E|W)(?:\s*(?<radiusNM>\d+)|.*(?:(?<radius>\d+)\s*(?<radiusUnit>NM|M|KM)))?/g
+      /(?:(?<psnEn>\w+)\s+)?PSN(?:\s+(?<psnFr>[^:]+))?\s*:\s*(?<lat>\d+(\.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(\.\d+)?)(?<lonEW>E|W)(?:\s*(?<radiusNM>\d+)|.*(?:(?<radius>\d+)\s*(?<radiusUnit>NM|M|KM)))?/g
 
     let match
 
-    const foundPSNPoints: LatLng[] = []
+    const foundPSNPoints: GeoPoint[] = []
     while ((match = psnPattern.exec(text)) != null) {
       if (match.groups === undefined) {
         // Unexpected
         continue
       }
 
-      const strLat = match.groups['lat']
-      const strLatNS = match.groups['latNS']
-      const strLon = match.groups['lon']
-      const strLonEW = match.groups['lonEW']
-      if (!strLat || !strLatNS || !strLon || !strLonEW) {
+      const psn = latLngFromGroups(match.groups)
+      if (psn === null) {
         continue
       }
-
-      const lat = parseQAngle(strLat, strLatNS)
-      const lon = parseQAngle(strLon, strLonEW)
 
       let kind: PositionKind
       const strKind = (match.groups['psnFr'] ?? match.groups['psnEn'])?.trim()?.toUpperCase()
@@ -485,17 +543,12 @@ export class NOTAM {
         kind = 'POINT'
       }
 
-      const psn = new LatLng(lat, lon)
       foundPSNPoints.push(psn)
-
-      const layer = new Position(kind, psn).toLayer()
-      if (layer !== null) {
-        layers.push(layer)
-      }
+      features.push(new Position(kind, psn))
     }
 
     // Look for fixing
-    const foundFixingPoints: LatLng[] = []
+    const foundFixingPoints: GeoPoint[] = []
     const fixingPattern =
       /(?:(?:ANCRAGE(?:\s+(?<ancrage>\w+))?)|(?:(?<fixing>\w+\s+)?FIXING))[\W]*(?<lat>\d+(\.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(\.\d+)?)(?<lonEW>E|W)\s*(?:(?:ALTITUDE|ELEV)\s*(?<alt>\d+)\s*(?<altUnit>FT|M))?/g
     while ((match = fixingPattern.exec(text)) != null) {
@@ -504,22 +557,16 @@ export class NOTAM {
         continue
       }
 
-      const strLat = match.groups['lat']
-      const strLatNS = match.groups['latNS']
-      const strLon = match.groups['lon']
-      const strLonEW = match.groups['lonEW']
-      if (!strLat || !strLatNS || !strLon || !strLonEW) {
+      const point = latLngFromGroups(match.groups)
+      if (point === null) {
         continue
       }
 
-      const lat = parseQAngle(strLat, strLatNS)
-      const lon = parseQAngle(strLon, strLonEW)
-      foundFixingPoints.push(new LatLng(lat, lon))
+      foundFixingPoints.push(point)
     }
 
-    const fixingLayer = new Line(foundFixingPoints).toLayer()
-    if (fixingLayer !== null) {
-      layers.push(fixingLayer)
+    if (foundFixingPoints.length != 0) {
+      features.push(new Line(foundFixingPoints))
     }
 
     // Concatenate known points to ignore them later
@@ -527,9 +574,9 @@ export class NOTAM {
 
     // Look for other locations
     const latLngPattern =
-      /(?<lat>\d{4,6}(?:.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:.\d*)?)(?<lonEW>E|W)/g
+      /(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:\.\d*)?)(?<lonEW>E|W)/g
 
-    let currentList: LatLng[] = []
+    let currentList: GeoPoint[] = []
     let lastEndIdx = 0
     while ((match = latLngPattern.exec(text)) != null) {
       if (match.groups === undefined) {
@@ -537,17 +584,10 @@ export class NOTAM {
         continue
       }
 
-      const strLat = match.groups['lat']
-      const strLatNS = match.groups['latNS']
-      const strLon = match.groups['lon']
-      const strLonEW = match.groups['lonEW']
-      if (!strLat || !strLatNS || !strLon || !strLonEW) {
+      const latLng = latLngFromGroups(match.groups)
+      if (latLng === null) {
         continue
       }
-
-      const lat = parseQAngle(strLat, strLatNS)
-      const lon = parseQAngle(strLon, strLonEW)
-      const latLng = new LatLng(lat, lon)
 
       if (this.knownPoint(allKnownPoints, latLng)) {
         // Ignore known points
@@ -571,10 +611,7 @@ export class NOTAM {
           // Check if the point is already represented as a position
           if (!this.knownPoint(allKnownPoints, currentList[0]!)) {
             // New point detected
-            const layer = new Position('POINT', currentList[0]!).toLayer()
-            if (layer !== null) {
-              layers.push(layer)
-            }
+            features.push(new Position('POINT', currentList[0]!))
           }
         } else if (currentList.length == 2) {
           // Check if the line is already represented as a fixing
@@ -583,16 +620,10 @@ export class NOTAM {
             !this.knownPoint(allKnownPoints, currentList[1]!)
           ) {
             // New line detected
-            const layer = new Line(currentList).toLayer()
-            if (layer !== null) {
-              layers.push(layer)
-            }
+            features.push(new Line(currentList))
           }
         } else if (currentList.length > 2) {
-          const layer = new Polygon(currentList).toLayer()
-          if (layer !== null) {
-            layers.push(layer)
-          }
+          features.push(new Polygon(currentList))
         }
 
         currentList = []
@@ -605,15 +636,16 @@ export class NOTAM {
     }
 
     // Handle what's left
-    if (currentList.length != 0) {
-      const layer = new Polygon(currentList).toLayer()
-      if (layer !== null) {
-        layers.push(layer)
-      }
+    if (currentList.length == 1) {
+      features.push(new Position('POINT', currentList[0]!))
+    } else if (currentList.length == 2) {
+      features.push(new Line(currentList))
+    } else if (currentList.length > 2) {
+      features.push(new Polygon(currentList))
     }
 
     // Look for relative locations, only if no other location has been found
-    if (layers.length == 0) {
+    if (features.length == 0) {
       const relativePlacePattern =
         /RDL(\/D)?\s*:?\s*(?<azimuth>\d{2,3})\s*\/\s*(?<distance>\d+([.,]\d+)?)\s*(?<unit>\w+)/gm
 
@@ -695,17 +727,14 @@ export class NOTAM {
 
         // Create the relative location
         const relativeLocation = new RelativeLocation(azimuth, distance, airfieldData)
-        const center = relativeLocation.toLatLng()
+        const center = relativeLocation.toPoint()
         if (center !== null) {
-          const layer = new Position('AREA', center).toLayer()
-          if (layer !== null) {
-            layers.push(layer)
-          }
+          features.push(new Position('AREA', center))
         }
       }
     }
 
-    return layers
+    return features
   }
 
   /**
@@ -730,40 +759,13 @@ export class NOTAM {
         continue
       }
 
-      const strId = match.groups['id']
-      if (!strId) {
-        // No ID: ignore
+      const parsed = parseIdYear(match.groups['id'], match.groups['year'], 'SUP AIP')
+      if (parsed === null) {
         continue
-      }
-
-      const strYear = match.groups['year']
-      if (!strYear) {
-        // No year: ignore
-        continue
-      }
-
-      const id = parseInt(strId)
-      if (isNaN(id) || id < 1) {
-        // Invalid ID
-        console.debug('Ignoring invalid SUP AIP ID: ' + strId)
-        continue
-      }
-
-      let year = parseInt(strYear)
-      if (isNaN(year) || year < 0) {
-        // Invalid year
-        console.debug('Ignoring invalid SUP AIP year: ' + strYear)
-        continue
-      }
-
-      if (year < 100) {
-        // Two-digit year: convert to four-digit
-        year += 2000
       }
 
       const isAirac = match.groups['airac'] !== undefined
-
-      const supAip = new SupAipRef(id, year, isAirac)
+      const supAip = new SupAipRef(parsed.id, parsed.year, isAirac)
       // Avoid duplicates
       if (foundSupAipRefs.find((s) => s.id == supAip.id && s.year == supAip.year) !== undefined) {
         continue
@@ -805,38 +807,12 @@ export class NOTAM {
         continue
       }
 
-      const strId = match.groups['id']
-      if (!strId) {
-        // No ID: ignore
+      const parsed = parseIdYear(match.groups['id'], match.groups['year'], 'IR SERA')
+      if (parsed === null) {
         continue
       }
 
-      const strYear = match.groups['year']
-      if (!strYear) {
-        // No year: ignore
-        continue
-      }
-
-      const id = parseInt(strId)
-      if (isNaN(id) || id < 1) {
-        // Invalid ID
-        console.debug('Ignoring invalid SUP AIP ID: ' + strId)
-        continue
-      }
-
-      let year = parseInt(strYear)
-      if (isNaN(year) || year < 0) {
-        // Invalid year
-        console.debug('Ignoring invalid SUP AIP year: ' + strYear)
-        continue
-      }
-
-      if (year < 100) {
-        // Two-digit year: convert to four-digit
-        year += 2000
-      }
-
-      const irSera = new IrSeraRef(id, year)
+      const irSera = new IrSeraRef(parsed.id, parsed.year)
       // Avoid duplicates
       if (foundIrSeraRefs.find((s) => s.id == irSera.id && s.year == irSera.year) !== undefined) {
         continue

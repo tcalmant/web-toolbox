@@ -115,14 +115,15 @@ under the License.
 <script setup lang="ts">
 import type { QTableColumn } from 'quasar'
 import { useQuasar } from 'quasar'
-import { AIP } from 'src/components/aipUtils'
 import MapView from 'src/components/MapView.vue'
 import NotamOptions from 'src/components/NotamOptions.vue'
 import NotamTable from 'src/components/NotamTable.vue'
 import NotamTextAreaDialog from 'src/components/NotamTextAreaDialog.vue'
-import { NOTAM } from 'src/components/notamUtils'
-import { findFirstRegex } from 'src/components/stringUtils'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useOrientation } from 'src/composables/useOrientation'
+import { AIP } from 'src/domain/aip'
+import { NOTAM } from 'src/domain/notam'
+import { findFirstRegex } from 'src/domain/stringUtils'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
@@ -138,14 +139,7 @@ function pageStyleFn(offset: number, height: number) {
 const showAipEdit = ref<boolean>(false)
 const showNotamEdit = ref<boolean>(false)
 
-const isPortrait = ref(window.innerHeight > window.innerWidth)
-
-const updateOrientation = () => {
-  isPortrait.value = window.innerHeight > window.innerWidth
-}
-
-onMounted(() => window.addEventListener('resize', updateOrientation))
-onUnmounted(() => window.removeEventListener('resize', updateOrientation))
+const { isPortrait } = useOrientation()
 
 // AIP
 const inputAIPText = ref('')
@@ -156,7 +150,7 @@ const parsedNotams = ref<NOTAM[]>()
 const selectedNotams = ref<NOTAM[]>()
 const hoveredNotam = ref<NOTAM>()
 const focusedNotam = ref<NOTAM>()
-const inputNOTAMText = ref()
+const inputNOTAMText = ref<string>('')
 const ignoreLargeNotams = ref<boolean>(true)
 const maxNotamRadius = ref<number>(100)
 const onlyWithPositions = ref<boolean>(true)
@@ -254,6 +248,24 @@ function handleAIPInput(fullText: string): void {
   parsedAIP.value = fullText ? new AIP(fullText) : undefined
 }
 
+function filterNotams(notams: NOTAM[]): NOTAM[] {
+  let filtered = notams
+
+  // Select out large NOTAMs
+  if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
+    filtered = filtered.filter(
+      (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
+    )
+  }
+
+  // Select out NOTAMs without positions
+  if (onlyWithPositions.value) {
+    filtered = filtered.filter((n) => n.polygons.length != 0)
+  }
+
+  return filtered
+}
+
 function handleNOTAMInput(fullText: string, search: string): void {
   let notams = fullText ? parseNotams(fullText) : []
   // Apply search filter if necessary
@@ -265,38 +277,11 @@ function handleNOTAMInput(fullText: string, search: string): void {
   // Update parsed NOTAMs
   parsedNotams.value = notams
 
-  // Select out large NOTAMs
-  if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
-    notams = notams.filter(
-      (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
-    )
-  }
-
-  // Select out NOTAMs without positions
-  if (onlyWithPositions.value) {
-    notams = notams.filter((n) => n.polygons.length != 0)
-  }
-
-  selectedNotams.value = notams
+  selectedNotams.value = filterNotams(notams)
 }
 
 function updateSelectedNotams() {
-  let notams = parsedNotams.value ?? []
-  if (!notams) {
-    selectedNotams.value = []
-  }
-
-  if (ignoreLargeNotams.value && maxNotamRadius.value !== undefined) {
-    notams = notams.filter(
-      (n) => n.sectionQ?.radiusNM == null || n.sectionQ.radiusNM <= maxNotamRadius.value,
-    )
-  }
-
-  if (onlyWithPositions.value) {
-    notams = notams.filter((n) => n.polygons.length != 0)
-  }
-
-  selectedNotams.value = notams
+  selectedNotams.value = filterNotams(parsedNotams.value ?? [])
 }
 
 function parseNotams(fullText: string): NOTAM[] {
@@ -326,7 +311,6 @@ function parseNotams(fullText: string): NOTAM[] {
     }
   }
 
-  parsedNotams.value = notams
   return notams
 }
 </script>
