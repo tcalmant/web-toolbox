@@ -87,13 +87,30 @@ export function formatTzOffset(date: Date, tzName: string): string {
     return ''
   }
 
-  const utcIdx = formattedDate.indexOf('UTC')
-  if (utcIdx == -1) {
-    // Timezone not found
-    return ''
+  // The long offset format is prefixed with "UTC" or "GMT" depending on
+  // the browser (Chromium under the en-US locale uses "GMT")
+  const match = /(?:UTC|GMT)([+\u2212-]\d{1,2}:\d{2})/.exec(formattedDate)
+  return match?.[1] ?? ''
+}
+
+/**
+ * Parses an offset string like "+01:00", "-00:30" or "" (UTC) into minutes.
+ * Inverse of the suffix produced by formatTzOffset.
+ * @param offset Offset string
+ * @returns The offset in minutes (positive means ahead of UTC), else 0
+ */
+export function parseTzOffsetMinutes(offset: string): number {
+  // Intl's longOffset format may use the Unicode minus sign (U+2212)
+  // instead of a plain ASCII hyphen for negative offsets.
+  const match = /^([+\u2212-])(\d{1,2}):(\d{2})$/.exec(offset.trim())
+  if (match == null) {
+    return 0
   }
 
-  return formattedDate.substring(utcIdx + 'UTC'.length)
+  const sign = match[1] === '+' ? 1 : -1
+  const hours = parseInt(match[2] ?? '0')
+  const minutes = parseInt(match[3] ?? '0')
+  return sign * (hours * 60 + minutes)
 }
 
 export class TimePeriod {
@@ -104,10 +121,10 @@ export class TimePeriod {
   }
 
   toString(): string {
-    return `${Math.floor(this.duration_s / 3600)
-      .toString()
-      .padStart(1, '0')}:${Math.abs(Math.floor((this.duration_s % 3600) / 60))
-      .toString()
-      .padStart(2, '0')}`
+    const sign = this.duration_s < 0 ? '-' : ''
+    const absSeconds = Math.abs(this.duration_s)
+    const hours = Math.floor(absSeconds / 3600)
+    const minutes = Math.floor((absSeconds % 3600) / 60)
+    return `${sign}${hours}:${minutes.toString().padStart(2, '0')}`
   }
 }

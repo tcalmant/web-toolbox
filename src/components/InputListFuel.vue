@@ -84,15 +84,15 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import { QInput, useQuasar } from 'quasar'
+import { QInput } from 'quasar'
+import { useDeletableList } from 'src/composables/useDeletableList'
+import type { FuelOption } from 'src/domain/fuel'
+import { FUEL_UNITS, FuelQuantity, LITER } from 'src/domain/fuel'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { FuelOption } from './fuelUtils'
-import { FUEL_UNITS, FuelQuantity, LITER } from './fuelUtils'
 
 const { t } = useI18n()
 
-const $q = useQuasar()
 const props = withDefaults(
   defineProps<{
     globalFuelUnit: FuelOption
@@ -123,11 +123,17 @@ watch(props, (newProps) => {
   inputUnit.value = newProps.globalFuelUnit
 })
 
+const { onDelete, onDeleteAll } = useDeletableList({
+  values: allValues,
+  inputField: fuelInputField,
+  recompute,
+})
+
 function onAdd() {
   const newValue = new FuelQuantity(inputValue.value, inputUnit.value)
 
   if (newValue > props.fuelCapacity) {
-    errorMessage.value = 'Trying to add more fuel than possible'
+    errorMessage.value = t('fuelExceedsCapacity')
   } else {
     let localValues
     if (
@@ -144,34 +150,6 @@ function onAdd() {
 
   fuelInputField.value?.focus()
   fuelInputField.value?.select()
-}
-
-function onDelete(idx: number) {
-  const currentValues = allValues.value ?? []
-  const newValues = [...currentValues.slice(0, idx), ...currentValues.slice(idx + 1)]
-  recompute(newValues)
-}
-
-function onDeleteAll() {
-  if (allValues.value?.length > 1) {
-    $q.dialog({
-      title: t('confirmTitle'),
-      message: t('confirmDeleteAllMessage'),
-      cancel: true,
-      persistent: false,
-    })
-      .onOk(() => {
-        recompute([])
-      })
-      .onDismiss(() => {
-        fuelInputField.value?.focus()
-        fuelInputField.value?.select()
-      })
-  } else {
-    recompute([])
-    fuelInputField.value?.focus()
-    fuelInputField.value?.select()
-  }
 }
 
 function recompute(localValues: FuelQuantity[]) {

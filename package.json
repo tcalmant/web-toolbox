@@ -21,7 +21,6 @@
     "@types/js-quantities": "^1.6.6",
     "js-quantities": "^1.8.0",
     "leaflet": "^1.9.4",
-    "pinia": "^3.0.4",
     "quasar": "^2.18.6",
     "vite-tsconfig-paths": "^6.0.5",
     "vue": "^3.5.27",

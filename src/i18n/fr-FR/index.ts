@@ -111,4 +111,6 @@ export default {
   // Common-ish
   confirmTitle: 'Confirmer',
   confirmDeleteAllMessage: 'Supprimer toutes les entrées ?',
+  fuelExceedsCapacity: 'Cet ajout dépasserait la capacité du réservoir',
+  invalidMinutes: 'Nombre de minutes invalide',
 }
