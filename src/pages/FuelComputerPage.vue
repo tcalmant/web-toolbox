@@ -312,7 +312,7 @@ function onPlaneSelect(value: PlaneOption) {
   currentPlane.value = value?.value ?? null
 
   if (currentPlane.value) {
-    const plane = currentPlane.value as AirPlane
+    const plane = currentPlane.value
 
     planeIdent.value = plane.immatriculation
 
