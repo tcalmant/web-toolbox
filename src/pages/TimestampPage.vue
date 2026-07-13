@@ -158,21 +158,20 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import { dateToString, dateToUTCString, formatTzOffset } from 'src/components/timeUtils'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { useOrientation } from 'src/composables/useOrientation'
+import {
+  dateToString,
+  dateToUTCString,
+  formatTzOffset,
+  parseTzOffsetMinutes,
+} from 'src/domain/time'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
 // Display configuration
-const isPortrait = ref(window.innerHeight > window.innerWidth)
-
-const updateOrientation = () => {
-  isPortrait.value = window.innerHeight > window.innerWidth
-}
-
-onMounted(() => window.addEventListener('resize', updateOrientation))
-onUnmounted(() => window.removeEventListener('resize', updateOrientation))
+const { isPortrait } = useOrientation()
 
 /**
  * Representation of support timestamp units
@@ -351,12 +350,10 @@ function onUTCDateChange(newValue: string | number | null) {
   }
 
   const dateInLocalTz = new Date(newValue)
-  if (dateInLocalTz !== undefined) {
+  if (!isNaN(dateInLocalTz.getTime())) {
     // The date is parsed as if it was a local time: convert it back to UTC
     const utcTimestamp = dateInLocalTz.getTime() - dateInLocalTz.getTimezoneOffset() * 60000
-    if (!isNaN(utcTimestamp)) {
-      unixTimestampNs.value = unitMs.toNanoseconds(utcTimestamp)
-    }
+    unixTimestampNs.value = unitMs.toNanoseconds(utcTimestamp)
   }
 }
 
@@ -365,9 +362,16 @@ function onLocalDateChange(newValue: string | number | null) {
     return
   }
 
-  const date = new Date(newValue)
-  if (date !== undefined) {
-    unixTimestampNs.value = unitMs.toNanoseconds(date.getTime())
+  // The date is parsed as if it was the browser's local time: first convert
+  // it back to UTC using the browser's own offset, then re-apply the offset
+  // of the timezone actually selected (which may differ from the browser's).
+  const dateInBrowserTz = new Date(newValue)
+  if (!isNaN(dateInBrowserTz.getTime())) {
+    const utcTimestamp = dateInBrowserTz.getTime() - dateInBrowserTz.getTimezoneOffset() * 60000
+    const selectedTzOffsetMinutes = parseTzOffsetMinutes(
+      formatTzOffset(new Date(utcTimestamp), selectedTz.value),
+    )
+    unixTimestampNs.value = unitMs.toNanoseconds(utcTimestamp - selectedTzOffsetMinutes * 60000)
   }
 }
 </script>

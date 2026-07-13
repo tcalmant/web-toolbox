@@ -33,22 +33,3 @@ export class Airfield {
     this.elevation = elevation
   }
 }
-
-const KnownAirfields: Record<string, Airfield> = {}
-
-// Load the airfields
-import * as AirfieldsFr from '../fixed-data/airfields_fr.json' assert { type: 'json' }
-
-const TypedAirfieldsFr: Record<string, (number | null)[]> = AirfieldsFr as unknown as Record<
-  string,
-  (number | null)[]
->
-
-for (const icao in AirfieldsFr) {
-  const data = TypedAirfieldsFr[icao]
-  if (data) {
-    KnownAirfields[icao] = new Airfield(icao, data[0]!, data[1]!, data[2])
-  }
-}
-
-export default KnownAirfields

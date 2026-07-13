@@ -15,7 +15,7 @@
  *   limitations under the License.
  */
 
-class InputFuel {
+export class InputFuel {
   public readonly capacity: number
   public readonly consumable: number
   public readonly hourlyConsumption: number
@@ -34,7 +34,7 @@ class InputFuel {
   }
 }
 
-class InputAirplane {
+export class InputAirplane {
   public readonly brand: string
   public readonly model: string
   public readonly fuel: InputFuel
@@ -82,30 +82,3 @@ export class AirPlane {
     return `${this.immatriculation}`
   }
 }
-
-const KnownAirplanes: Record<string, AirPlane> = {}
-
-// Load the airplanes
-import AcdAirplanes from '../fixed-data/acd_planes.json' assert { type: 'json' }
-
-const TypedAcdAirplanes: Record<string, InputAirplane> = AcdAirplanes as unknown as Record<
-  string,
-  InputAirplane
->
-
-for (const immat in AcdAirplanes) {
-  const data = TypedAcdAirplanes[immat]
-  if (data) {
-    KnownAirplanes[immat] = new AirPlane(
-      immat,
-      data.brand,
-      data.model,
-      data.fuel.unit,
-      data.fuel.capacity,
-      data.fuel.consumable,
-      data.fuel.hourlyConsumption,
-    )
-  }
-}
-
-export default KnownAirplanes

@@ -30,9 +30,10 @@ under the License.
 import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useQuasar } from 'quasar'
+import { featuresToLayers } from 'src/adapters/leaflet/geometryLayers'
+import type { AIP } from 'src/domain/aip'
+import type { NOTAM } from 'src/domain/notam'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import type { AIP } from './aipUtils'
-import type { NOTAM } from './notamUtils'
 
 const $q = useQuasar()
 
@@ -151,7 +152,7 @@ const initMap = () => {
   map.on('baselayerchange', (e) => $q.sessionStorage.setItem('mapViewer.selectedBaseLayer', e.name))
 
   // Display mouse coordinates at the bottom
-  map.addControl(new MapCoordinatesViewer({position: 'bottomleft'}))
+  map.addControl(new MapCoordinatesViewer({ position: 'bottomleft' }))
 
   L.control.scale().addTo(map)
 
@@ -161,10 +162,9 @@ const initMap = () => {
 }
 
 class MapCoordinatesViewer extends L.Control {
-
   private container!: HTMLElement
 
-  constructor (options?: L.ControlOptions) {
+  constructor(options?: L.ControlOptions) {
     super(options)
   }
 
@@ -175,15 +175,9 @@ class MapCoordinatesViewer extends L.Control {
     const minutes = Math.floor(minutesNotTruncated)
     const seconds = Math.floor((minutesNotTruncated - minutes) * 60)
 
-    const direction = isLat
-      ? deg >= 0
-        ? 'N'
-        : 'S'
-      : deg >= 0
-        ? 'E'
-        : 'W'
+    const direction = isLat ? (deg >= 0 ? 'N' : 'S') : deg >= 0 ? 'E' : 'W'
 
-    return `${String(degrees).padStart( isLat ? 2 : 3, '0')}°${String(minutes).padStart(2, '0')}'${String(seconds).padStart(2, '0')}" ${direction}`
+    return `${String(degrees).padStart(isLat ? 2 : 3, '0')}°${String(minutes).padStart(2, '0')}'${String(seconds).padStart(2, '0')}" ${direction}`
   }
 
   override onAdd(map: L.Map): HTMLElement {
@@ -193,7 +187,7 @@ class MapCoordinatesViewer extends L.Control {
     map.on('mousemove', (e) => {
       const coords = e.latlng.wrap()
       const coordsDegrees = `${coords.lat.toFixed(4)}° , ${coords.lng.toFixed(4)}°`
-      const coordsDMS = `${this.degreesToDMS(coords.lat, true)} , ${this.degreesToDMS(coords.lng,false)}`
+      const coordsDMS = `${this.degreesToDMS(coords.lat, true)} , ${this.degreesToDMS(coords.lng, false)}`
 
       this.container.innerHTML = `&nbsp; ${coordsDMS}&nbsp; | &nbsp;${coordsDegrees}&nbsp;`
       this.container.hidden = false
@@ -212,7 +206,7 @@ class MapCoordinatesViewer extends L.Control {
 const aipLayer = computed<FeatureGroup>(() => {
   const groupLayer = new FeatureGroup()
   if (mapRef.value && aip.value && aip.value.polygons) {
-    aip.value.polygons.forEach((l) => groupLayer.addLayer(l))
+    featuresToLayers(aip.value.polygons).forEach((l) => groupLayer.addLayer(l))
   }
   return groupLayer
 })
@@ -244,7 +238,7 @@ const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
           }),
         )
       }
-      notam.polygons.forEach((l) => layer.addLayer(l))
+      featuresToLayers(notam.polygons).forEach((l) => layer.addLayer(l))
     } else if (qSection && qSection.center !== null && qSection.radiusNM !== null) {
       // Draw a circle (convert radius in meters)
       layer.addLayer(
@@ -310,7 +304,9 @@ function computeMapBounds() {
   // Compute the maximum zoom we can handle
   const maxZooms: (number | undefined)[] = []
   map.eachLayer((l) => maxZooms.push((l.options as TileLayerOptions | undefined)?.maxZoom))
-  const maxZoom = Math.max(11, Math.min(...maxZooms.filter((v) => v !== undefined)))
+  const definedMaxZooms = maxZooms.filter((v) => v !== undefined)
+  const maxZoom =
+    definedMaxZooms.length > 0 ? Math.max(11, Math.min(...definedMaxZooms)) : undefined
 
   // Stay on the focused NOTAM
   const focused = focusedNotam.value
