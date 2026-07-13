@@ -75,7 +75,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import { useOrientation } from 'src/composables/useOrientation'
+import { useOrientation } from '@/composables/useOrientation'
 
 const ignoreLargeNotams = defineModel<boolean>('ignoreLargeNotams', { default: true })
 const maxNotamRadius = defineModel<number>('maxNotamRadius', { default: 100 })

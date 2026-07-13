@@ -17,8 +17,8 @@
 
 import type { Layer } from 'leaflet'
 import L from 'leaflet'
-import type { GeometryFeature, Polygon } from 'src/domain/geometry'
-import { Line, Position } from 'src/domain/geometry'
+import type { GeometryFeature, Polygon } from '@/domain/geometry'
+import { Line, Position } from '@/domain/geometry'
 
 /**
  * Renders a single point of interest as a Leaflet layer.

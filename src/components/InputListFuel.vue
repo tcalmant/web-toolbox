@@ -85,9 +85,9 @@ under the License.
 
 <script setup lang="ts">
 import { QInput } from 'quasar'
-import { useDeletableList } from 'src/composables/useDeletableList'
-import type { FuelOption } from 'src/domain/fuel'
-import { FUEL_UNITS, FuelQuantity, LITER } from 'src/domain/fuel'
+import { useDeletableList } from '@/composables/useDeletableList'
+import type { FuelOption } from '@/domain/fuel'
+import { FUEL_UNITS, FuelQuantity, LITER } from '@/domain/fuel'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
