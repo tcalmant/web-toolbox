@@ -18,6 +18,14 @@ Project released under the terms of the [Apache 2.0 licence](./LICENSE).
   ```bash
   npm run lint
   ```
+- Formatting
+  ```bash
+  npm run format
+  ```
+- Running tests
+  ```bash
+  npm run test:unit:ci
+  ```
 - Building
   ```bash
   quasar build

@@ -111,4 +111,6 @@ export default {
   // Common-ish
   confirmTitle: 'Confirm',
   confirmDeleteAllMessage: 'Delete all entries?',
+  fuelExceedsCapacity: 'Trying to add more fuel than possible',
+  invalidMinutes: 'Invalid number of minutes',
 }

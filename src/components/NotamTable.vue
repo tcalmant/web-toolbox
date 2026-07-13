@@ -56,7 +56,7 @@ under the License.
         <q-td>
           <q-checkbox
             v-model="props.selected"
-            :aria-label="$t('toggleSelectNotam', { notam: (props.row as NOTAM).id })"
+            :aria-label="$t('toggleSelectNotam', { notam: notamRow(props.row).id })"
           />
         </q-td>
         <q-td auto-width>
@@ -92,14 +92,14 @@ under the License.
       </q-tr>
       <q-tr v-if="props.expand || props.row == focusedNotam" :props="props">
         <q-td colspan="100%">
-          <pre>{{ (props.row as NOTAM).text }}</pre>
-          <div v-if="(props.row as NOTAM).linkedSupAIPs.length">
+          <pre>{{ notamRow(props.row).text }}</pre>
+          <div v-if="notamRow(props.row).linkedSupAIPs.length">
             <hr />
             <p>
               <strong>{{ $t('supAipRefsLabel') }}</strong>
             </p>
             <ul>
-              <li v-for="supAip in (props.row as NOTAM).linkedSupAIPs" :key="supAip.toString()">
+              <li v-for="supAip in notamRow(props.row).linkedSupAIPs" :key="supAip.toString()">
                 <template
                   v-for="(name, index) in supAip
                     .toPdfNames(($t('supAipLang') as 'en' | 'fr') ?? 'fr')
@@ -118,13 +118,13 @@ under the License.
               </li>
             </ul>
           </div>
-          <div v-if="(props.row as NOTAM).linkedIrSera.length">
+          <div v-if="notamRow(props.row).linkedIrSera.length">
             <hr />
             <p>
               <strong>{{ $t('irSeraRefsLabel') }}</strong>
             </p>
             <ul>
-              <li v-for="irSera in (props.row as NOTAM).linkedIrSera" :key="irSera.toString()">
+              <li v-for="irSera in notamRow(props.row).linkedIrSera" :key="irSera.toString()">
                 <a :href="irSera.toUrl()" target="_blank" rel="noopener noreferrer">
                   {{ irSera.toString() }}
                 </a>
@@ -141,8 +141,8 @@ under the License.
 
 <script setup lang="ts">
 import { type QTableColumn } from 'quasar'
+import { type NOTAM } from 'src/domain/notam'
 import { onMounted, ref, watch } from 'vue'
-import { type NOTAM } from './notamUtils'
 
 const notamColumns = defineModel<QTableColumn[]>('notamColumns')
 const parsedNotams = defineModel<NOTAM[] | undefined>('parsedNotams')
@@ -190,6 +190,11 @@ watch(focusedNotam, (newSelection) => {
 
 function notamRowId(notam: NOTAM): string {
   return `notam-row-${notam.id}`
+}
+
+// q-table's body slot props aren't generically typed to NOTAM
+function notamRow(row: unknown): NOTAM {
+  return row as NOTAM
 }
 </script>
 

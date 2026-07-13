@@ -15,20 +15,35 @@
  *   limitations under the License.
  */
 
-import type { Layer } from 'leaflet'
-import { LatLng } from 'leaflet'
-import { Polygon } from './geometry'
+import type { GeoPoint } from './geo'
+import type { GeometryFeature } from './geometry'
+import { Line, Polygon, Position } from './geometry'
+
+/**
+ * Turns a list of points into the most specific geometry feature it
+ * represents (a single point, a line, or a polygon).
+ */
+function toGeometryFeature(points: GeoPoint[]): GeometryFeature | null {
+  if (points.length == 1) {
+    return new Position('POINT', points[0]!)
+  } else if (points.length == 2) {
+    return new Line(points)
+  } else if (points.length > 2) {
+    return new Polygon(points)
+  }
+  return null
+}
 
 export class AIP {
   text: string
-  polygons: Layer[]
+  polygons: GeometryFeature[]
 
   constructor(fullText: string) {
     this.text = fullText
     this.polygons = this.findAIPPolygons(fullText)
   }
 
-  parseAIPLocation(aipRegexMatch: RegExpMatchArray): LatLng | null {
+  parseAIPLocation(aipRegexMatch: RegExpMatchArray): GeoPoint | null {
     if (aipRegexMatch.groups == null) {
       return null
     }
@@ -66,10 +81,10 @@ export class AIP {
       }
     }
 
-    return new LatLng(lat, lon)
+    return { lat, lng: lon }
   }
 
-  findAIPPolygons(text: string | undefined): Layer[] {
+  findAIPPolygons(text: string | undefined): GeometryFeature[] {
     if (text === undefined) {
       // No text given
       return []
@@ -79,8 +94,8 @@ export class AIP {
     const aipLocation =
       /(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])/g
 
-    const layers = []
-    let currentList: LatLng[] = []
+    const features: GeometryFeature[] = []
+    let currentList: GeoPoint[] = []
     let lastEndIdx = 0
     let match
     while ((match = aipLocation.exec(text)) != null) {
@@ -97,9 +112,9 @@ export class AIP {
 
       if (text.substring(lastEndIdx, match.index - 1).trim().length != 0) {
         // Found text between previous and current number
-        const layer = new Polygon(currentList).toLayer()
-        if (layer !== null) {
-          layers.push(layer)
+        const feature = toGeometryFeature(currentList)
+        if (feature !== null) {
+          features.push(feature)
         }
 
         currentList = []
@@ -110,13 +125,11 @@ export class AIP {
     }
 
     // Handle what's left
-    if (currentList.length != 0) {
-      const layer = new Polygon(currentList).toLayer()
-      if (layer !== null) {
-        layers.push(layer)
-      }
+    const feature = toGeometryFeature(currentList)
+    if (feature !== null) {
+      features.push(feature)
     }
 
-    return layers
+    return features
   }
 }

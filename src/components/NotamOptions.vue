@@ -75,7 +75,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { useOrientation } from 'src/composables/useOrientation'
 
 const ignoreLargeNotams = defineModel<boolean>('ignoreLargeNotams', { default: true })
 const maxNotamRadius = defineModel<number>('maxNotamRadius', { default: 100 })
@@ -84,12 +84,5 @@ const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence', { defaul
 const searchQuery = defineModel<string>('searchQuery', { default: '' })
 const emit = defineEmits(['showNotamEdit', 'showAipEdit'])
 
-const isPortrait = ref(window.innerHeight > window.innerWidth)
-
-const updateOrientation = () => {
-  isPortrait.value = window.innerHeight > window.innerWidth
-}
-
-onMounted(() => window.addEventListener('resize', updateOrientation))
-onUnmounted(() => window.removeEventListener('resize', updateOrientation))
+const { isPortrait } = useOrientation()
 </script>

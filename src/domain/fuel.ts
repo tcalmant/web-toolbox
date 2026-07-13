@@ -1,13 +1,13 @@
 /*
- *   Copyright (c) 2025 Thomas Calmant
+ *   Copyright (c) 2026 Thomas Calmant
  *   All rights reserved.
-
+ *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  *   You may obtain a copy of the License at
-
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
-
+ *
  *   Unless required by applicable law or agreed to in writing, software
  *   distributed under the License is distributed on an "AS IS" BASIS,
  *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,16 +37,25 @@ export const UK_GALLONS = new FuelOption('imp_gal', new Qty('gallon-imp'))
 
 export const FUEL_UNITS = [LITER, US_GALLONS, UK_GALLONS]
 
+/**
+ * Matches a raw unit string (e.g. as found in a data file, possibly plural
+ * and/or differently-cased, like "liters") against a known FuelOption.
+ */
+export function findFuelUnit(rawUnit: string | undefined): FuelOption | undefined {
+  if (!rawUnit) {
+    return undefined
+  }
+
+  const normalized = rawUnit.trim().toLowerCase().replace(/s$/, '')
+  return FUEL_UNITS.find((option) => option.label.toLowerCase().replace(/s$/, '') === normalized)
+}
+
 export class FuelQuantity {
   value: Qty
   unit: FuelOption
 
   constructor(value: FuelQuantity | number, unit?: FuelOption) {
-    if (!value) {
-      // No value given
-      this.unit = unit ?? LITER
-      this.value = this.unit.value.mul(value ?? 0)
-    } else if (typeof value === 'number') {
+    if (typeof value === 'number') {
       if (unit === undefined) {
         if (value !== 0) {
           console.warn('No explicit unit. Using liters')
