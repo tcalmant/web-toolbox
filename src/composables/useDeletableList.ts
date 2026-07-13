@@ -16,9 +16,10 @@
  */
 
 import type { QInput } from 'quasar'
-import { useQuasar } from 'quasar'
 import type { Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 export interface UseDeletableListOptions<T> {
   values: Ref<T[] | undefined>
@@ -31,7 +32,7 @@ export interface UseDeletableListOptions<T> {
  * behavior for the fuel and flight-time input lists.
  */
 export function useDeletableList<T>({ values, inputField, recompute }: UseDeletableListOptions<T>) {
-  const $q = useQuasar()
+  const { confirmDialog } = useConfirmDialog()
   const { t } = useI18n()
 
   function onDelete(idx: number) {
@@ -43,12 +44,7 @@ export function useDeletableList<T>({ values, inputField, recompute }: UseDeleta
   function onDeleteAll() {
     const currentValues = values.value ?? []
     if (currentValues.length > 1) {
-      $q.dialog({
-        title: t('confirmTitle'),
-        message: t('confirmDeleteAllMessage'),
-        cancel: true,
-        persistent: false,
-      })
+      confirmDialog(t('confirmDeleteAllMessage'))
         .onOk(() => {
           recompute([])
         })

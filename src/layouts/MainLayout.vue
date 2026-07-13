@@ -32,6 +32,7 @@ under the License.
           <q-route-tab :label="$t('notamMapperTitle')" to="/notam-mapper" exact />
           <q-route-tab :label="$t('fuelComputerTitle')" to="/fuel-computer" exact />
           <q-route-tab :label="$t('timestampTitle')" to="/timestamp" exact />
+          <q-route-tab :label="$t('checklistTitle')" to="/checklist" exact />
         </q-tabs>
       </q-toolbar>
     </q-header>
