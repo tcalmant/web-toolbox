@@ -25,6 +25,7 @@ export default {
   notamMapperTitle: 'Carte NOTAM',
   fuelComputerTitle: 'Carburant',
   timestampTitle: 'Dates',
+  checklistTitle: 'Check-list',
 
   // Common ARIA-related sentences
   toggleSelectAll: 'Alterner la sélection intégrale',
@@ -107,6 +108,17 @@ export default {
   localDateLabel: 'Date locale',
   localDateHint: 'Date dans le fuseau horaire {tzName}: UTC {utcOffset}',
   timezoneLabel: 'Fuseau horaire',
+
+  // Checklist
+  checklistPlaneLabel: 'Avion',
+  checklistPlaneHint: "Sélectionnez l'avion pour charger sa check-list",
+  checklistNoPlaneSelected: 'Sélectionnez un avion pour voir sa check-list',
+  checklistClockLabel: 'UTC',
+  checklistEmergencyJumpLabel: "Check-lists d'urgence :",
+  checklistClearSectionLabel: 'Vider cette section',
+  checklistCollapseAllLabel: 'Tout réduire',
+  checklistClearAllLabel: 'Tout vider',
+  confirmClearAllChecklistMessage: 'Vider toute la check-list ?',
 
   // Common-ish
   confirmTitle: 'Confirmer',
