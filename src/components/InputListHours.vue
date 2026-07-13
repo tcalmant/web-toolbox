@@ -92,7 +92,7 @@ const totalDuration = defineModel<TimePeriod>()
 withDefaults(defineProps<{ title?: string; showTotal?: boolean }>(), { showTotal: false })
 
 const allValues = defineModel<TimePeriod[]>('entries', {
-  default: [new TimePeriod(0)],
+  default: () => [new TimePeriod(0)],
   required: false,
 })
 const inputValue = ref('0:30')

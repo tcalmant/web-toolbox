@@ -286,7 +286,7 @@ function updateSelectedNotams() {
 
 function parseNotams(fullText: string): NOTAM[] {
   let lastEndIdx = -1
-  let sectionStartIdx = -1
+  let sectionStartIdx: number
   const notams: NOTAM[] = []
   let notamIdx = 0
   while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-GQ]\)/)) != -1) {

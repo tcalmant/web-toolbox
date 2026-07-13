@@ -107,7 +107,7 @@ const props = withDefaults(
 const totalQuantity = defineModel<FuelQuantity>()
 
 const allValues = defineModel<FuelQuantity[]>('entries', {
-  default: [new FuelQuantity(0)],
+  default: () => [new FuelQuantity(0)],
   required: false,
 })
 const inputValue = ref(Math.min(50, props.fuelCapacity.value.scalar))
