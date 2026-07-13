@@ -81,8 +81,8 @@ under the License.
 
 <script setup lang="ts">
 import { QInput } from 'quasar'
-import { useDeletableList } from 'src/composables/useDeletableList'
-import { TimePeriod } from 'src/domain/time'
+import { useDeletableList } from '@/composables/useDeletableList'
+import { TimePeriod } from '@/domain/time'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -92,7 +92,7 @@ const totalDuration = defineModel<TimePeriod>()
 withDefaults(defineProps<{ title?: string; showTotal?: boolean }>(), { showTotal: false })
 
 const allValues = defineModel<TimePeriod[]>('entries', {
-  default: [new TimePeriod(0)],
+  default: () => [new TimePeriod(0)],
   required: false,
 })
 const inputValue = ref('0:30')

@@ -15,13 +15,10 @@
  *   limitations under the License.
  */
 
-import { Airfield } from 'src/domain/airfields'
+import { Airfield } from '@/domain/airfields'
 import AirfieldsFr from '../../fixed-data/airfields_fr.json' with { type: 'json' }
 
-const TypedAirfieldsFr: Record<string, (number | null)[]> = AirfieldsFr as unknown as Record<
-  string,
-  (number | null)[]
->
+const TypedAirfieldsFr: Record<string, (number | null)[]> = AirfieldsFr
 
 const KnownAirfields: Record<string, Airfield> = {}
 

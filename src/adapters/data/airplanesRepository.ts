@@ -15,14 +15,11 @@
  *   limitations under the License.
  */
 
-import { AirPlane } from 'src/domain/airplanes'
-import type { InputAirplane } from 'src/domain/airplanes'
+import { AirPlane } from '@/domain/airplanes'
+import type { InputAirplane } from '@/domain/airplanes'
 import AcdAirplanes from '../../fixed-data/acd_planes.json' with { type: 'json' }
 
-const TypedAcdAirplanes: Record<string, InputAirplane> = AcdAirplanes as unknown as Record<
-  string,
-  InputAirplane
->
+const TypedAcdAirplanes: Record<string, InputAirplane> = AcdAirplanes
 
 const KnownAirplanes: Record<string, AirPlane> = {}
 

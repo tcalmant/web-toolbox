@@ -56,8 +56,8 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue'
-import LanguageSwitcher from 'src/components/LanguageSwitcher.vue'
+import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue'
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 

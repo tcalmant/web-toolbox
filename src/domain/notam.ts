@@ -16,7 +16,7 @@
  */
 
 import type { Airfield } from './airfields'
-import KnownAirfields from 'src/adapters/data/airfieldsRepository'
+import KnownAirfields from '@/adapters/data/airfieldsRepository'
 import type { GeoPoint } from './geo'
 import { geoPointsEqual } from './geo'
 import type { GeometryFeature, PositionKind } from './geometry'

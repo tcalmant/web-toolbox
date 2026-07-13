@@ -6,7 +6,7 @@
 import type { QuasarLanguage } from 'quasar'
 import { useQuasar } from 'quasar'
 import languages from 'quasar/lang/index.json'
-import messages from 'src/i18n'
+import messages from '@/i18n'
 import { onBeforeMount } from 'vue'
 import { useI18n } from 'vue-i18n'
 

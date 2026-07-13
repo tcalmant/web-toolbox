@@ -115,14 +115,14 @@ under the License.
 <script setup lang="ts">
 import type { QTableColumn } from 'quasar'
 import { useQuasar } from 'quasar'
-import MapView from 'src/components/MapView.vue'
-import NotamOptions from 'src/components/NotamOptions.vue'
-import NotamTable from 'src/components/NotamTable.vue'
-import NotamTextAreaDialog from 'src/components/NotamTextAreaDialog.vue'
-import { useOrientation } from 'src/composables/useOrientation'
-import { AIP } from 'src/domain/aip'
-import { NOTAM } from 'src/domain/notam'
-import { findFirstRegex } from 'src/domain/stringUtils'
+import MapView from '@/components/MapView.vue'
+import NotamOptions from '@/components/NotamOptions.vue'
+import NotamTable from '@/components/NotamTable.vue'
+import NotamTextAreaDialog from '@/components/NotamTextAreaDialog.vue'
+import { useOrientation } from '@/composables/useOrientation'
+import { AIP } from '@/domain/aip'
+import { NOTAM } from '@/domain/notam'
+import { findFirstRegex } from '@/domain/stringUtils'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -286,7 +286,7 @@ function updateSelectedNotams() {
 
 function parseNotams(fullText: string): NOTAM[] {
   let lastEndIdx = -1
-  let sectionStartIdx = -1
+  let sectionStartIdx: number
   const notams: NOTAM[] = []
   let notamIdx = 0
   while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-GQ]\)/)) != -1) {
