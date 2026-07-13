@@ -25,6 +25,7 @@ export default {
   notamMapperTitle: 'NOTAM mapper',
   fuelComputerTitle: 'Fuel computer',
   timestampTitle: 'Timestamp',
+  checklistTitle: 'Checklist',
 
   // Common ARIA-related sentences
   toggleSelectAll: 'Toggle table selection',
@@ -107,6 +108,17 @@ export default {
   localDateLabel: 'Local date',
   localDateHint: 'Date in {tzName}: UTC {utcOffset}',
   timezoneLabel: 'Timezone',
+
+  // Checklist
+  checklistPlaneLabel: 'Airplane',
+  checklistPlaneHint: 'Select the airplane to load its checklist',
+  checklistNoPlaneSelected: 'Select an airplane to see its checklist',
+  checklistClockLabel: 'UTC',
+  checklistEmergencyJumpLabel: 'Emergency checklists:',
+  checklistClearSectionLabel: 'Clear this section',
+  checklistCollapseAllLabel: 'Collapse all',
+  checklistClearAllLabel: 'Clear all',
+  confirmClearAllChecklistMessage: 'Clear the whole checklist?',
 
   // Common-ish
   confirmTitle: 'Confirm',
