@@ -177,13 +177,13 @@ under the License.
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar'
-import KnowAirplanes from 'src/adapters/data/airplanesRepository'
-import InputListFuel from 'src/components/InputListFuel.vue'
-import InputListHours from 'src/components/InputListHours.vue'
-import { useOrientation } from 'src/composables/useOrientation'
-import { AirPlane } from 'src/domain/airplanes'
-import { findFuelUnit, FUEL_UNITS, FuelQuantity, LITER } from 'src/domain/fuel'
-import { TimePeriod } from 'src/domain/time'
+import KnowAirplanes from '@/adapters/data/airplanesRepository'
+import InputListFuel from '@/components/InputListFuel.vue'
+import InputListHours from '@/components/InputListHours.vue'
+import { useOrientation } from '@/composables/useOrientation'
+import { AirPlane } from '@/domain/airplanes'
+import { findFuelUnit, FUEL_UNITS, FuelQuantity, LITER } from '@/domain/fuel'
+import { TimePeriod } from '@/domain/time'
 import { computed, onMounted, ref, watch } from 'vue'
 
 const $q = useQuasar()

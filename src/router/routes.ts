@@ -20,12 +20,12 @@ import type { RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('@/layouts/MainLayout.vue'),
     children: [
       { path: '', redirect: 'notam-mapper' },
-      { path: 'timestamp', component: () => import('pages/TimestampPage.vue') },
-      { path: 'fuel-computer', component: () => import('src/pages/FuelComputerPage.vue') },
-      { path: 'notam-mapper', component: () => import('src/pages/NotamMapperPage.vue') },
+      { path: 'timestamp', component: () => import('@/pages/TimestampPage.vue') },
+      { path: 'fuel-computer', component: () => import('@/pages/FuelComputerPage.vue') },
+      { path: 'notam-mapper', component: () => import('@/pages/NotamMapperPage.vue') },
     ],
   },
 
@@ -33,7 +33,7 @@ const routes: RouteRecordRaw[] = [
   // but you can also remove it
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue'),
+    component: () => import('@/pages/ErrorNotFound.vue'),
   },
 ]
 
