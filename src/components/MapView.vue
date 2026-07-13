@@ -30,9 +30,9 @@ under the License.
 import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useQuasar } from 'quasar'
-import { featuresToLayers } from 'src/adapters/leaflet/geometryLayers'
-import type { AIP } from 'src/domain/aip'
-import type { NOTAM } from 'src/domain/notam'
+import { featuresToLayers } from '@/adapters/leaflet/geometryLayers'
+import type { AIP } from '@/domain/aip'
+import type { NOTAM } from '@/domain/notam'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 const $q = useQuasar()

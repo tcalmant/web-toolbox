@@ -141,7 +141,7 @@ under the License.
 
 <script setup lang="ts">
 import { type QTableColumn } from 'quasar'
-import { type NOTAM } from 'src/domain/notam'
+import { type NOTAM } from '@/domain/notam'
 import { onMounted, ref, watch } from 'vue'
 
 const notamColumns = defineModel<QTableColumn[]>('notamColumns')

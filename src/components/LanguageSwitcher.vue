@@ -39,7 +39,7 @@ under the License.
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import * as appI18n from 'src/i18n'
+import * as appI18n from '@/i18n'
 
 const { t, locale } = useI18n({ useScope: 'global' })
 

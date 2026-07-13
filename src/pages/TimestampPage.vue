@@ -158,13 +158,13 @@ under the License.
 </template>
 
 <script setup lang="ts">
-import { useOrientation } from 'src/composables/useOrientation'
+import { useOrientation } from '@/composables/useOrientation'
 import {
   dateToString,
   dateToUTCString,
   formatTzOffset,
   parseTzOffsetMinutes,
-} from 'src/domain/time'
+} from '@/domain/time'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 

@@ -85,9 +85,9 @@ under the License.
 
 <script setup lang="ts">
 import { QInput } from 'quasar'
-import { useDeletableList } from 'src/composables/useDeletableList'
-import type { FuelOption } from 'src/domain/fuel'
-import { FUEL_UNITS, FuelQuantity, LITER } from 'src/domain/fuel'
+import { useDeletableList } from '@/composables/useDeletableList'
+import type { FuelOption } from '@/domain/fuel'
+import { FUEL_UNITS, FuelQuantity, LITER } from '@/domain/fuel'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -107,7 +107,7 @@ const props = withDefaults(
 const totalQuantity = defineModel<FuelQuantity>()
 
 const allValues = defineModel<FuelQuantity[]>('entries', {
-  default: [new FuelQuantity(0)],
+  default: () => [new FuelQuantity(0)],
   required: false,
 })
 const inputValue = ref(Math.min(50, props.fuelCapacity.value.scalar))
