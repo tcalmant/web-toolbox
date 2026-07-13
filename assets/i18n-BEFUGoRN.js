@@ -1,0 +1,1 @@
+import{t as e}from"./vue-i18n-BnMVFRRW.js";import{G as t,W as n}from"./index-hvXtJ6rC.js";var r=`en-US`,i=n(({app:n})=>{let i=e({locale:r,fallbackLocale:r,legacy:!1,messages:t});n.use(i)});export{i as default};
