@@ -31,7 +31,7 @@ under the License.
       >
         <div class="row items-center q-gutter-md">
           <q-select
-            class="col"
+            class="col-12 col-sm"
             v-model="planeIdent"
             :label="$t('checklistPlaneLabel')"
             :hint="$t('checklistPlaneHint')"
@@ -40,15 +40,32 @@ under the License.
             map-options
             @update:model-value="onPlaneSelect"
           />
-          <div class="col-auto text-h5 text-weight-bold">
-            {{ $t('checklistClockLabel') }} {{ clock }}
+          <div
+            class="col-auto text-weight-bold"
+            :class="isMobile ? 'text-body1' : 'text-h6'"
+          >
+            {{ clock }}
           </div>
+          <q-space v-if="isMobile" />
+          <q-btn
+            v-if="checklist && checklist.emergencySections().length"
+            flat
+            dense
+            icon="warning"
+            color="negative"
+            :label="isMobile ? undefined : $t('checklistEmergencyJumpLabel')"
+            :round="isMobile"
+            :aria-label="$t('checklistEmergencyJumpLabel')"
+            @click="scrollToEmergencyPanel"
+          />
           <q-btn
             v-if="checklist"
             flat
             dense
             icon="unfold_less"
-            :label="$t('checklistCollapseAllLabel')"
+            :label="isMobile ? undefined : $t('checklistCollapseAllLabel')"
+            :round="isMobile"
+            :aria-label="$t('checklistCollapseAllLabel')"
             @click="onCollapseAll"
           />
           <q-btn
@@ -56,16 +73,17 @@ under the License.
             flat
             dense
             icon="delete_sweep"
-            :label="$t('checklistClearAllLabel')"
+            :label="isMobile ? undefined : $t('checklistClearAllLabel')"
+            :round="isMobile"
+            :aria-label="$t('checklistClearAllLabel')"
             @click="onClearAll"
           />
         </div>
+      </q-card>
 
-        <div
-          v-if="checklist && checklist.emergencySections().length"
-          class="row q-gutter-xs q-mt-sm"
-        >
-          <span class="text-caption text-grey col-12">{{ $t('checklistEmergencyJumpLabel') }}</span>
+      <div v-if="checklist && checklist.emergencySections().length" ref="emergencyPanelRef">
+        <span class="text-caption text-grey">{{ $t('checklistEmergencyJumpLabel') }}</span>
+        <div class="row q-gutter-xs q-mt-xs">
           <q-btn
             v-for="section in checklist.emergencySections()"
             :key="section.id"
@@ -77,7 +95,7 @@ under the License.
             @click="jumpToSection(section.id)"
           />
         </div>
-      </q-card>
+      </div>
 
       <div v-if="checklist">
         <q-expansion-item
@@ -128,11 +146,15 @@ import KnownAirplanes from '@/adapters/data/airplanesRepository'
 import type { AirPlane } from '@/domain/airplanes'
 import { ChecklistChoice, type Checklist, type ChecklistSection } from '@/domain/checklist'
 import { resolveChecklistForPlane } from '@/domain/checklistResolver'
-import { dateToUTCString } from '@/domain/time'
+import { timeToUTCString } from '@/domain/time'
 
 const $q = useQuasar()
 const { t, locale } = useI18n({ useScope: 'global' })
 const { confirmDialog } = useConfirmDialog()
+
+// Narrow-screen layout: stack the plane selector, shrink the clock, and
+// collapse the sticky-bar buttons down to icons to keep the bar usable.
+const isMobile = computed(() => $q.screen.lt.sm)
 
 // Offset the sticky bar below the app's own fixed header, which can slide
 // back over page content on scroll (otherwise it covers the clock/buttons).
@@ -155,11 +177,11 @@ const planeIdent = ref('')
 const currentPlane = computed<AirPlane | null>(() => KnownAirplanes[planeIdent.value] ?? null)
 
 // Live UTC clock, always visible in 24h format
-const clock = ref(dateToUTCString(new Date()))
+const clock = ref(timeToUTCString(new Date()))
 let clockTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   clockTimer = setInterval(() => {
-    clock.value = dateToUTCString(new Date())
+    clock.value = timeToUTCString(new Date())
   }, 1000)
 })
 onUnmounted(() => {
@@ -249,22 +271,38 @@ function setSectionRef(id: string, el: unknown) {
   }
 }
 
+// Scrolls an element into view just below the sticky bar (clock/buttons),
+// which stays pinned over the top of the viewport and would otherwise hide
+// whatever scrollIntoView aligns flush with the top.
+function scrollBelowStickyBar(el: HTMLElement) {
+  const stickyBar = document.querySelector('.checklist-sticky-bar')
+  if (!stickyBar) {
+    return
+  }
+  const offset = stickyBar.getBoundingClientRect().bottom
+  const targetTop = el.getBoundingClientRect().top + window.scrollY - offset - 8
+  window.scrollTo({ top: targetTop, behavior: 'smooth' })
+}
+
 function jumpToSection(id: string) {
   expandedState[id] = true
-  // Wait for the expansion to render before measuring: scrollIntoView alone
-  // would align the section flush with the viewport top, hiding it behind
-  // the sticky bar (clock/emergency buttons), which stays pinned over that
-  // same region - offset the scroll by the sticky bar's own bottom edge.
+  // Wait for the expansion to render before measuring scrollBelowStickyBar.
   void nextTick(() => {
     const el = sectionRefs.get(id)?.$el as HTMLElement | undefined
-    const stickyBar = document.querySelector('.checklist-sticky-bar')
-    if (!el || !stickyBar) {
-      return
+    if (el) {
+      scrollBelowStickyBar(el)
     }
-    const offset = stickyBar.getBoundingClientRect().bottom
-    const targetTop = el.getBoundingClientRect().top + window.scrollY - offset - 8
-    window.scrollTo({ top: targetTop, behavior: 'smooth' })
   })
+}
+
+// Emergency panel quick-jump: the sticky bar only holds a single button, and
+// scrolling down to this panel reveals the per-section emergency buttons.
+const emergencyPanelRef = ref<HTMLElement | null>(null)
+
+function scrollToEmergencyPanel() {
+  if (emergencyPanelRef.value) {
+    scrollBelowStickyBar(emergencyPanelRef.value)
+  }
 }
 
 // Collapses every do-list and regular checklist section; emergency sections

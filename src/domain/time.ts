@@ -15,13 +15,18 @@
  *   limitations under the License.
  */
 
+// Field names produced by dateFormatParts, as used by Intl.DateTimeFormat's
+// formatToParts with the options set below (year/month/day/hour/minute/second).
+type DateFormatParts = Record<'year' | 'month' | 'day' | 'hour' | 'minute' | 'second', string>
+
 /**
- * Converts the given string to a date string in YYYY-MM-dd HH:mm:ss format, with the timezone.
+ * Formats the given date into its year/month/day/hour/minute/second parts
+ * (each zero-padded to 2 digits, except year) in the given timezone.
  * @param date The date to convert
  * @param tzName Name of the timezone to convert the date to
- * @returns A string representation of the given date
+ * @returns The formatted parts, or null if the date could not be formatted
  */
-export function dateToString(date: Date, tzName: string): string {
+function dateFormatParts(date: Date, tzName: string): DateFormatParts | null {
   if (date === undefined || date === null) {
     throw new Error('Invalid Date')
   }
@@ -37,23 +42,30 @@ export function dateToString(date: Date, tzName: string): string {
     hour12: false,
   }
 
-  // Convert to FR locale: DD/MM/YYYY HH:mm:ss
+  // en-US, then reassembled below, so the digit ordering is locale-independent
   const formatter = new Intl.DateTimeFormat('en-US', options)
 
-  let partsArray
   try {
-    partsArray = formatter.formatToParts(date)
+    return Object.fromEntries(
+      formatter.formatToParts(date).map((part) => [part.type, part.value]),
+    ) as DateFormatParts
   } catch (e) {
     console.error(`Error parsing date: ${(e as Error).message}`)
+    return null
+  }
+}
+
+/**
+ * Converts the given string to a date string in YYYY-MM-dd HH:mm:ss format, with the timezone.
+ * @param date The date to convert
+ * @param tzName Name of the timezone to convert the date to
+ * @returns A string representation of the given date
+ */
+export function dateToString(date: Date, tzName: string): string {
+  const parts = dateFormatParts(date, tzName)
+  if (!parts) {
     return ''
   }
-
-  const parts: Record<string, string> = {}
-  for (const item of partsArray) {
-    parts[item.type] = item.value
-  }
-
-  // Convert it to ISO format
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
@@ -64,6 +76,32 @@ export function dateToString(date: Date, tzName: string): string {
  */
 export function dateToUTCString(date: Date): string {
   return dateToString(date, 'UTC')
+}
+
+/**
+ * Converts the given date to a YYYY-MM-dd HH:mmZ string (seconds dropped) in the UTC timezone.
+ * @param date The date to convert
+ * @returns A minute-precision string representation of the given date in UTC, suffixed with "Z"
+ */
+export function dateToUTCMinuteString(date: Date): string {
+  const parts = dateFormatParts(date, 'UTC')
+  if (!parts) {
+    return ''
+  }
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}Z`
+}
+
+/**
+ * Converts the given date to a Zulu time string, HH:mm:ssZ, in the UTC timezone.
+ * @param date The date to convert
+ * @returns A string representation of the given date's time in UTC
+ */
+export function timeToUTCString(date: Date): string {
+  const parts = dateFormatParts(date, 'UTC')
+  if (!parts) {
+    return ''
+  }
+  return `${parts.hour}:${parts.minute}:${parts.second}Z`
 }
 
 /**

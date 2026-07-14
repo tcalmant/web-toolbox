@@ -76,7 +76,7 @@ import {
   ChecklistRow,
   type ChecklistItem,
 } from '@/domain/checklist'
-import { dateToUTCString } from '@/domain/time'
+import { dateToUTCMinuteString } from '@/domain/time'
 
 defineProps<{
   items: ChecklistItem[]
@@ -120,7 +120,7 @@ function selectedBranch(choice: ChecklistChoice) {
 
 function onRowToggle(id: string, checked: boolean) {
   if (checked) {
-    state[id] = dateToUTCString(new Date())
+    state[id] = dateToUTCMinuteString(new Date())
   } else {
     delete state[id]
   }
