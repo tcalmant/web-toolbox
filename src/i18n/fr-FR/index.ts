@@ -113,7 +113,6 @@ export default {
   checklistPlaneLabel: 'Avion',
   checklistPlaneHint: "Sélectionnez l'avion pour charger sa check-list",
   checklistNoPlaneSelected: 'Sélectionnez un avion pour voir sa check-list',
-  checklistClockLabel: 'UTC',
   checklistEmergencyJumpLabel: "Check-lists d'urgence :",
   checklistClearSectionLabel: 'Vider cette section',
   checklistCollapseAllLabel: 'Tout réduire',

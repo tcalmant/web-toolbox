@@ -113,7 +113,6 @@ export default {
   checklistPlaneLabel: 'Airplane',
   checklistPlaneHint: 'Select the airplane to load its checklist',
   checklistNoPlaneSelected: 'Select an airplane to see its checklist',
-  checklistClockLabel: 'UTC',
   checklistEmergencyJumpLabel: 'Emergency checklists:',
   checklistClearSectionLabel: 'Clear this section',
   checklistCollapseAllLabel: 'Collapse all',
