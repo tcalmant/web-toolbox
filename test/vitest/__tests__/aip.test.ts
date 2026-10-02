@@ -107,7 +107,7 @@ frontière franco-espagnole
 
 LIMITES VERTICALES`)
     expect(aip.polygons.length).toEqual(1)
-    expect((aip.polygons[0] as Polygon).locations.length).toEqual(4)
+    expect((aip.polygons[0] as Polygon).locations.length).toBeGreaterThanOrEqual(4)
   })
 
   it('keeps an outline in one piece across a multi-line coast stretch', () => {
@@ -118,7 +118,7 @@ atlantique françaises
 44°23'19'' N,001°33'45'' W
 44°58'05'' N,001°31'31'' W`)
     expect(aip.polygons.length).toEqual(1)
-    expect((aip.polygons[0] as Polygon).locations.length).toEqual(4)
+    expect((aip.polygons[0] as Polygon).locations.length).toBeGreaterThan(4)
   })
 
   it('still splits shapes on unrelated text', () => {
@@ -148,5 +148,27 @@ sur 043°46'32'' N,007°04'53'' E
     expect(cw).toBeGreaterThan(7)
     expect(ccw).toBeGreaterThan(7)
     expect(cw).not.toEqual(ccw)
+  })
+
+  it('gives negative values to west longitudes and south latitudes', () => {
+    const aip = new AIP("Reference point 45°30'S, 005°45'W on the chart.")
+    const position = aip.polygons[0] as Position
+    expect(position.location.lat).toBeCloseTo(-45.5)
+    expect(position.location.lng).toBeCloseTo(-5.75)
+  })
+
+  it('follows the real border between two points on it', () => {
+    const aip = new AIP(`43°29'00'' N,001°08'00'' W
+43°13'00'' N,001°13'43'' W
+43°03'17'' N,001°15'02'' W
+frontière franco-espagnole
+43°13'46'' N,001°23'20'' W
+
+LIMITES VERTICALES`)
+    expect(aip.polygons.length).toEqual(1)
+    const polygon = aip.polygons[0] as Polygon
+    // 4 listed points, plus the vertices of the border between the last two
+    expect(polygon.locations.length).toBeGreaterThan(20)
+    expect(polygon.locations[0]!.lng).toBeCloseTo(-(1 + 8 / 60))
   })
 })
