@@ -49,9 +49,11 @@ under the License.
       <q-tr
         :id="notamRowId(props.row)"
         :props="props"
-        :class="
-          props.row.id === focusedNotam?.id || props.row.id === hoveredNotam?.id ? 'bg-info' : ''
-        "
+        :class="[
+          props.row.id === focusedNotam?.id || props.row.id === hoveredNotam?.id ? 'bg-info' : '',
+          notamRow(props.row).statusAt() === 'expired' ? 'text-grey-6' : '',
+          notamRow(props.row).statusAt() === 'future' ? 'text-italic' : '',
+        ]"
       >
         <q-td>
           <q-checkbox
@@ -92,7 +94,34 @@ under the License.
       </q-tr>
       <q-tr v-if="props.expand || props.row == focusedNotam" :props="props">
         <q-td colspan="100%">
-          <pre>{{ notamRow(props.row).text }}</pre>
+          <div class="row q-gutter-md q-mb-sm text-body2">
+            <div v-if="notamRow(props.row).validity">
+              <strong>{{ $t('notamValidityLabel') }}</strong
+              >:
+              {{ formatNotamDate(notamRow(props.row).validity?.from ?? null) || '?' }}
+              &rarr;
+              {{
+                notamRow(props.row).validity?.permanent
+                  ? 'PERM'
+                  : formatNotamDate(notamRow(props.row).validity?.to ?? null) || '?'
+              }}
+              <span v-if="notamRow(props.row).validity?.estimated">
+                ({{ $t('notamEstimated') }})
+              </span>
+            </div>
+            <div v-if="notamRow(props.row).schedule">
+              <strong>{{ $t('notamScheduleLabel') }}</strong
+              >: {{ notamRow(props.row).schedule }}
+            </div>
+            <div v-if="notamRow(props.row).lowerLimit || notamRow(props.row).upperLimit">
+              <strong>{{ $t('notamLimitsLabel') }}</strong
+              >: {{ notamRow(props.row).lowerLimit ?? '?' }} &rarr;
+              {{ notamRow(props.row).upperLimit ?? '?' }}
+            </div>
+          </div>
+          <pre class="notam-text" :aria-label="$t('notamRawText')">{{
+            notamRow(props.row).text
+          }}</pre>
           <div v-if="notamRow(props.row).linkedSupAIPs.length">
             <hr />
             <p>
@@ -141,7 +170,7 @@ under the License.
 
 <script setup lang="ts">
 import { type QTableColumn } from 'quasar'
-import { type NOTAM } from '@/domain/notam'
+import { formatNotamDate, type NOTAM } from '@/domain/notam'
 import { onMounted, ref, watch } from 'vue'
 
 const notamColumns = defineModel<QTableColumn[]>('notamColumns')
@@ -201,6 +230,13 @@ function notamRow(row: unknown): NOTAM {
 <style scoped>
 .notam-table {
   overflow: auto;
+}
+
+/* Long lines come from Sofia copies: wrap them rather than scroll sideways */
+.notam-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
 }
 
 .notam-table .q-table__top,

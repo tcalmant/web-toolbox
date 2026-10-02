@@ -51,6 +51,9 @@ under the License.
     <q-checkbox v-model="onlyWithPositions" :label="$t('notamFilterLocated')" />
   </div>
   <div class="row">
+    <q-checkbox v-model="hideExpired" :label="$t('notamFilterExpired')" />
+  </div>
+  <div class="row">
     <q-checkbox v-model="showAreaOfInfluence" :label="$t('notamFilterShowArea')" />
   </div>
   <div class="row">
@@ -72,6 +75,9 @@ under the License.
       </q-input>
     </div>
   </div>
+  <div v-if="totalCount > 0" class="row q-mt-xs text-caption text-grey-7">
+    {{ $t('notamCount', { shown: shownCount, total: totalCount }) }}
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -81,6 +87,11 @@ const ignoreLargeNotams = defineModel<boolean>('ignoreLargeNotams', { default: t
 const maxNotamRadius = defineModel<number>('maxNotamRadius', { default: 100 })
 const onlyWithPositions = defineModel<boolean>('onlyWithPositions', { default: true })
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence', { default: true })
+const hideExpired = defineModel<boolean>('hideExpired', { default: true })
+withDefaults(defineProps<{ totalCount?: number; shownCount?: number }>(), {
+  totalCount: 0,
+  shownCount: 0,
+})
 const searchQuery = defineModel<string>('searchQuery', { default: '' })
 const emit = defineEmits(['showNotamEdit', 'showAipEdit'])
 
