@@ -38,6 +38,9 @@ under the License.
         v-model:ignore-large-notams="ignoreLargeNotams"
         v-model:max-notam-radius="maxNotamRadius"
         v-model:only-with-positions="onlyWithPositions"
+        v-model:hide-expired="hideExpired"
+        :total-count="totalCount"
+        :shown-count="parsedNotams?.length ?? 0"
         v-model:show-area-of-influence="showAreaOfInfluence"
         v-model:search-query="searchQuery"
         @show-notam-edit="showNotamEdit = true"
@@ -80,6 +83,9 @@ under the License.
               v-model:ignore-large-notams="ignoreLargeNotams"
               v-model:max-notam-radius="maxNotamRadius"
               v-model:only-with-positions="onlyWithPositions"
+              v-model:hide-expired="hideExpired"
+              :total-count="totalCount"
+              :shown-count="parsedNotams?.length ?? 0"
               v-model:show-area-of-influence="showAreaOfInfluence"
               @show-notam-edit="showNotamEdit = true"
               @show-aip-edit="showAipEdit = true"
@@ -121,8 +127,7 @@ import NotamTable from '@/components/NotamTable.vue'
 import NotamTextAreaDialog from '@/components/NotamTextAreaDialog.vue'
 import { useOrientation } from '@/composables/useOrientation'
 import { AIP } from '@/domain/aip'
-import { NOTAM } from '@/domain/notam'
-import { findFirstRegex } from '@/domain/stringUtils'
+import { formatNotamDate, parseNotams, type NOTAM } from '@/domain/notam'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -154,6 +159,8 @@ const inputNOTAMText = ref<string>('')
 const ignoreLargeNotams = ref<boolean>(true)
 const maxNotamRadius = ref<number>(100)
 const onlyWithPositions = ref<boolean>(true)
+const hideExpired = ref<boolean>(true)
+const totalCount = ref<number>(0)
 const showAreaOfInfluence = ref<boolean>(true)
 
 // ... search
@@ -166,6 +173,29 @@ const notamColumns = computed<QTableColumn[]>(() => [
     label: 'N°',
     field: (r: NOTAM) => r.id,
     required: true,
+    sortable: true,
+  },
+  {
+    name: 'status',
+    label: t('notamStatus'),
+    field: (r: NOTAM) => r.statusAt(),
+    format: (v: string) => t(`notamStatus_${v}`),
+    required: true,
+    sortable: true,
+  },
+  {
+    name: 'validFrom',
+    label: t('notamValidFrom'),
+    field: (r: NOTAM) => r.validity?.from?.getTime() ?? null,
+    format: (v: number | null) => formatNotamDate(v === null ? null : new Date(v)),
+    sortable: true,
+  },
+  {
+    name: 'validTo',
+    label: t('notamValidTo'),
+    field: (r: NOTAM) => (r.validity?.permanent ? Infinity : (r.validity?.to?.getTime() ?? null)),
+    format: (v: number | null) =>
+      v === Infinity ? 'PERM' : formatNotamDate(v === null ? null : new Date(v)),
     sortable: true,
   },
   {
@@ -239,6 +269,7 @@ watch([inputNOTAMText, searchQuery], ([newNotamValue, newSearchValue]) => {
 })
 
 watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
+watch(hideExpired, () => handleNOTAMInput(inputNOTAMText.value, searchQuery.value))
 
 watch(focusedNotam, () => {
   tab.value = tab.value == 'mapConfig' ? 'map' : 'mapConfig'
@@ -268,6 +299,12 @@ function filterNotams(notams: NOTAM[]): NOTAM[] {
 
 function handleNOTAMInput(fullText: string, search: string): void {
   let notams = fullText ? parseNotams(fullText) : []
+  totalCount.value = notams.length
+  // Drop expired NOTAMs first, they are rarely useful in a briefing
+  if (hideExpired.value) {
+    const now = new Date()
+    notams = notams.filter((n) => n.statusAt(now) !== 'expired')
+  }
   // Apply search filter if necessary
   if (search && search.trim().length > 0) {
     const trimmedSearch = search.trim()
@@ -282,36 +319,6 @@ function handleNOTAMInput(fullText: string, search: string): void {
 
 function updateSelectedNotams() {
   selectedNotams.value = filterNotams(parsedNotams.value ?? [])
-}
-
-function parseNotams(fullText: string): NOTAM[] {
-  let lastEndIdx = -1
-  let sectionStartIdx: number
-  const notams: NOTAM[] = []
-  let notamIdx = 0
-  while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-GQ]\)/)) != -1) {
-    // Look for the "real" start of the NOTAM
-    let notamStartIdx = fullText.lastIndexOf('\n\n', sectionStartIdx)
-    if (notamStartIdx == -1) {
-      notamStartIdx = 0
-    } else if (notamStartIdx < lastEndIdx) {
-      notamStartIdx = lastEndIdx
-    }
-
-    // Look for the end of the NOTAM
-    lastEndIdx = fullText.indexOf('\n\n', sectionStartIdx)
-    if (lastEndIdx == -1) {
-      lastEndIdx = fullText.length
-    }
-
-    const notamContent = fullText.substring(notamStartIdx, lastEndIdx).trim()
-    const notam = new NOTAM(notamContent, ++notamIdx)
-    if (notam.sectionQ != null) {
-      notams.push(notam)
-    }
-  }
-
-  return notams
 }
 </script>
 
