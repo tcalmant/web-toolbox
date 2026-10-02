@@ -13,3 +13,19 @@ run = "npm ci"
 description = "Build the SPA for production"
 depends = ["install"]
 run = "npm run build"
+
+[tasks.lint]
+description = "Run ESLint"
+run = "npm run lint"
+
+[tasks.format]
+description = "Format sources with Prettier (writes)"
+run = "npm run format"
+
+[tasks.test]
+description = "Run unit tests once (as in CI)"
+run = "npm run test:unit:ci"
+
+[tasks.check]
+description = "Run the same checks as the PR workflow"
+depends = ["lint", "test", "build"]
