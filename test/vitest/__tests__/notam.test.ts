@@ -985,18 +985,32 @@ A) LFFF B) 2501010000 C) 2501020000
     expect(notam.polygons[0]).toBeInstanceOf(Circle)
   })
 
-  it('expands a clockwise arc inside an outline and ignores its center', () => {
-    const notam = new NOTAM(
+  // 10 NM from the center 450000N0051000E: east is 14'08" of longitude at 45N, north is 10' of latitude
+  const arcNotam = (direction: string, from: string) =>
+    new NOTAM(
       header +
-        'E) AREA 450000N0050000E TO 450000N0052000E THEN CLOCKWISE VIA A 10 NM ARC CENTERED AT 450000N0051000E TO 451000N0051000E TO POINT OF ORIGIN.',
+        `E) AREA 450000N0050000E TO ${from} THEN ${direction} VIA A 10 NM ARC CENTERED AT 450000N0051000E TO 451000N0051000E TO POINT OF ORIGIN.`,
       0,
     )
+  const arcCenter = { lat: 45, lng: 5 + 10 / 60 }
+
+  it('expands a counter-clockwise arc on a clean 10 NM radius', () => {
+    const notam = arcNotam('COUNTERCLOCKWISE', '450000N0052408E')
     expect(notam.polygons.length).toEqual(1)
     const polygon = notam.polygons[0] as Polygon
     expect(polygon).toBeInstanceOf(Polygon)
-    expect(polygon.locations.length).toBeGreaterThan(10)
-    expect(
-      polygon.locations.some((p) => Math.abs(p.lat - 45) < 1e-6 && Math.abs(p.lng - 5.1667) < 1e-3),
-    ).toBe(false)
+    // Quarter turn east to north: about 17 intermediate points, center omitted
+    expect(polygon.locations.length).toBeGreaterThan(15)
+    expect(polygon.locations.length).toBeLessThan(25)
+    for (const p of polygon.locations.slice(2, -1)) {
+      expect(Math.abs(haversineDistanceMeters(arcCenter, p) - 10 * 1852)).toBeLessThan(150)
+    }
+  })
+
+  it('goes the long way when the arc is clockwise', () => {
+    const notam = arcNotam('CLOCKWISE', '450000N0052408E')
+    const polygon = notam.polygons[0] as Polygon
+    // Three quarters of a turn
+    expect(polygon.locations.length).toBeGreaterThan(50)
   })
 })
