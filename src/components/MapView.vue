@@ -33,7 +33,7 @@ import { useQuasar } from 'quasar'
 import { featuresToLayers } from '@/adapters/leaflet/geometryLayers'
 import type { AIP } from '@/domain/aip'
 import type { NOTAM } from '@/domain/notam'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 const $q = useQuasar()
 
@@ -54,9 +54,16 @@ const props = withDefaults(defineProps<MapProps>(), {
 })
 
 const mapDiv = ref()
-const mapRef = ref<L.Map>()
+// shallowRef: Vue must not deep-proxy the Leaflet map
+const mapRef = shallowRef<L.Map>()
 
 onMounted(() => nextTick(initMap))
+
+// Release handlers and DOM listeners when the page switches layout
+onBeforeUnmount(() => {
+  mapRef.value?.remove()
+  mapRef.value = undefined
+})
 
 const initMap = () => {
   if (mapRef.value != undefined) {
@@ -199,7 +206,7 @@ class MapCoordinatesViewer extends L.Control {
   }
 
   override onRemove(map: L.Map): void {
-    map.off('mousemove')
+    map.off('mousemove').off('mouseout')
   }
 }
 
