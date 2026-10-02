@@ -101,7 +101,7 @@ export function findShapeDirectives(
   const arcPattern = new RegExp(
     String.raw`(?:(?<dirPre>CLOCKWISE|(?:ANTI|COUNTER)-?\s?CLOCKWISE)\s+(?:VIA\s+)?(?:A\s+)?)?` +
       String.raw`(?:(?:${NUM})\s*(?:${UNIT})\s+(?:RADIUS\s+)?)?` +
-      String.raw`ARC\s+(?:DE\s+CERCLE\s+)?(?:(?:DE\s+)?(?:${NUM})\s*(?:${UNIT})(?:\s+DE\s+RAYON|\s+RADIUS)?\s+)?` +
+      String.raw`ARC\s+(?:(?<dirArc>(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE)\s+)?(?:DE\s+CERCLE\s+)?(?:(?:DE\s+)?(?:${NUM})\s*(?:${UNIT})(?:\s+DE\s+RAYON|\s+RADIUS)?\s+)?` +
       `${CENTERED}\\s+${pointSource}` +
       String.raw`(?:\s*,?\s*${FR_DIRECTION})?`,
     'gi',
@@ -118,7 +118,7 @@ export function findShapeDirectives(
       start: match.index,
       end,
       center,
-      clockwise: isClockwise(groups['dirPre'] ?? groups['frDir']),
+      clockwise: isClockwise(groups['dirPre'] ?? groups['dirArc'] ?? groups['frDir']),
     })
     fill(match.index, end, ' ')
   }

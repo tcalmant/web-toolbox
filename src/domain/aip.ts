@@ -22,7 +22,12 @@ import { Circle, Line, Polygon, Position } from './geometry'
 import { findShapeDirectives } from './shapeDirectives'
 
 // A single AIP-formatted lat/lon pair (e.g. 45°30'15"N 005°45'E)
-const AIP_LOCATION_SOURCE = String.raw`(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])`
+const AIP_LOCATION_SOURCE = String.raw`0?(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])`
+
+// Border or coast stretches between two outline points, e.g. "frontière
+// franco-espagnole" or "limite des eaux territoriales atlantique françaises".
+// The real course is not known: the outline goes straight between the points.
+const BORDER_TEXT = /^(?:fronti[èe]re|limite\s+des\s+eaux|c[ôo]te|littoral)\b[^\d°]{0,80}$/i
 
 /**
  * Turns a list of points into the most specific geometry feature it
@@ -126,7 +131,8 @@ export class AIP {
       // An arc between the previous point and this one: the outline goes on
       const arc = directives.arcs.find((a) => a.start >= lastEndIdx && a.end <= match!.index)
 
-      if (arc === undefined && text.substring(lastEndIdx, match.index - 1).trim().length != 0) {
+      const between = text.substring(lastEndIdx, match.index - 1).trim()
+      if (arc === undefined && between.length != 0 && !BORDER_TEXT.test(between)) {
         // Found text between previous and current number
         const feature = toGeometryFeature(currentList)
         if (feature !== null) {
