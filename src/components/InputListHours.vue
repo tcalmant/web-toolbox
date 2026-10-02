@@ -39,7 +39,7 @@ under the License.
               filled
               @update:model-value="errorMessage = null"
             />
-            <span v-show="errorMessage" class="text-negative">{{ errorMessage }}</span>
+            <span v-show="errorMessage" class="text-negative" role="alert">{{ errorMessage }}</span>
           </div>
           <q-separator />
           <q-btn class="col-1" icon="add" type="submit" :title="$t('addEntry')" />
@@ -63,15 +63,25 @@ under the License.
           <q-item-section>
             {{ value }}
           </q-item-section>
-          <q-item-section side> {{ Math.ceil(value.duration_s / 60) }}&nbsp;min </q-item-section>
+          <q-item-section side>
+            {{ Math.ceil(value.duration_s / 60) }}&nbsp;{{ $t('minutesShort') }}
+          </q-item-section>
           <q-item-section side class="print-hide">
-            <q-icon
-              name="delete"
-              color="negative"
-              style="cursor: pointer"
-              @click="onDelete(idx)"
-              :title="$t('deleteRow')"
-            />
+            <div class="row no-wrap q-gutter-xs">
+              <q-icon
+                name="edit"
+                style="cursor: pointer"
+                @click="onEdit(idx)"
+                :title="$t('editEntry')"
+              />
+              <q-icon
+                name="delete"
+                color="negative"
+                style="cursor: pointer"
+                @click="onDelete(idx)"
+                :title="$t('deleteRow')"
+              />
+            </div>
           </q-item-section>
         </q-item>
       </q-list>
@@ -111,8 +121,12 @@ function onAdd() {
   const hours = parseInt(strHours ?? '0')
   const minutes = parseInt(strMinutes ?? '0')
 
-  if (minutes < 0 || minutes >= 60) {
+  if (Number.isNaN(hours) || Number.isNaN(minutes) || hours < 0) {
+    errorMessage.value = t('invalidTime')
+  } else if (minutes < 0 || minutes >= 60) {
     errorMessage.value = t('invalidMinutes')
+  } else if (hours === 0 && minutes === 0) {
+    errorMessage.value = t('invalidTime')
   } else {
     const duration_s = hours * 3600 + minutes * 60
     let localValues
@@ -127,6 +141,19 @@ function onAdd() {
 
     recompute(localValues)
   }
+  valueInputField.value?.focus()
+  valueInputField.value?.select()
+}
+
+/** Puts an entry back in the form, to be corrected and added again. */
+function onEdit(idx: number) {
+  const entry = allValues.value[idx]
+  if (!entry) {
+    return
+  }
+  inputValue.value = entry.toString()
+  errorMessage.value = null
+  onDelete(idx)
   valueInputField.value?.focus()
   valueInputField.value?.select()
 }

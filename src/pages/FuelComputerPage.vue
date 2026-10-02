@@ -23,31 +23,34 @@ under the License.
 <template>
   <q-page padding class="col">
     <div class="q-gutter-md">
-      <div class="row q-gutter-md print-hide">
+      <div class="row q-col-gutter-md items-start print-hide">
         <q-select
-          class="col"
+          class="col-12 col-md-4"
           v-model="planeIdent"
           :label="$t('immatriculationLabel')"
           :hint="$t('immatriculationHint')"
           :options="filterOptions"
           use-chips
           use-input
-          input-class="0"
           @new-value="onNewPlane"
           @update:model-value="onPlaneSelect"
           @filter="onPlaneFilter"
         />
         <q-select
-          class="col-1"
-          v-model="fuelUnit"
+          class="col-6 col-sm-3 col-md-2"
+          :model-value="fuelUnit"
           :options="FUEL_UNITS"
           :option-label="(opt) => $t(opt.label)"
+          :label="$t('fuelUnitLabel')"
+          @update:model-value="onUnitChange"
         />
         <q-input
-          class="col"
+          class="col-6 col-sm-3 col-md-3"
           v-model.number="fuelPerHour"
           type="number"
           min="0"
+          lazy-rules
+          :rules="[positiveRule]"
           :label="$t('fuelConsumptionLabel')"
           :hint="
             $t('fuelConsumptionHint', {
@@ -56,29 +59,53 @@ under the License.
             })
           "
         />
+        <div v-if="planeIsCustom" class="col-auto">
+          <q-btn
+            flat
+            :title="$t('deletePlane')"
+            :aria-label="$t('deletePlane')"
+            @click="onPlaneDelete"
+          >
+            <q-icon name="delete_forever" color="negative" />
+          </q-btn>
+        </div>
         <q-input
-          class="col"
+          class="col-12 col-sm-4"
           v-model.number="fuelCapacity"
           type="number"
           min="0"
+          lazy-rules
+          :rules="[positiveRule]"
           :label="$t('fuelCapacityLabel')"
           :hint="$t('fuelCapacityHint')"
         />
         <q-input
-          class="col"
+          class="col-12 col-sm-4"
           v-model.number="fuelConsumable"
           type="number"
           min="0"
           :max="fuelCapacity"
+          lazy-rules
+          :rules="[positiveRule, consumableRule]"
           :label="$t('fuelConsumableLabel')"
           :hint="$t('fuelConsumableHint')"
         />
-        <q-btn v-if="planeIsCustom" class="col1" @click="onPlaneDelete">
-          <q-icon name="delete_forever" color="negative" />
-        </q-btn>
+        <q-input
+          class="col-12 col-sm-4"
+          v-model.number="reserveMin"
+          type="number"
+          min="0"
+          lazy-rules
+          :rules="[positiveRule]"
+          :label="$t('fuelReserveLabel')"
+          :hint="$t('fuelReserveHint')"
+        />
       </div>
       <div class="row q-gutter-md print-only">
-        <span v-if="planeIdent" class="col-1">{{ planeIdent }}</span>
+        <span v-if="planeIdent" class="col-12">
+          {{ planeIdent
+          }}<template v-if="currentPlane?.model"> ({{ currentPlane.model }})</template>
+        </span>
         <span class="col">
           {{ $t('fuelConsumptionLabel') }}: {{ fuelPerHour }} {{ $t(fuelUnit.label) }}/h ({{
             fuelPerMinutes.toFixed(2)
@@ -91,8 +118,25 @@ under the License.
         <span class="col">
           {{ $t('fuelConsumableLabel') }}: {{ fuelConsumable }}&nbsp;{{ $t(fuelUnit.label) }}
         </span>
+        <span class="col">{{ $t('fuelReserveLabel') }}: {{ reserveMin }}</span>
       </div>
       <q-separator />
+      <q-banner rounded class="text-white" :class="statusClass" role="status">
+        <template v-slot:avatar>
+          <q-icon :name="statusIcon" />
+        </template>
+        <div class="text-subtitle1 text-weight-medium">{{ $t(statusMessageKey) }}</div>
+        <div class="row q-col-gutter-md q-mt-xs">
+          <div class="col-12 col-sm-6">
+            <div class="text-caption">{{ $t('resultEstimatedUsableFuel') }}</div>
+            <div class="text-h5">{{ plan.usable.toString(fuelUnit) }}</div>
+          </div>
+          <div class="col-12 col-sm-6">
+            <div class="text-caption">{{ $t('resultEstimatedRemainingTime') }}</div>
+            <div class="text-h5">{{ remainingTimeText }}</div>
+          </div>
+        </div>
+      </q-banner>
       <div class="q-gutter-md">
         <q-table
           class="col"
@@ -106,9 +150,9 @@ under the License.
               :props="props"
               class="q-tr--no-hover"
               :class="{
-                'text-negative': props.row.showAlert,
-                'text-warning': props.row.showWarning,
-                'text-weight-medium': props.row.showAlert || props.row.showWarning,
+                'text-negative': props.row.alert,
+                'text-orange-9': props.row.warning,
+                'text-weight-medium': props.row.alert || props.row.warning,
               }"
             >
               <q-td key="labelKey" :props="props">
@@ -168,10 +212,11 @@ under the License.
           </q-tab-panel>
         </q-tab-panels>
       </div>
+      <p class="text-caption text-grey-8">{{ $t('fuelDisclaimer') }}</p>
     </div>
   </q-page>
   <q-footer class="print-only">
-    <p>{{ $t('printEditedOn', { date: new Date().toLocaleString() }) }}</p>
+    <p>{{ $t('printEditedOn', { date: printDate }) }}</p>
   </q-footer>
 </template>
 
@@ -180,108 +225,115 @@ import { useQuasar } from 'quasar'
 import KnowAirplanes from '@/adapters/data/airplanesRepository'
 import InputListFuel from '@/components/InputListFuel.vue'
 import InputListHours from '@/components/InputListHours.vue'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useOrientation } from '@/composables/useOrientation'
 import { AirPlane } from '@/domain/airplanes'
+import type { FuelOption } from '@/domain/fuel'
 import { findFuelUnit, FUEL_UNITS, FuelQuantity, LITER } from '@/domain/fuel'
+import { computeFuelPlan, convertAmount, sanitizeAmount } from '@/domain/fuelPlan'
 import { TimePeriod } from '@/domain/time'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
+const { t } = useI18n()
+const { confirmDialog } = useConfirmDialog()
 
 // Display configuration
 const { isPortrait } = useOrientation()
 
 const tab = ref('flightTimeTable')
 
-class ResultRow {
+interface ResultRow {
   labelKey: string
   value: string
-  showWarning: boolean
-  showAlert: boolean
-
-  constructor(
-    labelKey: string,
-    value: string | null | undefined,
-    showWarning: boolean = false,
-    showAlert: boolean = false,
-  ) {
-    this.labelKey = labelKey
-    this.value = value === null || value === undefined ? 'n/a' : value
-
-    this.showAlert = showAlert
-    this.showWarning = !showAlert && showWarning
-  }
+  warning?: boolean
+  alert?: boolean
 }
 
-// Plane description
+// Plane description. The inputs are numbers, or '' when the field is emptied.
 const planeIdent = ref('')
-const fuelUnit = ref(LITER)
-const fuelPerHour = ref(25.0)
-const fuelCapacity = ref(110)
-const fuelConsumable = ref(109)
+const fuelUnit = ref<FuelOption>(LITER)
+const fuelPerHour = ref<number | string>(25.0)
+const fuelCapacity = ref<number | string>(110)
+const fuelConsumable = ref<number | string>(109)
+const reserveMin = ref<number | string>(30)
+
+// Input validation
+const positiveRule = (v: unknown) =>
+  (typeof v === 'number' && Number.isFinite(v) && v >= 0) || t('fuelRequiredField')
+const consumableRule = (v: unknown) =>
+  typeof v !== 'number' || v <= sanitizeAmount(fuelCapacity.value) || t('fuelConsumableTooHigh')
 
 // ... typed description
-const typedFuelCapacity = computed(() => new FuelQuantity(fuelCapacity.value, fuelUnit.value))
-const typedFuelConsumable = computed(() => new FuelQuantity(fuelConsumable.value, fuelUnit.value))
-const typedNonUsableFuel = computed(() => typedFuelCapacity.value.sub(typedFuelConsumable.value))
+const typedFuelCapacity = computed(
+  () => new FuelQuantity(sanitizeAmount(fuelCapacity.value), fuelUnit.value),
+)
 
 // Informative
-const fuelPerMinutes = computed(() => fuelPerHour.value / 60)
+const fuelPerMinutes = computed(() => sanitizeAmount(fuelPerHour.value) / 60)
 const fuelValues = ref<FuelQuantity[]>([new FuelQuantity(0)])
 
 // Flight duration
 const totalFlightDuration = ref<TimePeriod>(new TimePeriod(0))
 const flightTimes = ref<TimePeriod[]>([new TimePeriod(0)])
 
-// Description updates
-watch(fuelUnit, (newValue) => {
-  $q.sessionStorage?.setItem('fuel_computer.input.fuelUnit', newValue.label)
-  onPlaneSave()
-})
-watch(fuelPerHour, (newValue) => {
-  $q.sessionStorage?.setItem('fuel_computer.input.fuelPerHour', newValue)
-  onPlaneSave()
-})
+// Fuel computation: the added fuel total may be in another unit, the plan converts it
+const totalAddedFuel = ref<FuelQuantity>(new FuelQuantity(0))
+const plan = computed(() =>
+  computeFuelPlan({
+    unit: fuelUnit.value,
+    perHour: sanitizeAmount(fuelPerHour.value),
+    capacity: sanitizeAmount(fuelCapacity.value),
+    consumable: sanitizeAmount(fuelConsumable.value),
+    added: totalAddedFuel.value,
+    flightDurationS: totalFlightDuration.value.duration_s,
+    reserveMin: sanitizeAmount(reserveMin.value),
+  }),
+)
+
+// Keep the usable amount in sync when the capacity changes alone (not on plane/unit changes)
+let skipConsumableSync = false
 
 watch(
   [planeIdent, fuelCapacity, fuelConsumable],
-  ([newPlaneIdent, newCapacity, newConsumable], [oldPlaneIdent, oldCapacity, oldConsumable]) => {
-    if (newPlaneIdent == oldPlaneIdent && newCapacity != oldCapacity) {
-      const oldNonConsumable = oldCapacity - oldConsumable
-      newConsumable = Math.max(0, newCapacity - oldNonConsumable)
-      fuelConsumable.value = newConsumable
-    }
+  ([newPlaneIdent, newCapacity], [oldPlaneIdent, oldCapacity, oldConsumable]) => {
+    const skip = skipConsumableSync
+    skipConsumableSync = false
 
-    $q.sessionStorage?.setItem('fuel_computer.input.fuelCapacity', newCapacity)
-    $q.sessionStorage?.setItem('fuel_computer.input.fuelConsumable', newConsumable)
-    onPlaneSave()
+    if (!skip && newPlaneIdent == oldPlaneIdent && newCapacity != oldCapacity) {
+      const oldNonConsumable = Math.max(
+        0,
+        sanitizeAmount(oldCapacity) - sanitizeAmount(oldConsumable),
+      )
+      fuelConsumable.value = Math.max(0, sanitizeAmount(newCapacity) - oldNonConsumable)
+    }
   },
 )
 
-// Fuel computation
-const totalAddedFuel = ref<FuelQuantity>(new FuelQuantity(0))
-const totalConsumedFuel = computed(
-  () =>
-    new FuelQuantity(
-      Math.ceil((fuelPerMinutes.value * totalFlightDuration.value.duration_s) / 60),
-      fuelUnit.value,
-    ),
-)
-const totalRemainingFuel = computed(() =>
-  FuelQuantity.min(totalAddedFuel.value.sub(totalConsumedFuel.value), typedFuelCapacity.value),
-)
-const usableRemainingFuel = computed(() =>
-  FuelQuantity.max(
-    new FuelQuantity(0),
-    FuelQuantity.min(
-      totalRemainingFuel.value.sub(typedNonUsableFuel.value),
-      typedFuelConsumable.value,
-    ),
-  ),
-)
-const usableRemainingTime = computed(
-  () => new TimePeriod((usableRemainingFuel.value.value.scalar / fuelPerMinutes.value) * 60),
-)
+/** Sets the plane numbers at once, without triggering the consumable synchronisation. */
+function applyNumbers(capacity: number, consumable: number, perHour: number) {
+  if (capacity !== fuelCapacity.value) {
+    skipConsumableSync = true
+  }
+  fuelCapacity.value = capacity
+  fuelConsumable.value = consumable
+  fuelPerHour.value = perHour
+}
+
+/** Changing the unit converts the figures instead of relabelling them. */
+function onUnitChange(newUnit: FuelOption) {
+  const oldUnit = fuelUnit.value
+  if (newUnit === oldUnit) {
+    return
+  }
+  applyNumbers(
+    convertAmount(sanitizeAmount(fuelCapacity.value), oldUnit, newUnit),
+    convertAmount(sanitizeAmount(fuelConsumable.value), oldUnit, newUnit),
+    convertAmount(sanitizeAmount(fuelPerHour.value), oldUnit, newUnit),
+  )
+  fuelUnit.value = newUnit
+}
 
 // Known airplanes
 class PlaneOption {
@@ -321,51 +373,61 @@ function onPlaneSelect(value: PlaneOption) {
       fuelUnit.value = inputFuelUnit
     }
 
-    fuelCapacity.value = plane.fuelCapacity
-    fuelConsumable.value = plane.fuelConsumable
-    fuelPerHour.value = plane.fuelConsumption
-
-    $q.sessionStorage?.setItem('fuel_computer.input.planeIdent', plane.immatriculation)
-    console.log('Selected plane:', plane)
+    applyNumbers(plane.fuelCapacity, plane.fuelConsumable, plane.fuelConsumption)
   }
+}
+
+function saveCustomPlanes() {
+  $q.localStorage?.setItem('fuel_computer.input.planes', JSON.stringify(customPlanes.value))
 }
 
 function onNewPlane(
   value: string,
   done: (item: PlaneOption, mode?: 'add' | 'add-unique' | 'toggle') => void,
 ) {
-  if (!value) {
+  const ident = value.toUpperCase().trim()
+  if (!ident) {
+    return
+  }
+
+  // Never shadow an existing airplane: select it instead
+  const existing = planeOptions.value.find((p) => p.value.immatriculation.toUpperCase() === ident)
+  if (existing) {
+    done(existing)
     return
   }
 
   // Prepare the new Airplane object
   const newPlane = new AirPlane(
-    value.toUpperCase().trim(),
+    ident,
     '',
     'custom',
     fuelUnit.value.label,
-    fuelCapacity.value,
-    fuelConsumable.value,
-    fuelPerHour.value,
+    sanitizeAmount(fuelCapacity.value),
+    sanitizeAmount(fuelConsumable.value),
+    sanitizeAmount(fuelPerHour.value),
   )
   newPlane.isCustom = true
   customPlanes.value.push(newPlane)
+  saveCustomPlanes()
 
   planeIdent.value = newPlane.immatriculation
   done(new PlaneOption(newPlane))
 }
 
+/** Persists edits of a custom airplane. */
 function onPlaneSave() {
-  if (!currentPlane.value || !currentPlane.value.isCustom) {
+  const plane = currentPlane.value
+  if (!plane || !plane.isCustom) {
     return
   }
 
-  currentPlane.value.fuelUnit = fuelUnit.value.label
-  currentPlane.value.fuelCapacity = fuelCapacity.value
-  currentPlane.value.fuelConsumable = fuelConsumable.value
-  currentPlane.value.fuelConsumption = fuelPerHour.value
+  plane.fuelUnit = fuelUnit.value.label
+  plane.fuelCapacity = sanitizeAmount(fuelCapacity.value)
+  plane.fuelConsumable = sanitizeAmount(fuelConsumable.value)
+  plane.fuelConsumption = sanitizeAmount(fuelPerHour.value)
 
-  $q.localStorage?.setItem('fuel_computer.input.planes', JSON.stringify(customPlanes.value))
+  saveCustomPlanes()
 }
 
 function onPlaneDelete() {
@@ -373,21 +435,24 @@ function onPlaneDelete() {
     return
   }
 
-  const index = customPlanes.value.findIndex(
-    (p) => p.immatriculation === currentPlane.value?.immatriculation,
-  )
-  if (index >= 0) {
-    customPlanes.value.splice(index, 1)
-    $q.localStorage?.setItem('fuel_computer.input.planes', JSON.stringify(customPlanes.value))
-  }
+  confirmDialog(t('confirmDeletePlaneMessage')).onOk(() => {
+    const index = customPlanes.value.findIndex(
+      (p) => p.immatriculation === currentPlane.value?.immatriculation,
+    )
+    if (index >= 0) {
+      customPlanes.value.splice(index, 1)
+      saveCustomPlanes()
+    }
 
-  // Reset the current plane
-  if (planeOptions.value[0]) {
-    onPlaneSelect(planeOptions.value[0])
-  } else {
+    // Reset the current plane
     currentPlane.value = null
-    planeIdent.value = ''
-  }
+    $q.sessionStorage?.remove('fuel_computer.input.planeIdent')
+    if (planeOptions.value[0]) {
+      onPlaneSelect(planeOptions.value[0])
+    } else {
+      planeIdent.value = ''
+    }
+  })
 }
 
 function onPlaneFilter(value: string, update: (callback: () => void) => void) {
@@ -406,60 +471,110 @@ function onPlaneFilter(value: string, update: (callback: () => void) => void) {
 }
 
 // Result display
-const resultRows = computed((): ResultRow[] => {
-  // Warning if less than 1h of fuel
-  const fuelLevelWarning = usableRemainingTime.value.duration_s < 3600
+const statusClass = computed(
+  () =>
+    ({
+      ok: 'bg-positive',
+      warning: 'bg-orange-9',
+      alert: 'bg-negative',
+    })[plan.value.status],
+)
+const statusIcon = computed(
+  () =>
+    ({
+      ok: 'check_circle',
+      warning: 'warning',
+      alert: 'error',
+    })[plan.value.status],
+)
+const statusMessageKey = computed(() => {
+  if (plan.value.status === 'alert') {
+    return plan.value.insufficient ? 'statusAlertShortfall' : 'statusAlertReserve'
+  }
+  return plan.value.status === 'warning' ? 'statusWarning' : 'statusOk'
+})
 
-  // Danger if less than 30min of fuel
-  const noFuelAlert = usableRemainingTime.value.duration_s < 30 * 60
+const remainingTimeText = computed(() => {
+  if (plan.value.usableTimeS === null) {
+    return t('untilEmpty')
+  }
+  // Round down: the displayed endurance must never be optimistic
+  const duration = new TimePeriod(Math.floor(plan.value.usableTimeS / 60) * 60)
+  return `${duration.toString()} (${Math.floor(plan.value.usableTimeS / 60)} ${t('minutesShort')})`
+})
+
+const resultRows = computed((): ResultRow[] => {
+  const warning = plan.value.status === 'warning'
+  const alert = plan.value.status === 'alert'
+  const flightMinutes = Math.ceil(totalFlightDuration.value.duration_s / 60)
 
   return [
-    new ResultRow(
-      'resultTotalTime',
-      `${totalFlightDuration.value.toString()} (${Math.ceil(totalFlightDuration.value.duration_s / 60)} min)`,
-    ),
-    new ResultRow('resultTotalFuelConsumed', `${totalConsumedFuel.value.toString(fuelUnit.value)}`),
-    new ResultRow('resultTotalFuelAdded', `${totalAddedFuel.value.toString(fuelUnit.value)}`),
-    new ResultRow(
-      'resultEstimatedFuel',
-      `${totalRemainingFuel.value.toString(fuelUnit.value)} (${Math.floor(100.0 * totalRemainingFuel.value.value.div(typedFuelCapacity.value.value).scalar)} %)`,
-      fuelLevelWarning,
-      noFuelAlert,
-    ),
-    new ResultRow(
-      'resultEstimatedUsableFuel',
-      `${usableRemainingFuel.value.toString(fuelUnit.value)}`,
-      fuelLevelWarning,
-      noFuelAlert,
-    ),
-    new ResultRow(
-      'resultEstimatedRemainingTime',
-      `${usableRemainingTime.value.toString()} (${Math.floor(usableRemainingTime.value.duration_s / 60)} min)`,
-      fuelLevelWarning,
-      noFuelAlert,
-    ),
+    {
+      labelKey: 'resultTotalTime',
+      value: `${totalFlightDuration.value.toString()} (${flightMinutes} ${t('minutesShort')})`,
+    },
+    {
+      labelKey: 'resultTotalFuelConsumed',
+      // Consumption is rounded up, what is left is rounded down
+      value: plan.value.consumed.toString(fuelUnit.value, 'up'),
+    },
+    {
+      labelKey: 'resultTotalFuelAdded',
+      value: totalAddedFuel.value.toString(fuelUnit.value),
+    },
+    {
+      labelKey: 'resultEstimatedFuel',
+      value: `${plan.value.remaining.toString(fuelUnit.value)} (${plan.value.remainingPercent} %)`,
+      warning,
+      alert,
+    },
+    {
+      labelKey: 'resultEstimatedUsableFuel',
+      value: plan.value.usable.toString(fuelUnit.value),
+      warning,
+      alert,
+    },
+    {
+      labelKey: 'resultEstimatedRemainingTime',
+      value: remainingTimeText.value,
+      warning,
+      alert,
+    },
   ]
 })
 
-// Print tables switch
+// Print: date of the print, not of the last render
 const printInputTables = ref(false)
+const printDate = ref(new Date().toLocaleString())
+const refreshPrintDate = () => {
+  printDate.value = new Date().toLocaleString()
+}
+
+function setSession(key: string, value: string | number) {
+  // An emptied field ('') is not worth restoring
+  if (value !== '') {
+    $q.sessionStorage?.setItem(`fuel_computer.input.${key}`, value)
+  }
+}
+
+// Keep the session and the custom airplane up to date
+watch([fuelUnit, fuelPerHour, fuelCapacity, fuelConsumable, reserveMin], () => {
+  setSession('fuelUnit', fuelUnit.value.label)
+  setSession('fuelPerHour', fuelPerHour.value)
+  setSession('fuelCapacity', fuelCapacity.value)
+  setSession('fuelConsumable', fuelConsumable.value)
+  setSession('reserveMin', reserveMin.value)
+  onPlaneSave()
+})
+watch(planeIdent, (ident) => {
+  if (typeof ident === 'string') {
+    setSession('planeIdent', ident)
+  }
+})
 
 // Load previous details from session storage
 onMounted(() => {
-  // Reload data from session storage
-  const fuelUnitLabel = $q.sessionStorage.getItem('fuel_computer.input.fuelUnit')
-  if (fuelUnitLabel) {
-    fuelUnit.value = FUEL_UNITS.find((f) => f.label === fuelUnitLabel) ?? fuelUnit.value
-  }
-
-  fuelPerHour.value =
-    $q.sessionStorage.getItem('fuel_computer.input.fuelPerHour') ?? fuelPerHour.value
-
-  // Reload consumable first as the capacity watcher needs its value and will update it
-  fuelConsumable.value =
-    $q.sessionStorage.getItem('fuel_computer.input.fuelConsumable') ?? fuelConsumable.value
-  fuelCapacity.value =
-    $q.sessionStorage.getItem('fuel_computer.input.fuelCapacity') ?? fuelCapacity.value
+  window.addEventListener('beforeprint', refreshPrintDate)
 
   // Reload custom planes
   customPlanes.value = (
@@ -477,18 +592,36 @@ onMounted(() => {
     plane.isCustom = true
     return plane
   })
+  filterOptions.value = planeOptions.value
 
-  // Select the previously selected plane, if any
-  const savedPlaneIdent = $q.sessionStorage.getItem('fuel_computer.input.planeIdent')
-  if (savedPlaneIdent) {
-    const matchingPlane = planeOptions.value.find(
-      (p) => p.value.immatriculation === savedPlaneIdent,
-    )
-    if (matchingPlane) {
-      onPlaneSelect(matchingPlane)
-    }
-  } else if (planeOptions.value[0]) {
-    onPlaneSelect(planeOptions.value[0])
+  // Select the previously selected plane, if any...
+  const savedPlaneIdent = $q.sessionStorage.getItem<string>('fuel_computer.input.planeIdent')
+  const matchingPlane = savedPlaneIdent
+    ? planeOptions.value.find((p) => p.value.immatriculation === savedPlaneIdent)
+    : undefined
+  const initialPlane = matchingPlane ?? planeOptions.value[0]
+  if (initialPlane) {
+    onPlaneSelect(initialPlane)
   }
+
+  // ... then restore the figures of the session on top of it (they may have been edited)
+  const fuelUnitLabel = $q.sessionStorage.getItem<string>('fuel_computer.input.fuelUnit')
+  const savedUnit = FUEL_UNITS.find((f) => f.label === fuelUnitLabel)
+  if (savedUnit) {
+    fuelUnit.value = savedUnit
+  }
+
+  const saved = (key: string, fallback: number | string) =>
+    $q.sessionStorage.getItem<number | string>(`fuel_computer.input.${key}`) ?? fallback
+  applyNumbers(
+    saved('fuelCapacity', fuelCapacity.value) as number,
+    saved('fuelConsumable', fuelConsumable.value) as number,
+    saved('fuelPerHour', fuelPerHour.value) as number,
+  )
+  reserveMin.value = saved('reserveMin', reserveMin.value)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeprint', refreshPrintDate)
 })
 </script>
