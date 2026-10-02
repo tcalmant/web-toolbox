@@ -32,18 +32,40 @@ export class ChecklistLocalStorageStore implements ChecklistStateStore {
   }
 
   load(key: string): Record<string, string> {
-    const raw = this.storage.getItem<string>(key)
-    if (!raw) {
+    let raw: unknown
+    try {
+      raw = this.storage.getItem<string>(key)
+    } catch {
+      // Storage blocked or unavailable: behave as if nothing was saved.
       return {}
     }
+    if (typeof raw !== 'string' || !raw) {
+      return {}
+    }
+    let parsed: unknown
     try {
-      return JSON.parse(raw) as Record<string, string>
+      parsed = JSON.parse(raw)
     } catch {
       return {}
     }
+    // Stored data is untrusted: keep only string values of a plain object, and
+    // drop "__proto__" so Object.assign() on the caller's side cannot reparent it.
+    const state: Record<string, string> = {}
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      for (const [id, value] of Object.entries(parsed)) {
+        if (typeof value === 'string' && id !== '__proto__') {
+          state[id] = value
+        }
+      }
+    }
+    return state
   }
 
   save(key: string, state: Record<string, string>): void {
-    this.storage.setItem(key, JSON.stringify(state))
+    try {
+      this.storage.setItem(key, JSON.stringify(state))
+    } catch {
+      // Quota exceeded or storage disabled: the in-memory state stays usable.
+    }
   }
 }
