@@ -15,9 +15,22 @@
  *   limitations under the License.
  */
 
+import KnownBorders from '@/adapters/data/bordersRepository'
+import { borderKeyFromText, borderPath } from './borders'
 import type { GeoPoint } from './geo'
+import { arcPoints } from './geo'
 import type { GeometryFeature } from './geometry'
-import { Line, Polygon, Position } from './geometry'
+import { Circle, Line, Polygon, Position } from './geometry'
+import { findShapeDirectives } from './shapeDirectives'
+
+// A single AIP-formatted lat/lon pair (e.g. 45°30'15"N 005°45'E)
+const AIP_LOCATION_SOURCE = String.raw`0?(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])`
+
+// Border or coast stretches between two outline points, e.g. "frontière
+// franco-espagnole" or "limite des eaux territoriales atlantique françaises".
+// When the course is not in the border data, the outline goes straight
+// between the points.
+const BORDER_TEXT = /^(?:fronti[èe]re|limite\s+des\s+eaux|c[ôo]te|littoral)\b[^\d°]{0,80}$/i
 
 /**
  * Turns a list of points into the most specific geometry feature it
@@ -47,15 +60,18 @@ export class AIP {
     if (aipRegexMatch.groups == null) {
       return null
     }
+    return this.parseAIPGroups(aipRegexMatch.groups)
+  }
 
-    const strLatDeg = aipRegexMatch.groups['latDeg']
-    const strLatMin = aipRegexMatch.groups['latMin']
-    const strLatSec = aipRegexMatch.groups['latSec']
-    const strLatNS = aipRegexMatch.groups['latNS']
-    const strLonDeg = aipRegexMatch.groups['lonDeg']
-    const strLonMin = aipRegexMatch.groups['lonMin']
-    const strLonSec = aipRegexMatch.groups['lonSec']
-    const strLonEW = aipRegexMatch.groups['lonEW']
+  parseAIPGroups(groups: Record<string, string | undefined>): GeoPoint | null {
+    const strLatDeg = groups['latDeg']
+    const strLatMin = groups['latMin']
+    const strLatSec = groups['latSec']
+    const strLatNS = groups['latNS']
+    const strLonDeg = groups['lonDeg']
+    const strLonMin = groups['lonMin']
+    const strLonSec = groups['lonSec']
+    const strLonEW = groups['lonEW']
     if (
       strLatDeg === undefined ||
       strLatNS === undefined ||
@@ -81,7 +97,11 @@ export class AIP {
       }
     }
 
-    return { lat, lng: lon }
+    // South and west are negative
+    return {
+      lat: strLatNS.toUpperCase() === 'S' ? -lat : lat,
+      lng: strLonEW.toUpperCase() === 'W' ? -lon : lon,
+    }
   }
 
   findAIPPolygons(text: string | undefined): GeometryFeature[] {
@@ -90,11 +110,16 @@ export class AIP {
       return []
     }
 
-    // Look for AIP-formatted locations
-    const aipLocation =
-      /(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])/g
+    // Circles and arcs: their centers must not be taken for outline points
+    const directives = findShapeDirectives(text, AIP_LOCATION_SOURCE, (g) => this.parseAIPGroups(g))
+    text = directives.cleaned
 
-    const features: GeometryFeature[] = []
+    // Look for AIP-formatted locations
+    const aipLocation = new RegExp(AIP_LOCATION_SOURCE, 'g')
+
+    const features: GeometryFeature[] = directives.circles.map(
+      (c) => new Circle(c.center, c.radiusMeters),
+    )
     let currentList: GeoPoint[] = []
     let lastEndIdx = 0
     let match
@@ -110,7 +135,11 @@ export class AIP {
         continue
       }
 
-      if (text.substring(lastEndIdx, match.index - 1).trim().length != 0) {
+      // An arc between the previous point and this one: the outline goes on
+      const arc = directives.arcs.find((a) => a.start >= lastEndIdx && a.end <= match!.index)
+
+      const between = text.substring(lastEndIdx, match.index - 1).trim()
+      if (arc === undefined && between.length != 0 && !BORDER_TEXT.test(between)) {
         // Found text between previous and current number
         const feature = toGeometryFeature(currentList)
         if (feature !== null) {
@@ -118,6 +147,19 @@ export class AIP {
         }
 
         currentList = []
+      }
+
+      const previous = currentList[currentList.length - 1]
+      if (arc !== undefined && previous !== undefined) {
+        currentList.push(...arcPoints(arc.center, previous, location, arc.clockwise))
+      } else if (previous !== undefined && between.length != 0) {
+        // Follow the border between the two points, if we know it
+        const key = borderKeyFromText(between, KnownBorders)
+        const chains = key !== null ? KnownBorders[key] : undefined
+        const path = chains !== undefined ? borderPath(chains, previous, location) : null
+        if (path !== null) {
+          currentList.push(...path)
+        }
       }
 
       currentList.push(location)
