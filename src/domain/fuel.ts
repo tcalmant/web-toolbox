@@ -80,8 +80,8 @@ export class FuelQuantity {
         }
         unit = LITER
       } else if (!unit.value.isCompatible(LITER.value)) {
-        console.error('Incompatible unit: %s', value)
-        throw new Error(`Incompatible unit: ${value.toString()}`)
+        console.error('Incompatible unit: %s', unit.label)
+        throw new Error(`Incompatible unit: ${unit.label}`)
       }
 
       this.value = unit.value.mul(value)

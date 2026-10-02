@@ -39,7 +39,7 @@ function dateFormatParts(date: Date, tzName: string): DateFormatParts | null {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }
 
   // en-US, then reassembled below, so the digit ordering is locale-independent
