@@ -142,6 +142,8 @@ const inputText = ref('')
 const parsedAIP = ref<AIP>()
 
 // NOTAMs
+// Everything found in the imported text, before any filter (not reactive on purpose)
+let allNotams: NOTAM[] = []
 const parsedNotams = ref<NOTAM[]>()
 const selectedNotams = ref<NOTAM[]>()
 const hoveredNotam = ref<NOTAM>()
@@ -242,19 +244,19 @@ const notamColumns = computed<QTableColumn[]>(() => [
 
 // Handle setup and updates
 onMounted(() => {
-  // Reload data from session storage
+  // Reload data from session storage: the watcher below parses it
   inputText.value =
     $q.sessionStorage.getItem('notam.input.text') ?? loadLegacyInput() ?? inputText.value
-
-  handleInput(inputText.value, searchQuery.value)
 })
-watch([inputText, searchQuery], ([newText, newSearchValue]) => {
+// Parsing is only needed when the text changes, not when filters do
+watch(inputText, (newText) => {
   $q.sessionStorage?.setItem('notam.input.text', newText)
-  handleInput(newText, newSearchValue)
+  parseInput(newText)
+  applyNotamFilters(searchQuery.value)
 })
+watch([searchQuery, hideExpired], ([newSearchValue]) => applyNotamFilters(newSearchValue))
 
 watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
-watch(hideExpired, () => handleInput(inputText.value, searchQuery.value))
 
 watch(focusedNotam, () => {
   tab.value = tab.value == 'mapConfig' ? 'map' : 'mapConfig'
@@ -286,11 +288,14 @@ function filterNotams(notams: NOTAM[]): NOTAM[] {
   return filtered
 }
 
-function handleInput(fullText: string, search: string): void {
-  const { notams: allNotams, aipText } = splitNotamsAndAip(fullText)
+function parseInput(fullText: string): void {
+  const { notams, aipText } = splitNotamsAndAip(fullText)
+  allNotams = notams
   parsedAIP.value = aipText ? new AIP(aipText) : undefined
-  totalCount.value = allNotams.length
+  totalCount.value = notams.length
+}
 
+function applyNotamFilters(search: string): void {
   // Drop expired NOTAMs first, they are rarely useful in a briefing
   let notams = allNotams
   if (hideExpired.value) {
