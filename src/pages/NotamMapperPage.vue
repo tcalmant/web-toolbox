@@ -87,6 +87,7 @@ under the License.
               :total-count="totalCount"
               :shown-count="parsedNotams?.length ?? 0"
               v-model:show-area-of-influence="showAreaOfInfluence"
+              v-model:search-query="searchQuery"
               @show-notam-edit="showNotamEdit = true"
               @show-aip-edit="showAipEdit = true"
             />

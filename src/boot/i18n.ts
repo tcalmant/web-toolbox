@@ -25,7 +25,8 @@ declare module 'vue-i18n' {
 export default defineBoot(({ app }) => {
   const i18n = createI18n<{ message: MessageSchema }, MessageLanguages>({
     locale: baseLocale,
-    fallbackLocale: baseLocale,
+    // English must stay the fallback when the browser locale is unsupported
+    fallbackLocale: 'en-US',
     legacy: false,
     messages,
   })
