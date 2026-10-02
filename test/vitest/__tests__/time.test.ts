@@ -12,6 +12,7 @@ import {
   dateToUTCString,
   formatTzOffset,
   parseTzOffsetMinutes,
+  timeToUTCString,
   TimePeriod,
 } from '../../../src/domain/time'
 
@@ -83,5 +84,13 @@ describe('formatTzOffset / parseTzOffsetMinutes', () => {
   it('returns 0 for an unparsable offset', () => {
     expect(parseTzOffsetMinutes('')).toEqual(0)
     expect(parseTzOffsetMinutes('garbage')).toEqual(0)
+  })
+})
+
+describe('midnight formatting', () => {
+  it('renders midnight as 00, never 24 (regression)', () => {
+    const midnight = new Date(Date.UTC(2026, 0, 1, 0, 5, 9))
+    expect(dateToUTCString(midnight)).toEqual('2026-01-01 00:05:09')
+    expect(timeToUTCString(midnight)).toEqual('00:05:09Z')
   })
 })

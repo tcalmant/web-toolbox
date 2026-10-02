@@ -26,7 +26,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { haversineDistanceMeters } from '../../../src/domain/geo'
-import { Line, Polygon, Position } from '../../../src/domain/geometry'
+import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
 import { NOTAM, SectionQ, parseNotamDate, parseNotams } from '../../../src/domain/notam'
 
 /**
@@ -678,42 +678,42 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(notam.sectionQ?.center?.lng).toBeCloseTo(-80.5, 3)
     expect(notam.sectionQ?.radiusNM).toEqual(30)
 
-    // This NOTAM describes a polygon, then a circle, then a polygon.
-    // We are not able to parse the circle, as it's in natural language.
-    // It is seen as a single polygon as separating sentences all end with
-    // either AS, TO or AT, which are considered as continuation keywords.
-    // This behaviour may be improved in the future.
+    // This NOTAM describes a polygon whose outline contains a 30 NM arc
+    // around a center point. The arc is expanded into intermediate points
+    // and the center is not part of the outline.
 
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
     expect(notam.polygons[0]).toBeInstanceOf(Polygon)
     const polygon = notam.polygons[0] as Polygon
     const locations = polygon.locations
-    expect(locations.length).toEqual(11)
+    expect(locations.length).toEqual(36)
     expect(locations[0]!.lat).toBeCloseTo(28.854, 3)
     expect(locations[0]!.lng).toBeCloseTo(-80.705, 3)
     expect(locations[1]!.lat).toBeCloseTo(29.125, 3)
     expect(locations[1]!.lng).toBeCloseTo(-80.5, 3)
-    // Center of the circle, detected as a polygon point
-    expect(locations[2]!.lat).toBeCloseTo(28.618, 3)
-    expect(locations[2]!.lng).toBeCloseTo(-80.613, 3)
+    // Arc points, all on the 30 NM circle around the (omitted) center
+    const center = { lat: 28.6175, lng: -80.613 }
+    for (const p of locations.slice(2, 28)) {
+      expect(Math.abs(haversineDistanceMeters(center, p) - 30 * 1852)).toBeLessThan(3000)
+    }
     // Back to polygon points
-    expect(locations[3]!.lat).toBeCloseTo(28.225, 3)
-    expect(locations[3]!.lng).toBeCloseTo(-80.267, 3)
-    expect(locations[4]!.lat).toBeCloseTo(28.417, 3)
-    expect(locations[4]!.lng).toBeCloseTo(-80.508, 3)
-    expect(locations[5]!.lat).toBeCloseTo(28.417, 3)
-    expect(locations[5]!.lng).toBeCloseTo(-80.633, 3)
-    expect(locations[6]!.lat).toBeCloseTo(28.417, 3)
-    expect(locations[6]!.lng).toBeCloseTo(-80.696, 3)
-    expect(locations[7]!.lat).toBeCloseTo(28.522, 3)
-    expect(locations[7]!.lng).toBeCloseTo(-80.73, 3)
-    expect(locations[8]!.lat).toBeCloseTo(28.634, 3)
-    expect(locations[8]!.lng).toBeCloseTo(-80.784, 3)
-    expect(locations[9]!.lat).toBeCloseTo(28.819, 3)
-    expect(locations[9]!.lng).toBeCloseTo(-80.846, 3)
-    expect(locations[10]!.lat).toBeCloseTo(28.854, 3)
-    expect(locations[10]!.lng).toBeCloseTo(-80.787, 3)
+    expect(locations[28]!.lat).toBeCloseTo(28.225, 3)
+    expect(locations[28]!.lng).toBeCloseTo(-80.267, 3)
+    expect(locations[29]!.lat).toBeCloseTo(28.417, 3)
+    expect(locations[29]!.lng).toBeCloseTo(-80.508, 3)
+    expect(locations[30]!.lat).toBeCloseTo(28.417, 3)
+    expect(locations[30]!.lng).toBeCloseTo(-80.633, 3)
+    expect(locations[31]!.lat).toBeCloseTo(28.417, 3)
+    expect(locations[31]!.lng).toBeCloseTo(-80.696, 3)
+    expect(locations[32]!.lat).toBeCloseTo(28.522, 3)
+    expect(locations[32]!.lng).toBeCloseTo(-80.73, 3)
+    expect(locations[33]!.lat).toBeCloseTo(28.634, 3)
+    expect(locations[33]!.lng).toBeCloseTo(-80.784, 3)
+    expect(locations[34]!.lat).toBeCloseTo(28.819, 3)
+    expect(locations[34]!.lng).toBeCloseTo(-80.846, 3)
+    expect(locations[35]!.lat).toBeCloseTo(28.854, 3)
+    expect(locations[35]!.lng).toBeCloseTo(-80.787, 3)
   })
 
   it('should find SUP AIP AIRAC references', () => {
@@ -958,6 +958,61 @@ CENTRE ZRT : RDL006/5.8NM ARP LFPM AD.
     // RDL are not very precise, so we use 1 decimal place
     expect(position.location.lat).toBeCloseTo(48.7, 1)
     expect(position.location.lng).toBeCloseTo(2.7, 1)
+  })
+})
+
+describe('NOTAM circles and arcs', () => {
+  const header = `A1234/25 NOTAMN
+Q) LFFF/QRDCA/IV/BO/W/000/180/4500N00500E010
+A) LFFF B) 2501010000 C) 2501020000
+`
+
+  it('parses a circle around a center', () => {
+    const notam = new NOTAM(
+      header + 'E) PROHIBITED AREA CIRCLE RADIUS 5 NM CENTERED AT 450000N0050000E.',
+      0,
+    )
+    expect(notam.polygons.length).toEqual(1)
+    const circle = notam.polygons[0] as Circle
+    expect(circle).toBeInstanceOf(Circle)
+    expect(circle.radiusMeters).toBeCloseTo(5 * 1852)
+    expect(circle.center.lat).toBeCloseTo(45)
+    expect(circle.center.lng).toBeCloseTo(5)
+  })
+
+  it('accepts the "5NM RADIUS CIRCLE CENTRED ON" wording', () => {
+    const notam = new NOTAM(header + 'E) AREA 5NM RADIUS CIRCLE CENTRED ON 4500N00500E.', 0)
+    expect(notam.polygons.length).toEqual(1)
+    expect(notam.polygons[0]).toBeInstanceOf(Circle)
+  })
+
+  // 10 NM from the center 450000N0051000E: east is 14'08" of longitude at 45N, north is 10' of latitude
+  const arcNotam = (direction: string, from: string) =>
+    new NOTAM(
+      header +
+        `E) AREA 450000N0050000E TO ${from} THEN ${direction} VIA A 10 NM ARC CENTERED AT 450000N0051000E TO 451000N0051000E TO POINT OF ORIGIN.`,
+      0,
+    )
+  const arcCenter = { lat: 45, lng: 5 + 10 / 60 }
+
+  it('expands a counter-clockwise arc on a clean 10 NM radius', () => {
+    const notam = arcNotam('COUNTERCLOCKWISE', '450000N0052408E')
+    expect(notam.polygons.length).toEqual(1)
+    const polygon = notam.polygons[0] as Polygon
+    expect(polygon).toBeInstanceOf(Polygon)
+    // Quarter turn east to north: about 17 intermediate points, center omitted
+    expect(polygon.locations.length).toBeGreaterThan(15)
+    expect(polygon.locations.length).toBeLessThan(25)
+    for (const p of polygon.locations.slice(2, -1)) {
+      expect(Math.abs(haversineDistanceMeters(arcCenter, p) - 10 * 1852)).toBeLessThan(150)
+    }
+  })
+
+  it('goes the long way when the arc is clockwise', () => {
+    const notam = arcNotam('CLOCKWISE', '450000N0052408E')
+    const polygon = notam.polygons[0] as Polygon
+    // Three quarters of a turn
+    expect(polygon.locations.length).toBeGreaterThan(50)
   })
 })
 

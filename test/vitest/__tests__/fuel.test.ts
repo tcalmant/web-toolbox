@@ -68,7 +68,7 @@ describe('FuelQuantity', () => {
 
   it('rejects an incompatible unit', () => {
     const weightUnit = new FuelOption('kg', new Qty('kg'))
-    expect(() => new FuelQuantity(10, weightUnit)).toThrowError(/Incompatible unit/)
+    expect(() => new FuelQuantity(10, weightUnit)).toThrowError(/Incompatible unit: kg/)
   })
 
   it('adds and subtracts quantities in the left-hand unit', () => {
