@@ -171,4 +171,19 @@ LIMITES VERTICALES`)
     expect(polygon.locations.length).toBeGreaterThan(20)
     expect(polygon.locations[0]!.lng).toBeCloseTo(-(1 + 8 / 60))
   })
+
+  it('keeps the decimals of the seconds', () => {
+    const aip = new AIP('Point 45°30\'30.6"N, 005°45\'45.9"E here')
+    const position = aip.polygons[0] as Position
+    expect(position.location.lat).toBeCloseTo(45 + 30 / 60 + 30.6 / 3600, 6)
+    expect(position.location.lng).toBeCloseTo(5 + 45 / 60 + 45.9 / 3600, 6)
+  })
+
+  it('splits points separated by a single non-space character', () => {
+    // The character right before the second point used to be ignored
+    const aip = new AIP("45°30'N005°45'E/46°00'N006°00'E")
+    expect(aip.polygons.length).toEqual(2)
+    expect(aip.polygons[0]).toBeInstanceOf(Position)
+    expect(aip.polygons[1]).toBeInstanceOf(Position)
+  })
 })
