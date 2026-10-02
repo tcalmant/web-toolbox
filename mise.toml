@@ -4,3 +4,12 @@ node = "24"
 [tasks.dev]
 description = "Run the Quasar dev server"
 run = "npm run dev"
+
+[tasks.install]
+description = "Install dependencies"
+run = "npm ci"
+
+[tasks.build]
+description = "Build the SPA for production"
+depends = ["install"]
+run = "npm run build"
