@@ -1,0 +1,1 @@
+import{ct as e,ot as t,ut as n}from"./index-C940KtbS.js";var r=`en-US`,i=t(({app:t})=>{let i=e({locale:r,fallbackLocale:`en-US`,legacy:!1,messages:n});t.use(i)});export{i as default};
