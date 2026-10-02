@@ -18,9 +18,13 @@
 import type { Airfield } from './airfields'
 import KnownAirfields from '@/adapters/data/airfieldsRepository'
 import type { GeoPoint } from './geo'
-import { geoPointsEqual } from './geo'
+import { arcPoints, geoPointsEqual } from './geo'
 import type { GeometryFeature, PositionKind } from './geometry'
-import { Line, Polygon, Position } from './geometry'
+import { Circle, Line, Polygon, Position } from './geometry'
+import { findShapeDirectives } from './shapeDirectives'
+
+// A single lat/lon pair in Q-code style (e.g. 4500N00500E or 450055N0050055E)
+const LAT_LNG_SOURCE = String.raw`(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:\.\d*)?)(?<lonEW>E|W)`
 
 /**
  * Parses an angle as seen in the Q section, e.g. 4500N or 00500E
@@ -517,6 +521,13 @@ export class NOTAM {
 
     const features: GeometryFeature[] = []
 
+    // Circles and arcs: their centers must not be taken for outline points
+    const directives = findShapeDirectives(text, LAT_LNG_SOURCE, latLngFromGroups)
+    text = directives.cleaned
+    for (const circle of directives.circles) {
+      features.push(new Circle(circle.center, circle.radiusMeters))
+    }
+
     // Look for PSNs
     const psnPattern =
       /(?:(?<psnEn>\w+)\s+)?PSN(?:\s+(?<psnFr>[^:]+))?\s*:\s*(?<lat>\d+(\.\d+)?)(?<latNS>N|S)\s*(?<lon>\d+(\.\d+)?)(?<lonEW>E|W)(?:\s*(?<radiusNM>\d+)|.*(?:(?<radius>\d+)\s*(?<radiusUnit>NM|M|KM)))?/g
@@ -573,8 +584,7 @@ export class NOTAM {
     const allKnownPoints = foundPSNPoints.concat(foundFixingPoints)
 
     // Look for other locations
-    const latLngPattern =
-      /(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:\.\d*)?)(?<lonEW>E|W)/g
+    const latLngPattern = new RegExp(LAT_LNG_SOURCE, 'g')
 
     let currentList: GeoPoint[] = []
     let lastEndIdx = 0
@@ -594,9 +604,13 @@ export class NOTAM {
         continue
       }
 
+      // An arc between the previous point and this one: the outline goes on
+      const arc = directives.arcs.find((a) => a.start >= lastEndIdx && a.end <= match!.index)
+
       const separator = text.substring(lastEndIdx, match.index - 1).trim()
       // Consider spaces, commas and "TO" as polygon separators
       if (
+        arc === undefined &&
         lastEndIdx != 0 &&
         separator.length != 0 &&
         !separator.match(/\s*(?:AS|FROM|TO|AT|,|;|-)\s*$/)
@@ -627,6 +641,11 @@ export class NOTAM {
         }
 
         currentList = []
+      }
+
+      const previous = currentList[currentList.length - 1]
+      if (arc !== undefined && previous !== undefined) {
+        currentList.push(...arcPoints(arc.center, previous, latLng, arc.clockwise))
       }
 
       // Store the last point
