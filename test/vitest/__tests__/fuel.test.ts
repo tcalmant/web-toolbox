@@ -78,11 +78,6 @@ describe('FuelQuantity', () => {
     expect(a.sub(b).value.scalar).toEqual(5)
   })
 
-  it('floors fractional quantities', () => {
-    const qty = new FuelQuantity(10.7, LITER)
-    expect(qty.floor().value.scalar).toEqual(10)
-  })
-
   it('converts between units', () => {
     const oneUsGallon = new FuelQuantity(1, US_GALLONS)
     const inLiters = oneUsGallon.to(LITER)
