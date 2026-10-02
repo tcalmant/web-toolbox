@@ -1,2 +1,6 @@
 [tools]
 node = "24"
+
+[tasks.dev]
+description = "Run the Quasar dev server"
+run = "npm run dev"
