@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { AIP } from '../../../src/domain/aip'
-import { Line, Polygon, Position } from '../../../src/domain/geometry'
+import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
 
 describe('AIP location parsing', () => {
   it('parses degrees-only coordinates', () => {
@@ -72,5 +72,29 @@ describe('AIP location parsing', () => {
     expect(polygon.locations.length).toEqual(3)
     expect(polygon.locations[2]!.lat).toBeCloseTo(46.5)
     expect(polygon.locations[2]!.lng).toBeCloseTo(6.5)
+  })
+
+  it('parses a circle around a center', () => {
+    const aip = new AIP("Zone: cercle de 3 NM de rayon centré sur 45°30'N 005°45'E.")
+    expect(aip.polygons.length).toEqual(1)
+    const circle = aip.polygons[0] as Circle
+    expect(circle).toBeInstanceOf(Circle)
+    expect(circle.radiusMeters).toBeCloseTo(3 * 1852)
+    expect(circle.center.lat).toBeCloseTo(45.5)
+    expect(circle.center.lng).toBeCloseTo(5.75)
+  })
+
+  it('expands an arc into a polygon outline without the center point', () => {
+    const aip = new AIP(
+      "45°00'N 005°00'E-45°00'N 005°20'E-arc de cercle de 10 NM de rayon centré sur 45°00'N 005°10'E dans le sens horaire-45°10'N 005°10'E",
+    )
+    expect(aip.polygons.length).toEqual(1)
+    const polygon = aip.polygons[0] as Polygon
+    expect(polygon).toBeInstanceOf(Polygon)
+    // 3 corners + intermediate arc points, and no vertex at the center
+    expect(polygon.locations.length).toBeGreaterThan(10)
+    expect(
+      polygon.locations.some((p) => Math.abs(p.lat - 45) < 1e-3 && Math.abs(p.lng - 5.1667) < 1e-3),
+    ).toBe(false)
   })
 })
