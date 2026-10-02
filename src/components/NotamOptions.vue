@@ -21,13 +21,13 @@ under the License.
 -->
 
 <template>
-  <div class="row q-gutter-xl">
-    <q-btn class="col" color="secondary" icon="edit" @click.prevent="emit('showAipEdit')">
-      {{ $t('aipEditLabel') }}
+  <div class="row items-center q-gutter-md">
+    <q-btn color="primary" icon="upload_file" @click.prevent="emit('showImport')">
+      {{ $t('importLabel') }}
     </q-btn>
-    <q-btn class="col" color="primary" icon="edit" @click.prevent="emit('showNotamEdit')">
-      {{ $t('notamEditLabel') }}
-    </q-btn>
+    <div class="text-caption">
+      {{ $t('importSummary', { notams: notamCount, areas: aipAreaCount }) }}
+    </div>
   </div>
   <div :class="{ row: !isPortrait, col: isPortrait }">
     <q-checkbox
@@ -82,7 +82,11 @@ const maxNotamRadius = defineModel<number>('maxNotamRadius', { default: 100 })
 const onlyWithPositions = defineModel<boolean>('onlyWithPositions', { default: true })
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence', { default: true })
 const searchQuery = defineModel<string>('searchQuery', { default: '' })
-const emit = defineEmits(['showNotamEdit', 'showAipEdit'])
+defineProps<{
+  notamCount: number
+  aipAreaCount: number
+}>()
+const emit = defineEmits(['showImport'])
 
 const { isPortrait } = useOrientation()
 </script>

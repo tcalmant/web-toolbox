@@ -40,8 +40,9 @@ under the License.
         v-model:only-with-positions="onlyWithPositions"
         v-model:show-area-of-influence="showAreaOfInfluence"
         v-model:search-query="searchQuery"
-        @show-notam-edit="showNotamEdit = true"
-        @show-aip-edit="showAipEdit = true"
+        :notam-count="parsedNotams?.length ?? 0"
+        :aip-area-count="parsedAIP?.polygons.length ?? 0"
+        @show-import="showImport = true"
       />
       <NotamTable
         v-model:focused-notam="focusedNotam"
@@ -81,8 +82,10 @@ under the License.
               v-model:max-notam-radius="maxNotamRadius"
               v-model:only-with-positions="onlyWithPositions"
               v-model:show-area-of-influence="showAreaOfInfluence"
-              @show-notam-edit="showNotamEdit = true"
-              @show-aip-edit="showAipEdit = true"
+              v-model:search-query="searchQuery"
+              :notam-count="parsedNotams?.length ?? 0"
+              :aip-area-count="parsedAIP?.polygons.length ?? 0"
+              @show-import="showImport = true"
             />
             <NotamTable
               v-model:focused-notam="focusedNotam"
@@ -97,19 +100,7 @@ under the License.
     </div>
   </q-page>
 
-  <NotamTextAreaDialog
-    v-model="inputAIPText"
-    v-model:show-dialog="showAipEdit"
-    :input-label="$t('aipEntriesLabel')"
-    :title="$t('aipEditTitle')"
-  />
-
-  <NotamTextAreaDialog
-    v-model="inputNOTAMText"
-    v-model:show-dialog="showNotamEdit"
-    :input-label="$t('notamEntriesLabel')"
-    :title="$t('notamEditTitle')"
-  />
+  <NotamImportDialog v-model="inputText" v-model:show-dialog="showImport" />
 </template>
 
 <script setup lang="ts">
@@ -118,11 +109,11 @@ import { useQuasar } from 'quasar'
 import MapView from '@/components/MapView.vue'
 import NotamOptions from '@/components/NotamOptions.vue'
 import NotamTable from '@/components/NotamTable.vue'
-import NotamTextAreaDialog from '@/components/NotamTextAreaDialog.vue'
+import NotamImportDialog from '@/components/NotamImportDialog.vue'
 import { useOrientation } from '@/composables/useOrientation'
 import { AIP } from '@/domain/aip'
-import { NOTAM } from '@/domain/notam'
-import { findFirstRegex } from '@/domain/stringUtils'
+import { splitNotamsAndAip } from '@/domain/importedText'
+import type { NOTAM } from '@/domain/notam'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -136,13 +127,12 @@ function pageStyleFn(offset: number, height: number) {
 }
 
 // Display configuration
-const showAipEdit = ref<boolean>(false)
-const showNotamEdit = ref<boolean>(false)
+const showImport = ref<boolean>(false)
 
 const { isPortrait } = useOrientation()
 
-// AIP
-const inputAIPText = ref('')
+// Imported content: NOTAMs and AIP are told apart automatically
+const inputText = ref('')
 const parsedAIP = ref<AIP>()
 
 // NOTAMs
@@ -150,7 +140,6 @@ const parsedNotams = ref<NOTAM[]>()
 const selectedNotams = ref<NOTAM[]>()
 const hoveredNotam = ref<NOTAM>()
 const focusedNotam = ref<NOTAM>()
-const inputNOTAMText = ref<string>('')
 const ignoreLargeNotams = ref<boolean>(true)
 const maxNotamRadius = ref<number>(100)
 const onlyWithPositions = ref<boolean>(true)
@@ -223,19 +212,14 @@ const notamColumns = computed<QTableColumn[]>(() => [
 // Handle setup and updates
 onMounted(() => {
   // Reload data from session storage
-  inputAIPText.value = $q.sessionStorage.getItem('notam.input.aip') ?? inputAIPText.value
-  inputNOTAMText.value = $q.sessionStorage.getItem('notam.input.notam') ?? inputNOTAMText.value
+  inputText.value =
+    $q.sessionStorage.getItem('notam.input.text') ?? loadLegacyInput() ?? inputText.value
 
-  handleAIPInput(inputAIPText.value)
-  handleNOTAMInput(inputNOTAMText.value, searchQuery.value)
+  handleInput(inputText.value, searchQuery.value)
 })
-watch(inputAIPText, (newValue: string) => {
-  $q.sessionStorage?.setItem('notam.input.aip', newValue)
-  handleAIPInput(newValue)
-})
-watch([inputNOTAMText, searchQuery], ([newNotamValue, newSearchValue]) => {
-  $q.sessionStorage?.setItem('notam.input.notam', newNotamValue)
-  handleNOTAMInput(newNotamValue, newSearchValue)
+watch([inputText, searchQuery], ([newText, newSearchValue]) => {
+  $q.sessionStorage?.setItem('notam.input.text', newText)
+  handleInput(newText, newSearchValue)
 })
 
 watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
@@ -244,8 +228,12 @@ watch(focusedNotam, () => {
   tab.value = tab.value == 'mapConfig' ? 'map' : 'mapConfig'
 })
 
-function handleAIPInput(fullText: string): void {
-  parsedAIP.value = fullText ? new AIP(fullText) : undefined
+// Before the import was unified, AIP and NOTAMs were stored separately
+function loadLegacyInput(): string | undefined {
+  const parts = ['notam.input.aip', 'notam.input.notam']
+    .map((key) => $q.sessionStorage.getItem<string>(key))
+    .filter((text) => text)
+  return parts.length > 0 ? parts.join('\n\n') : undefined
 }
 
 function filterNotams(notams: NOTAM[]): NOTAM[] {
@@ -266,9 +254,12 @@ function filterNotams(notams: NOTAM[]): NOTAM[] {
   return filtered
 }
 
-function handleNOTAMInput(fullText: string, search: string): void {
-  let notams = fullText ? parseNotams(fullText) : []
+function handleInput(fullText: string, search: string): void {
+  const { notams: allNotams, aipText } = splitNotamsAndAip(fullText)
+  parsedAIP.value = aipText ? new AIP(aipText) : undefined
+
   // Apply search filter if necessary
+  let notams = allNotams
   if (search && search.trim().length > 0) {
     const trimmedSearch = search.trim()
     notams = notams.filter((n) => n.matchesSearch(trimmedSearch))
@@ -282,36 +273,6 @@ function handleNOTAMInput(fullText: string, search: string): void {
 
 function updateSelectedNotams() {
   selectedNotams.value = filterNotams(parsedNotams.value ?? [])
-}
-
-function parseNotams(fullText: string): NOTAM[] {
-  let lastEndIdx = -1
-  let sectionStartIdx: number
-  const notams: NOTAM[] = []
-  let notamIdx = 0
-  while ((sectionStartIdx = findFirstRegex(fullText, lastEndIdx + 1, /[A-GQ]\)/)) != -1) {
-    // Look for the "real" start of the NOTAM
-    let notamStartIdx = fullText.lastIndexOf('\n\n', sectionStartIdx)
-    if (notamStartIdx == -1) {
-      notamStartIdx = 0
-    } else if (notamStartIdx < lastEndIdx) {
-      notamStartIdx = lastEndIdx
-    }
-
-    // Look for the end of the NOTAM
-    lastEndIdx = fullText.indexOf('\n\n', sectionStartIdx)
-    if (lastEndIdx == -1) {
-      lastEndIdx = fullText.length
-    }
-
-    const notamContent = fullText.substring(notamStartIdx, lastEndIdx).trim()
-    const notam = new NOTAM(notamContent, ++notamIdx)
-    if (notam.sectionQ != null) {
-      notams.push(notam)
-    }
-  }
-
-  return notams
 }
 </script>
 
