@@ -28,6 +28,18 @@ under the License.
           <div class="text-h5">{{ title }}</div>
           <div class="q-gutter-md">
             <q-btn
+              v-if="canPaste"
+              icon="content_paste"
+              color="primary"
+              dense
+              round
+              unelevated
+              :aria-label="$t('notamPasteLabel')"
+              @click.prevent="pasteFromClipboard"
+            >
+              <q-tooltip>{{ $t('notamPasteLabel') }}</q-tooltip>
+            </q-btn>
+            <q-btn
               icon="delete"
               color="negative"
               dense
@@ -63,6 +75,23 @@ under the License.
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
+
+const $q = useQuasar()
+const { t } = useI18n()
+
+// The async clipboard API only exists in secure contexts
+const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText
+
+async function pasteFromClipboard(): Promise<void> {
+  try {
+    inputText.value = await navigator.clipboard.readText()
+  } catch {
+    $q.notify({ type: 'warning', message: t('notamPasteFailed') })
+  }
+}
+
 defineProps<{
   title: string
   inputLabel?: string | undefined
