@@ -18,7 +18,7 @@
 import type { Layer } from 'leaflet'
 import L from 'leaflet'
 import type { GeometryFeature, Polygon } from '@/domain/geometry'
-import { Line, Position } from '@/domain/geometry'
+import { Circle, Line, Position } from '@/domain/geometry'
 
 /**
  * Renders a single point of interest as a Leaflet layer.
@@ -84,10 +84,25 @@ export function polygonToLayer(polygon: Polygon): Layer | null {
 }
 
 /**
+ * Renders a full circle as a Leaflet layer.
+ */
+export function circleToLayer(circle: Circle): Layer {
+  return L.circle(circle.center, {
+    radius: circle.radiusMeters,
+    fill: true,
+    fillColor: 'red',
+    fillOpacity: 0.2,
+    color: 'red',
+  })
+}
+
+/**
  * Renders any domain geometry feature as a Leaflet layer.
  */
 export function featureToLayer(feature: GeometryFeature): Layer | null {
-  if (feature instanceof Position) {
+  if (feature instanceof Circle) {
+    return circleToLayer(feature)
+  } else if (feature instanceof Position) {
     return positionToLayer(feature)
   } else if (feature instanceof Line) {
     return lineToLayer(feature)
