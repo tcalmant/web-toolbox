@@ -22,11 +22,13 @@
  * Tests for domain/importedText.ts and adapters/pdf/pdfTextExtractor.ts
  */
 
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { removePageChrome } from '../../../src/adapters/pdf/pdfTextExtractor'
 import { AIP } from '../../../src/domain/aip'
 import { splitNotamsAndAip } from '../../../src/domain/importedText'
+import { parseNotams } from '../../../src/domain/notam'
 
 const NOTAM_TEXT = `A1234/26 NOTAMN
 Q) LFMM/QRDCA/IV/BO/W/000/050/4513N00551E005
@@ -74,6 +76,22 @@ describe('splitNotamsAndAip', () => {
     const result = splitNotamsAndAip(withCoords)
     expect(result.notams.length).toEqual(1)
     expect(new AIP(result.aipText).polygons).toEqual([])
+  })
+})
+
+describe('splitNotamsAndAip on a Sofia Briefing copy', () => {
+  const text = readFileSync('test/vitest/fixtures/sofia_pib_excerpt.txt', 'utf8')
+
+  it('finds the same NOTAMs as the NOTAM parser', () => {
+    const ids = splitNotamsAndAip(text).notams.map((n) => n.id)
+    expect(ids.length).toBeGreaterThan(0)
+    expect(ids).toEqual(parseNotams(text).map((n) => n.id))
+  })
+
+  it('leaves no NOTAM section in the AIP content', () => {
+    const { aipText } = splitNotamsAndAip(text)
+    expect(aipText).not.toMatch(/^\s*Q\)/m)
+    expect(aipText).not.toContain('QFATT')
   })
 })
 
