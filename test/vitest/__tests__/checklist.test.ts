@@ -24,6 +24,9 @@
 
 import { describe, expect, it } from 'vitest'
 
+import type { LocalStorage } from 'quasar'
+
+import { ChecklistLocalStorageStore } from '../../../src/adapters/storage/checklistLocalStorageStore'
 import { AirPlane } from '../../../src/domain/airplanes'
 import {
   Checklist,
@@ -370,5 +373,38 @@ describe('resolveChecklistForPlane', () => {
     const source = new FakeChecklistDocumentSource({})
     const checklist = resolveChecklistForPlane(source, plane, 'en-US')
     expect(checklist.sections).toHaveLength(0)
+  })
+})
+
+describe('ChecklistLocalStorageStore', () => {
+  function fakeStorage(getItem: () => unknown, setItem: () => void = () => {}): LocalStorage {
+    return { getItem, setItem } as unknown as LocalStorage
+  }
+
+  it('returns an empty state for invalid JSON, non-objects and a throwing storage', () => {
+    for (const raw of ['{oops', '[1,2]', '"str"', 'null', '42', null]) {
+      expect(new ChecklistLocalStorageStore(fakeStorage(() => raw)).load('k')).toEqual({})
+    }
+    const throwing = fakeStorage(() => {
+      throw new Error('blocked')
+    })
+    expect(new ChecklistLocalStorageStore(throwing).load('k')).toEqual({})
+  })
+
+  it('keeps only string values and never a __proto__ entry', () => {
+    const raw = '{"a":"12:00","b":3,"c":null,"__proto__":"x"}'
+    const state = new ChecklistLocalStorageStore(fakeStorage(() => raw)).load('k')
+    expect(state).toEqual({ a: '12:00' })
+    expect(Object.getPrototypeOf(state)).toBe(Object.prototype)
+  })
+
+  it('does not throw when saving fails (quota exceeded)', () => {
+    const full = fakeStorage(
+      () => null,
+      () => {
+        throw new Error('QuotaExceededError')
+      },
+    )
+    expect(() => new ChecklistLocalStorageStore(full).save('k', { a: '1' })).not.toThrow()
   })
 })
