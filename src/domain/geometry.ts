@@ -61,6 +61,19 @@ export class Polygon {
 }
 
 /**
+ * A full circle around a center.
+ */
+export class Circle {
+  center: GeoPoint
+  radiusMeters: number
+
+  constructor(center: GeoPoint, radiusMeters: number) {
+    this.center = center
+    this.radiusMeters = radiusMeters
+  }
+}
+
+/**
  * Any geometry feature that can come out of NOTAM/AIP parsing.
  */
-export type GeometryFeature = Position | Line | Polygon
+export type GeometryFeature = Position | Line | Polygon | Circle
