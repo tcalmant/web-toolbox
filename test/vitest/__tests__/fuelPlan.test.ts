@@ -139,6 +139,37 @@ describe('computeFuelPlan', () => {
     expect(burnt.status).toBe('alert')
   })
 
+  it('tolerates float noise: exactly enough fuel is not a shortfall', () => {
+    // 20 gal through a liters round trip comes back as 19.999999999999996 gal
+    const noisy = new FuelQuantity(20, US_GALLONS).to(LITER)
+    const plan = computeFuelPlan({
+      unit: US_GALLONS,
+      perHour: 10,
+      capacity: 30,
+      consumable: 30,
+      events: [{ kind: 'fuel', quantity: noisy }, flight(2)],
+      reserveMin: 0,
+    })
+    expect(plan.insufficient).toBe(false)
+    expect(plan.steps[1]?.shortfall).toBe(false)
+  })
+
+  it('does not throw on absurdly large inputs', () => {
+    const plan = computeFuelPlan({
+      ...base,
+      perHour: 1e308,
+      events: [fuel(1e300), flight(1e300), fuel(5)],
+    })
+    expect(Number.isFinite(plan.consumed.value.scalar)).toBe(true)
+    expect(plan.insufficient).toBe(true)
+  })
+
+  it('accepts raw form values', () => {
+    const plan = computeFuelPlan({ ...base, perHour: '', consumable: '', reserveMin: '' })
+    expect(plan.usableTimeS).toBeNull()
+    expect(plan.usable.value.scalar).toBe(0)
+  })
+
   it('keeps the non-usable fuel out of the usable amount', () => {
     const plan = computeFuelPlan({ ...base, events: [fuel(110)] })
     expect(plan.usable.value.scalar).toBeCloseTo(109)

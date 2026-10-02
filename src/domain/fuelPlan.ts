@@ -35,17 +35,21 @@ export interface FlightEvent {
 /** Events in chronological order. */
 export type TimelineEvent = FuelEvent | FlightEvent
 
+/**
+ * Raw form values are accepted ('' for an emptied field): the plan sanitizes
+ * them itself, callers do not have to.
+ */
 export interface FuelPlanInput {
   unit: FuelOption
   /** Hourly consumption, in `unit`. */
-  perHour: number
+  perHour: number | string
   /** Total tank capacity, in `unit`. */
-  capacity: number
+  capacity: number | string
   /** Usable part of the capacity, in `unit`. */
-  consumable: number
+  consumable: number | string
   events: TimelineEvent[]
   /** Minimum usable flight time to keep, in minutes. */
-  reserveMin: number
+  reserveMin: number | string
 }
 
 export interface TimelineStep {
@@ -80,8 +84,17 @@ export interface FuelPlan {
 
 /** Replaces anything that is not a finite, positive number by 0 (empty inputs, NaN...). */
 export function sanitizeAmount(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return 0
+  }
+  // Beyond this, products and sums could overflow to Infinity
+  return Math.min(value, MAX_AMOUNT)
 }
+
+const MAX_AMOUNT = 1e9
+
+/** Float noise (unit round trips) must not turn "exactly enough" into a shortfall. */
+const EPSILON = 1e-9
 
 /**
  * Replays the events in order. Everything is expressed in `input.unit` so that
@@ -110,22 +123,22 @@ export function computeFuelPlan(input: FuelPlanInput): FuelPlan {
     let stepShortfall = false
 
     if (event.kind === 'fuel') {
-      const quantity = event.quantity.to(unit).value.scalar
+      const quantity = sanitizeAmount(event.quantity.to(unit).value.scalar)
       added += quantity
       level += quantity
-      if (level > capacity) {
-        level = capacity
+      if (level > capacity + EPSILON) {
         stepOverflow = true
       }
+      level = Math.min(level, capacity)
     } else {
       const burnt = (perHour * sanitizeAmount(event.durationS)) / 3600
       durationS += sanitizeAmount(event.durationS)
       consumed += burnt
-      if (burnt > level) {
+      if (burnt > level + EPSILON) {
         level = 0
         stepShortfall = true
       } else {
-        level -= burnt
+        level = Math.max(0, level - burnt)
       }
     }
 
@@ -155,7 +168,8 @@ export function computeFuelPlan(input: FuelPlanInput): FuelPlan {
     totalFlightDurationS: durationS,
     remaining: new FuelQuantity(level, unit),
     usable: new FuelQuantity(usable, unit),
-    remainingPercent: capacity > 0 ? Math.min(100, Math.floor((100 * level) / capacity)) : 0,
+    remainingPercent:
+      capacity > 0 ? Math.min(100, Math.floor((100 * level) / capacity + EPSILON)) : 0,
     usableTimeS,
     insufficient,
     overflow,
