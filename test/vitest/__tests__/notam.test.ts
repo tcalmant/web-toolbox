@@ -1087,3 +1087,42 @@ describe('Sofia Briefing copy', () => {
     expect(parseNotams(text + '\n\n' + text).length).toEqual(notams.length)
   })
 })
+
+describe('NOTAM regressions', () => {
+  const q = 'Q) LFFF/QOBCE/IV/M/E/000/011/4520N00014W002'
+
+  it('should take the identifier, not the NOTAMN keyword, from the header', () => {
+    const notam = new NOTAM(`A1234/25 NOTAMN\n${q}\nA) LFBB\nE) OBST`, 1)
+    expect(notam.id).toEqual('A1234/25')
+  })
+
+  it('should keep NOTAMs with distinct identifiers and a NOTAMN header', () => {
+    const one = `A1234/25 NOTAMN\n${q}\nA) LFBB\nE) OBST`
+    const two = `A1235/25 NOTAMN\n${q}\nA) LFBB\nE) OBST`
+    expect(parseNotams(one + '\n\n' + two).length).toEqual(2)
+  })
+
+  it('should reject an invalid day combined with 24:00', () => {
+    expect(parseNotamDate('2502312400')).toBeNull()
+    expect(parseNotamDate('2502282400')?.getTime()).toEqual(Date.UTC(2025, 2, 1, 0, 0))
+  })
+
+  it('should reject 24:xx with non-zero minutes', () => {
+    expect(parseNotamDate('2502012430')).toBeNull()
+  })
+
+  it('should join points separated by AT without a space', () => {
+    const notam = new NOTAM(`${q}\nA) LFBB\nE) ZONE 450000N0050000E AT460000N0060000E`, 1)
+    expect(notam.polygons.length).toEqual(1)
+    expect(notam.polygons[0]).toBeInstanceOf(Line)
+  })
+
+  it('should fall back to section A when the airfield is past a separator', () => {
+    const notam = new NOTAM(`${q}\nA) LFLG\nE) ZONE RDL 090/5NM ; NOTE LFLB`, 1)
+    expect(notam.polygons.length).toEqual(1)
+    const position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AREA')
+    // LFLG is at 45.218N 5.849E
+    expect(position.location.lat).toBeCloseTo(45.218, 1)
+  })
+})

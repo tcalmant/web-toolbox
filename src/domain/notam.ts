@@ -247,12 +247,23 @@ export function parseNotamDate(text: string): Date | null {
     return null
   }
 
-  if (month < 0 || month > 11 || day < 1 || day > 31 || hour > 24 || minute > 59) {
+  if (
+    month < 0 ||
+    month > 11 ||
+    day < 1 ||
+    day > 31 ||
+    hour > 24 ||
+    minute > 59 ||
+    (hour === 24 && minute !== 0)
+  ) {
     return null
   }
-  const date = new Date(Date.UTC(year, month, day, hour, minute))
-  // Reject overflowing days (e.g. 31 February)
-  return date.getUTCDate() === day || hour === 24 ? date : null
+  // Reject overflowing days (e.g. 31 February), checked before the hour is applied
+  // so that 24:00 does not hide an invalid day
+  if (new Date(Date.UTC(year, month, day)).getUTCDate() !== day) {
+    return null
+  }
+  return new Date(Date.UTC(year, month, day, hour, minute))
 }
 
 /**
@@ -702,6 +713,11 @@ export class NOTAM {
 
     for (let row of header.split('\n')) {
       row = row.trim()
+      // Prefer a real NOTAM identifier: "A1234/25 NOTAMN" must not yield "NOTAMN"
+      const idMatch = row.match(/\b((?:[A-Z]{4}-)?[A-Z]\d{4}\/\d{2})\b/)
+      if (idMatch != null && idMatch[1]) {
+        return idMatch[1]
+      }
       const match = row.match(/([A-Za-z0-9/-]{4,})$/)
       if (match != null && match[1]) {
         return match[1]
@@ -799,7 +815,7 @@ export class NOTAM {
         continue
       }
 
-      const separator = text.substring(lastEndIdx, match.index - 1).trim()
+      const separator = text.substring(lastEndIdx, match.index).trim()
       // Consider spaces, commas and "TO" as polygon separators
       if (
         lastEndIdx != 0 &&
@@ -905,7 +921,7 @@ export class NOTAM {
           airfieldMatch.index === undefined ||
           airfieldMatch[1] === undefined ||
           (nextSeparatorIdx == -1 && airfieldMatch.index > 10) ||
-          (nextSeparatorIdx != -1 && airfieldMatch.index > match.index + nextSeparatorIdx)
+          (nextSeparatorIdx != -1 && airfieldMatch.index > nextSeparatorIdx)
         ) {
           if (!target) {
             // No target airfield given: ignore

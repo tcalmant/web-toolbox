@@ -69,16 +69,22 @@ export class AIP {
     if (strLatMin !== undefined) {
       lat += parseInt(strLatMin) / 60
       if (strLatSec !== undefined) {
-        lat += parseInt(strLatSec) / 3600
+        lat += parseFloat(strLatSec) / 3600
       }
+    }
+    if (strLatNS === 'S') {
+      lat = -lat
     }
 
     let lon = parseInt(strLonDeg)
     if (strLonMin !== undefined) {
       lon += parseInt(strLonMin) / 60
       if (strLonSec !== undefined) {
-        lon += parseInt(strLonSec) / 3600
+        lon += parseFloat(strLonSec) / 3600
       }
+    }
+    if (strLonEW === 'W') {
+      lon = -lon
     }
 
     return { lat, lng: lon }
@@ -92,7 +98,7 @@ export class AIP {
 
     // Look for AIP-formatted locations
     const aipLocation =
-      /(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2})(?:\.\d+)?(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])/g
+      /(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2}(?:\.\d+)?)(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3})°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2}(?:\.\d+)?)(?:"|(?:'|’){2}))?)?\s*(?<lonEW>[EW])/g
 
     const features: GeometryFeature[] = []
     let currentList: GeoPoint[] = []
@@ -110,7 +116,9 @@ export class AIP {
         continue
       }
 
-      if (text.substring(lastEndIdx, match.index - 1).trim().length != 0) {
+      // Dashes, commas and semicolons only separate the points of a same shape
+      // (the off-by-one this replaces used to swallow a single dash by accident)
+      if (text.substring(lastEndIdx, match.index).replace(/[\s,;-]/g, '').length != 0) {
         // Found text between previous and current number
         const feature = toGeometryFeature(currentList)
         if (feature !== null) {
