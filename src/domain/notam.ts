@@ -170,6 +170,159 @@ function parseIdYear(
   return { id, year }
 }
 
+const MONTHS: Record<string, number> = {
+  JAN: 0,
+  FEB: 1,
+  FEV: 1,
+  MAR: 2,
+  APR: 3,
+  AVR: 3,
+  MAY: 4,
+  MAI: 4,
+  JUN: 5,
+  JUL: 6,
+  AUG: 7,
+  AOU: 7,
+  SEP: 8,
+  OCT: 9,
+  NOV: 10,
+  DEC: 11,
+}
+
+/**
+ * Validity period of a NOTAM
+ */
+export interface NotamValidity {
+  /** Start of validity, null if unknown */
+  from: Date | null
+  /** End of validity, null if unknown or permanent */
+  to: Date | null
+  /** True if the NOTAM never ends (PERM) */
+  permanent: boolean
+  /** True if the end date is estimated (EST) */
+  estimated: boolean
+}
+
+export type NotamStatus = 'active' | 'future' | 'expired' | 'unknown'
+
+/**
+ * Parses a date as found in NOTAMs, always in UTC.
+ *
+ * Supported formats: ICAO (YYMMDDHHMM), Sofia Briefing ("26 02 2025 16:00")
+ * and with a month name ("26 FEB 2025 16:00").
+ *
+ * @param text The raw date, without PERM/EST markers
+ * @returns The parsed date, or null if unsupported
+ */
+export function parseNotamDate(text: string): Date | null {
+  text = text.trim()
+
+  let year: number, month: number, day: number, hour: number, minute: number
+  let match = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(text)
+  if (match) {
+    year = 2000 + parseInt(match[1]!)
+    month = parseInt(match[2]!) - 1
+    day = parseInt(match[3]!)
+    hour = parseInt(match[4]!)
+    minute = parseInt(match[5]!)
+  } else if (
+    (match = /^(\d{1,2})[\s/.-](\d{1,2})[\s/.-](\d{4})\s+(\d{1,2})[:Hh]?(\d{2})$/.exec(text))
+  ) {
+    day = parseInt(match[1]!)
+    month = parseInt(match[2]!) - 1
+    year = parseInt(match[3]!)
+    hour = parseInt(match[4]!)
+    minute = parseInt(match[5]!)
+  } else if (
+    (match = /^(\d{1,2})\s+([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{4})\s+(\d{1,2})[:Hh]?(\d{2})$/.exec(
+      text,
+    ))
+  ) {
+    const monthIdx = MONTHS[match[2]!.toUpperCase()]
+    if (monthIdx === undefined) {
+      return null
+    }
+    day = parseInt(match[1]!)
+    month = monthIdx
+    year = parseInt(match[3]!)
+    hour = parseInt(match[4]!)
+    minute = parseInt(match[5]!)
+  } else {
+    return null
+  }
+
+  if (month < 0 || month > 11 || day < 1 || day > 31 || hour > 24 || minute > 59) {
+    return null
+  }
+  const date = new Date(Date.UTC(year, month, day, hour, minute))
+  // Reject overflowing days (e.g. 31 February)
+  return date.getUTCDate() === day || hour === 24 ? date : null
+}
+
+/**
+ * Formats a date for display, in UTC
+ *
+ * @param date The date to format
+ * @returns "YYYY-MM-DD HH:MMZ", or an empty string for null
+ */
+export function formatNotamDate(date: Date | null): string {
+  if (date === null) {
+    return ''
+  }
+  return date.toISOString().substring(0, 16).replace('T', ' ') + 'Z'
+}
+
+/**
+ * Parses one bound of a validity period.
+ *
+ * @param text Raw value, e.g. "26 02 2025 16:00 EST" or "PERM"
+ * @returns The date, plus the PERM and EST markers
+ */
+function parseValidityBound(text: string | undefined): {
+  date: Date | null
+  perm: boolean
+  est: boolean
+} {
+  if (!text) {
+    return { date: null, perm: false, est: false }
+  }
+  const perm = /\bPERM\b/i.test(text)
+  const est = /\bEST\b/i.test(text)
+  const cleaned = text.replace(/\b(PERM|EST)\b/gi, '').trim()
+  return { date: perm ? null : parseNotamDate(cleaned), perm, est }
+}
+
+/**
+ * Builds the validity of a NOTAM from the B)/C) sections, or from the
+ * "DU: ... AU: ..." line written by Sofia Briefing in the header.
+ */
+function parseValidity(
+  header: string | undefined,
+  sectionB: string | undefined,
+  sectionC: string | undefined,
+): NotamValidity | null {
+  let rawFrom = sectionB?.trim()
+  let rawTo = sectionC?.trim()
+
+  if (!rawFrom && !rawTo && header) {
+    const match = /\bDU\s*:?\s*(?<from>.+?)\s+AU\s*:?\s*(?<to>.+)$/im.exec(header)
+    rawFrom = match?.groups?.['from']
+    rawTo = match?.groups?.['to']
+  }
+  if (!rawFrom && !rawTo) {
+    return null
+  }
+
+  const from = parseValidityBound(rawFrom)
+  const to = parseValidityBound(rawTo)
+  return {
+    from: from.date,
+    to: to.date,
+    permanent: to.perm,
+    estimated: to.est,
+  }
+}
+
 export class SectionA {
   readonly target: string
 
@@ -416,6 +569,13 @@ export class NOTAM {
   readonly sectionQ: SectionQ | null
   readonly linkedSupAIPs: SupAipRef[] = []
   readonly linkedIrSera: IrSeraRef[] = []
+  readonly validity: NotamValidity | null
+  /** Section D: activity schedule */
+  readonly schedule: string | null
+  /** Section F: lower limit */
+  readonly lowerLimit: string | null
+  /** Section G: upper limit */
+  readonly upperLimit: string | null
 
   constructor(fullText: string, idx: number) {
     this.idx = idx
@@ -433,6 +593,16 @@ export class NOTAM {
 
     sectionContent = this.rawSections.get('Q')
     this.sectionQ = sectionContent ? new SectionQ(sectionContent) : null
+
+    // Validity, schedule and limits
+    this.validity = parseValidity(
+      this.rawSections.get('HEADER'),
+      this.rawSections.get('B'),
+      this.rawSections.get('C'),
+    )
+    this.schedule = this.rawSections.get('D') ?? null
+    this.lowerLimit = this.rawSections.get('F') ?? null
+    this.upperLimit = this.rawSections.get('G') ?? null
 
     // Find polygons
     this.polygons = this.findPolygons(this.sectionA?.target, this.rawSections.get('E'))
@@ -462,6 +632,26 @@ export class NOTAM {
     return this.text.toLowerCase().includes(search)
   }
 
+  /**
+   * Computes the status of the NOTAM at the given time.
+   *
+   * @param now Reference time
+   * @returns The status, 'unknown' if no usable validity was found
+   */
+  public statusAt(now: Date = new Date()): NotamStatus {
+    const validity = this.validity
+    if (!validity || (!validity.from && !validity.to && !validity.permanent)) {
+      return 'unknown'
+    }
+    if (validity.from && now < validity.from) {
+      return 'future'
+    }
+    if (validity.to && now > validity.to) {
+      return 'expired'
+    }
+    return validity.from || validity.to || validity.permanent ? 'active' : 'unknown'
+  }
+
   splitSections(text: string): Map<string, string> {
     let currentSection: string = 'HEADER'
     let currentBlock: string[] = []
@@ -482,6 +672,21 @@ export class NOTAM {
         }
 
         line = line.substring(match.index + match[0].length).trim()
+
+        // ICAO layout: "A) LFBB B) 2501211522 C) PERM" on a single line
+        let inline: RegExpMatchArray | null
+        while (
+          'ABC'.includes(currentSection) &&
+          (inline = line.match(/(?:^|\s)(?<next>[B-D])\)\s*/)) != null &&
+          inline.groups?.['next'] !== undefined &&
+          inline.groups['next'] > currentSection
+        ) {
+          currentBlock.push(line.substring(0, inline.index).trim())
+          sections.set(currentSection, currentBlock.filter((s) => s.length != 0).join('\n'))
+          currentBlock = []
+          currentSection = inline.groups['next']
+          line = line.substring((inline.index ?? 0) + inline[0].length).trim()
+        }
       }
 
       currentBlock.push(line)
@@ -850,4 +1055,121 @@ export class NOTAM {
 
     return foundIrSeraRefs
   }
+}
+
+/**
+ * Matches the line holding a NOTAM identifier, e.g. "LFFA-D0911/25" or "A1234/26 NOTAMN"
+ */
+const NOTAM_ID_LINE = /^\W*(?:[A-Z]{4}[-\s])?[A-Z]\d{4}\/\d{2}\b/
+
+/**
+ * Page chrome copied along with the NOTAMs from Sofia Briefing: category headings
+ * (always mixed case, unlike NOTAM text), aerodrome section titles and footer.
+ */
+const SOFIA_CHROME_LINE = new RegExp(
+  '^(?:' +
+    [
+      "Aérodromes? (?:de|d'|sélectionnés).*",
+      'EN-ROUTE',
+      'Installations et services',
+      'Aire de manœuvre',
+      'Aire de trafic',
+      'Balisage',
+      "Aides à l'atterrissage, installations radionavigation et GNSS",
+      'Procédures',
+      "Organisation de l'espace aérien (?:et .*)?",
+      'Météorologie et équipements',
+      "Restrictions de l'espace aérien",
+      'Avertissements',
+      'Obstacles',
+      'Autres informations',
+      'Services de la circulation aérienne et VOLMET',
+      'Installations de communication et de surveillance',
+      'GNSS - installations de radionavigation',
+      'FAQ \\| Contact.*',
+      'SIA \\| DGAC',
+      'version \\d+(?:\\.\\d+)* ©.*',
+    ].join('|') +
+    ')\\s*:?$',
+  'i',
+)
+
+/**
+ * Splits a text copied from Sofia Briefing (or any NOTAM listing) and parses its NOTAMs.
+ *
+ * NOTAMs are separated by blank lines, or by a new identifier line once the
+ * current NOTAM has started its sections. Blocks without a valid Q section
+ * (page headers, footers, ...) are ignored.
+ *
+ * @param fullText The whole text
+ * @returns The parsed NOTAMs
+ */
+export function parseNotams(fullText: string): NOTAM[] {
+  const blocks: string[][] = []
+  let current: string[] = []
+  let hasSection = false
+  const flush = () => {
+    if (current.length != 0) {
+      blocks.push(current)
+    }
+    current = []
+    hasSection = false
+  }
+
+  // After a page heading, everything is page chrome until the next NOTAM or blank line
+  let inChrome = false
+  for (const line of fullText.replaceAll('\r', '').split('\n')) {
+    if (line.trim().length == 0) {
+      flush()
+      inChrome = false
+      continue
+    }
+    if (SOFIA_CHROME_LINE.test(line.trim())) {
+      flush()
+      inChrome = true
+      continue
+    }
+    if (inChrome) {
+      if (!NOTAM_ID_LINE.test(line)) {
+        continue
+      }
+      inChrome = false
+    }
+    if (hasSection && NOTAM_ID_LINE.test(line)) {
+      flush()
+    }
+    if (/^\W*[A-GQ]\)/.test(line)) {
+      hasSection = true
+    }
+    current.push(line)
+  }
+  flush()
+
+  const notams: NOTAM[] = []
+  let notamIdx = 0
+  for (const [blockIdx, block] of blocks.entries()) {
+    if (!block.some((l) => /^\W*[A-GQ]\)/.test(l))) {
+      continue
+    }
+
+    // Sofia prints an "ICAO NAME" title before each group of NOTAMs: when it
+    // trails this block and the next NOTAM is about that aerodrome, it's a title
+    const lastLine = block[block.length - 1]?.trim() ?? ''
+    const titleMatch = /^(?<icao>[A-Z]{4}) [A-Z][A-Z0-9' .-]+$/.exec(lastLine)
+    const nextBlock = blocks[blockIdx + 1]
+    if (
+      block.length > 1 &&
+      titleMatch?.groups?.['icao'] &&
+      nextBlock?.some((l) => new RegExp(`^\\W*A\\)\\s*${titleMatch.groups?.['icao']}\\b`).test(l))
+    ) {
+      block.pop()
+    }
+    const notam = new NOTAM(block.join('\n').trim(), notamIdx + 1)
+    // The same NOTAM is listed once per aerodrome/route section on Sofia
+    if (notam.sectionQ != null && !notams.some((n) => n.id === notam.id)) {
+      notamIdx++
+      notams.push(notam)
+    }
+  }
+  return notams
 }

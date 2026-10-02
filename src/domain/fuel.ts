@@ -50,12 +50,30 @@ export function findFuelUnit(rawUnit: string | undefined): FuelOption | undefine
   return FUEL_UNITS.find((option) => option.label.toLowerCase().replace(/s$/, '') === normalized)
 }
 
+/** Number of decimals worth displaying for a unit: liters are coarse enough, gallons are not. */
+export function fuelDigits(unit: FuelOption): number {
+  return unit === LITER ? 0 : 1
+}
+
+/** Rounds to `digits` decimals, tolerating float noise (109.99999999 is 110). */
+export function roundFuel(value: number, digits: number, rounding: 'down' | 'up' = 'down'): number {
+  const factor = 10 ** digits
+  const scaled = value * factor
+  const nearest = Math.round(scaled)
+  const snapped = Math.abs(scaled - nearest) < 1e-6 ? nearest : scaled
+  return (rounding === 'down' ? Math.floor(snapped) : Math.ceil(snapped)) / factor
+}
+
 export class FuelQuantity {
   value: Qty
   unit: FuelOption
 
   constructor(value: FuelQuantity | number, unit?: FuelOption) {
     if (typeof value === 'number') {
+      if (!Number.isFinite(value)) {
+        throw new Error(`Invalid fuel quantity: ${String(value)}`)
+      }
+
       if (unit === undefined) {
         if (value !== 0) {
           console.warn('No explicit unit. Using liters')
@@ -91,10 +109,6 @@ export class FuelQuantity {
     return new FuelQuantity(this.value.sub(other.value).to(this.unit.value).scalar, this.unit)
   }
 
-  floor(): FuelQuantity {
-    return new FuelQuantity(Math.floor(this.value.scalar), this.unit)
-  }
-
   to(unit?: FuelOption): FuelQuantity {
     return unit
       ? new FuelQuantity(this.value.to(unit.value).scalar, unit)
@@ -105,8 +119,15 @@ export class FuelQuantity {
     return unit ? this.value.to(unit.value).format() : this.value.format()
   }
 
-  toString(unit?: FuelOption): string {
-    return this.to(unit).floor().format()
+  /**
+   * Formats the quantity with the unit's display precision (whole liters,
+   * tenths of gallons). Rounds down by default (conservative for fuel on
+   * board), or up for consumed fuel.
+   */
+  toString(unit?: FuelOption, rounding: 'down' | 'up' = 'down'): string {
+    const target = this.to(unit)
+    const rounded = roundFuel(target.value.scalar, fuelDigits(target.unit), rounding)
+    return new Qty(rounded, target.unit.value.units()).format()
   }
 
   static min(firstValue: FuelQuantity, ...otherValues: FuelQuantity[]): FuelQuantity {
@@ -115,7 +136,7 @@ export class FuelQuantity {
       if (minValue === undefined) {
         minValue = value
       } else {
-        if (value.value.toBase() < minValue.value.toBase()) {
+        if (value.valueOf() < minValue.valueOf()) {
           minValue = value
         }
       }
@@ -129,7 +150,7 @@ export class FuelQuantity {
       if (maxValue === undefined) {
         maxValue = value
       } else {
-        if (value.value.toBase() > maxValue.value.toBase()) {
+        if (value.valueOf() > maxValue.valueOf()) {
           maxValue = value
         }
       }

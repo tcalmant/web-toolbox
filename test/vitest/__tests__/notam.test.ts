@@ -22,11 +22,12 @@
  * Tests for domain/notam.ts
  */
 
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { haversineDistanceMeters } from '../../../src/domain/geo'
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
-import { NOTAM, SectionQ } from '../../../src/domain/notam'
+import { NOTAM, SectionQ, parseNotamDate, parseNotams } from '../../../src/domain/notam'
 
 /**
  * Tests for the Q section parser
@@ -1012,5 +1013,132 @@ A) LFFF B) 2501010000 C) 2501020000
     const polygon = notam.polygons[0] as Polygon
     // Three quarters of a turn
     expect(polygon.locations.length).toBeGreaterThan(50)
+  })
+})
+
+describe('NOTAM validity', () => {
+  it('should parse the supported date formats as UTC', () => {
+    const expected = Date.UTC(2025, 1, 26, 16, 0)
+    expect(parseNotamDate('26 02 2025 16:00')?.getTime()).toEqual(expected)
+    expect(parseNotamDate('2502261600')?.getTime()).toEqual(expected)
+    expect(parseNotamDate('26 FEB 2025 16:00')?.getTime()).toEqual(expected)
+    expect(parseNotamDate('26 FEV 2025 16:00')?.getTime()).toEqual(expected)
+    expect(parseNotamDate('31 02 2025 16:00')).toBeNull()
+    expect(parseNotamDate('garbage')).toBeNull()
+  })
+
+  it('should read the Sofia DU/AU line', () => {
+    const notam = new NOTAM(
+      `LFFA-D0911/25
+DU: 26 02 2025 16:00 AU: 22 03 2025 08:00 EST
+A) LFLG
+Q) LFMM / QFULT / IV / NBO / A / 000/999 / 4513N00551E005
+D) 0800-1600
+E) TEST
+F) GND
+G) FL195`,
+      1,
+    )
+    expect(notam.validity?.from?.getTime()).toEqual(Date.UTC(2025, 1, 26, 16, 0))
+    expect(notam.validity?.to?.getTime()).toEqual(Date.UTC(2025, 2, 22, 8, 0))
+    expect(notam.validity?.estimated).toBe(true)
+    expect(notam.schedule).toEqual('0800-1600')
+    expect(notam.lowerLimit).toEqual('GND')
+    expect(notam.upperLimit).toEqual('FL195')
+    expect(notam.statusAt(new Date(Date.UTC(2025, 0, 1)))).toEqual('future')
+    expect(notam.statusAt(new Date(Date.UTC(2025, 2, 1)))).toEqual('active')
+    expect(notam.statusAt(new Date(Date.UTC(2025, 3, 1)))).toEqual('expired')
+  })
+
+  it('should read B) and C) sections and PERM', () => {
+    const notam = new NOTAM(
+      `A1234/25 NOTAMN
+Q) LFFF/QOBCE/IV/M/E/000/011/4520N00014W002
+A) LFBB B) 2501211522 C) PERM
+E) OBST`,
+      1,
+    )
+    expect(notam.validity?.from?.getTime()).toEqual(Date.UTC(2025, 0, 21, 15, 22))
+    expect(notam.validity?.to).toBeNull()
+    expect(notam.validity?.permanent).toBe(true)
+    expect(notam.statusAt(new Date(Date.UTC(2040, 0, 1)))).toEqual('active')
+  })
+
+  it('should report unknown status without validity', () => {
+    const notam = new NOTAM('A) LFLG\nQ) LFMM/QFULT/IV/NBO/A/000/999/4513N00551E005\nE) X', 1)
+    expect(notam.validity).toBeNull()
+    expect(notam.statusAt()).toEqual('unknown')
+  })
+})
+
+describe('NOTAM list splitting', () => {
+  const one = (id: string) => `LFFA-${id}
+DU: 26 02 2025 16:00 AU: 22 03 2025 08:00
+A) LFLG
+Q) LFMM / QFULT / IV / NBO / A / 000/999 / 4513N00551E005
+E) TEXT ${id}`
+
+  it('should split on blank lines', () => {
+    const notams = parseNotams(`Page header\n\n${one('D0001/25')}\n\n${one('D0002/25')}\n`)
+    expect(notams.map((n) => n.id)).toEqual(['LFFA-D0001/25', 'LFFA-D0002/25'])
+  })
+
+  it('should split on identifier lines without blank lines', () => {
+    const notams = parseNotams(`${one('D0001/25')}\n${one('D0002/25')}\r\n${one('D0003/25')}`)
+    expect(notams.map((n) => n.id)).toEqual(['LFFA-D0001/25', 'LFFA-D0002/25', 'LFFA-D0003/25'])
+    expect(notams[0]?.rawSections.get('E')).toEqual('TEXT D0001/25')
+  })
+
+  it('should ignore blocks without Q section', () => {
+    expect(parseNotams('A) LFLG\nE) no Q here')).toEqual([])
+    expect(parseNotams('')).toEqual([])
+  })
+})
+
+/**
+ * Real "select all, copy" of a Sofia Briefing PIB, trimmed: page headings, NIL
+ * categories, aerodrome titles and footer are interleaved with the NOTAMs.
+ */
+describe('Sofia Briefing copy', () => {
+  const text = readFileSync('test/vitest/fixtures/sofia_pib_excerpt.txt', 'utf8')
+  const notams = parseNotams(text)
+
+  it('should find exactly the NOTAMs', () => {
+    expect(notams.map((n) => n.id)).toEqual([
+      'LFFA-D5339/26',
+      'LFFA-D1538/26',
+      'LFFA-P1672/26',
+      'LFFA-P2408/26',
+      'LFFA-B4164/26',
+      'LFFA-C3936/26',
+      'LFFA-A5645/26',
+    ])
+  })
+
+  it('should not leak page chrome into section E', () => {
+    for (const notam of notams) {
+      const e = notam.rawSections.get('E') ?? ''
+      expect(e).not.toMatch(/^(NIL|Procédures|Obstacles|Autres informations|Aire de|Balisage)/m)
+      expect(e).not.toMatch(/FAQ|DSNA|DGAC/)
+    }
+    expect(notams[0]?.rawSections.get('E')).toMatch(/SIA\.AVIATION-CIVILE\.GOUV\.FR$/)
+    expect(notams[6]?.rawSections.get('E')).toMatch(/POSSIBLE\.$/)
+  })
+
+  it('should drop aerodrome titles announcing the next NOTAM', () => {
+    expect(notams[4]?.rawSections.get('E')).toMatch(/118\.825MHZ$/)
+    expect(notams[5]?.rawSections.get('E')).toMatch(/0600-1800\.$/)
+  })
+
+  it('should read validity and sections', () => {
+    expect(notams[0]?.validity?.from?.getTime()).toEqual(Date.UTC(2026, 8, 28, 0, 0))
+    expect(notams[0]?.validity?.to?.getTime()).toEqual(Date.UTC(2026, 9, 16, 23, 59))
+    expect(notams[1]?.validity?.permanent).toBe(true)
+    expect(notams[2]?.sectionA?.target).toEqual('LFLG')
+    expect(notams[2]?.polygons.length).toBeGreaterThan(0)
+  })
+
+  it('should not duplicate NOTAMs listed several times', () => {
+    expect(parseNotams(text + '\n\n' + text).length).toEqual(notams.length)
   })
 })
