@@ -109,10 +109,6 @@ export class FuelQuantity {
     return new FuelQuantity(this.value.sub(other.value).to(this.unit.value).scalar, this.unit)
   }
 
-  floor(): FuelQuantity {
-    return new FuelQuantity(Math.floor(this.value.scalar), this.unit)
-  }
-
   to(unit?: FuelOption): FuelQuantity {
     return unit
       ? new FuelQuantity(this.value.to(unit.value).scalar, unit)
