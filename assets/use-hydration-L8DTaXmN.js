@@ -1,1 +1,0 @@
-import{Hn as e,Mt as t}from"./runtime-dom.esm-bundler-CvL4s6M5.js";import{lt as n}from"./index-C-Q5LfWH.js";function r(){let r=e(!n.value);return r.value||t(()=>{r.value=!0}),{isHydrated:r}}export{r as t};
