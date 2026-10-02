@@ -28,6 +28,7 @@ under the License.
         <div class="column q-gutter-sm">
           <q-btn-toggle
             v-model="inputKind"
+            :disable="editingIdx !== null"
             spread
             no-caps
             unelevated
@@ -67,7 +68,7 @@ under the License.
               :label="$t('timeInputLabel')"
               v-model="timeInput"
               inputmode="numeric"
-              mask="#:##"
+              mask="##:##"
               fill-mask="0"
               maxlength="5"
               reverse-fill-mask
@@ -193,7 +194,7 @@ const events = defineModel<TimelineEvent[]>({ default: () => [] })
 const inputKind = ref<'fuel' | 'flight'>('fuel')
 const fuelInput = ref<number | string>('')
 const fuelInputUnit = ref(props.unit)
-const timeInput = ref('0:30')
+const timeInput = ref('00:30')
 const fuelInputField = ref<QInput>()
 const timeInputField = ref<QInput>()
 const errorMessage = ref<string | null>(null)
@@ -203,13 +204,17 @@ const editingIdx = ref<number | null>(null)
 watch(
   () => props.unit,
   (newUnit) => {
-    fuelInputUnit.value = newUnit
+    // The unit of an entry being edited must not change under the user's feet
+    if (editingIdx.value === null) {
+      fuelInputUnit.value = newUnit
+    }
   },
 )
 
 function describe(event: TimelineEvent): string {
   if (event.kind === 'fuel') {
-    return `${t('eventFuel')}: ${event.quantity.toString()}`
+    // Entries are shown as typed: only the computed levels are rounded
+    return `${t('eventFuel')}: ${roundFuel(event.quantity.value.scalar, 3)} ${t(event.quantity.unit.label)}`
   }
   return `${t('eventFlight')}: ${new TimePeriod(event.durationS).toString()} (${Math.ceil(event.durationS / 60)} ${t('minutesShort')})`
 }
@@ -225,7 +230,7 @@ function readForm(): TimelineEvent | null {
   if (inputKind.value === 'fuel') {
     // An empty field gives '' with v-model.number
     const amount = typeof fuelInput.value === 'number' ? fuelInput.value : NaN
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1e6) {
       errorMessage.value = t('fuelInvalidAmount')
       return null
     }
@@ -233,6 +238,7 @@ function readForm(): TimelineEvent | null {
   }
 
   const match = /^(\d{1,2}):(\d{1,2})$/.exec(timeInput.value.trim())
+  // (hours above 99 cannot be typed, nor loaded back for an edit)
   if (!match) {
     errorMessage.value = t('invalidTime')
     return null
@@ -279,7 +285,8 @@ function onEdit(idx: number) {
     fuelInput.value = roundFuel(event.quantity.value.scalar, 3)
     fuelInputUnit.value = event.quantity.unit
   } else {
-    timeInput.value = new TimePeriod(event.durationS).toString()
+    // Same two-digit hours as the mask, so that the value is loaded unchanged
+    timeInput.value = new TimePeriod(event.durationS).toString().padStart(5, '0')
   }
 }
 

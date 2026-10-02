@@ -236,11 +236,11 @@ const events = ref<TimelineEvent[]>([])
 const plan = computed(() =>
   computeFuelPlan({
     unit: fuelUnit.value,
-    perHour: sanitizeAmount(fuelPerHour.value),
-    capacity: sanitizeAmount(fuelCapacity.value),
-    consumable: sanitizeAmount(fuelConsumable.value),
+    perHour: fuelPerHour.value,
+    capacity: fuelCapacity.value,
+    consumable: fuelConsumable.value,
     events: events.value,
-    reserveMin: sanitizeAmount(reserveMin.value),
+    reserveMin: reserveMin.value,
   }),
 )
 
@@ -458,8 +458,9 @@ const remainingTimeText = computed(() => {
     return t('untilEmpty')
   }
   // Round down: the displayed endurance must never be optimistic
-  const duration = new TimePeriod(Math.floor(plan.value.usableTimeS / 60) * 60)
-  return `${duration.toString()} (${Math.floor(plan.value.usableTimeS / 60)} ${t('minutesShort')})`
+  // (with a tolerance: 47.999999 min is 48 min)
+  const minutes = Math.floor(plan.value.usableTimeS / 60 + 1e-6)
+  return `${new TimePeriod(minutes * 60).toString()} (${minutes} ${t('minutesShort')})`
 })
 
 const resultRows = computed((): ResultRow[] => {
@@ -563,8 +564,15 @@ onMounted(() => {
     onPlaneSelect(initialPlane)
   }
 
-  // ... then restore the figures of the session on top of it (they may have been edited).
-  // Only when they belong to the plane that was selected: never graft them onto another one.
+  const saved = (key: string, fallback: number | string) =>
+    $q.sessionStorage.getItem<number | string>(`fuel_computer.input.${key}`) ?? fallback
+
+  // The reserve belongs to the pilot, not to a plane: always restore it
+  reserveMin.value = saved('reserveMin', reserveMin.value)
+
+  // ... then restore the figures of the session on top of the plane (they may have been
+  // edited). Only when they belong to the plane that was selected: never graft them onto
+  // another one.
   if (initialPlane && !matchingPlane) {
     return
   }
@@ -575,14 +583,11 @@ onMounted(() => {
     fuelUnit.value = savedUnit
   }
 
-  const saved = (key: string, fallback: number | string) =>
-    $q.sessionStorage.getItem<number | string>(`fuel_computer.input.${key}`) ?? fallback
   applyNumbers(
     saved('fuelCapacity', fuelCapacity.value) as number,
     saved('fuelConsumable', fuelConsumable.value) as number,
     saved('fuelPerHour', fuelPerHour.value) as number,
   )
-  reserveMin.value = saved('reserveMin', reserveMin.value)
 })
 
 onBeforeUnmount(() => {
