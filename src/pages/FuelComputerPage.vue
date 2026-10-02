@@ -532,14 +532,24 @@ watch(planeIdent, (ident) => {
   }
 })
 
+// A corrupted entry must not break the whole page
+function loadCustomPlanes(): AirPlane[] {
+  try {
+    const parsed: unknown = JSON.parse(
+      $q.localStorage.getItem('fuel_computer.input.planes') ?? '[]',
+    )
+    return Array.isArray(parsed) ? (parsed as AirPlane[]) : []
+  } catch {
+    return []
+  }
+}
+
 // Load previous details from session storage
 onMounted(() => {
   window.addEventListener('beforeprint', refreshPrintDate)
 
   // Reload custom planes
-  customPlanes.value = (
-    JSON.parse($q.localStorage.getItem('fuel_computer.input.planes') ?? '[]') as AirPlane[]
-  ).map((p) => {
+  customPlanes.value = loadCustomPlanes().map((p) => {
     const plane = new AirPlane(
       p.immatriculation,
       p.brand,
