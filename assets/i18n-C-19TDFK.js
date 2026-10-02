@@ -1,0 +1,1 @@
+import{at as e,it as t,st as n}from"./index-D9oBOGEO.js";var r=`en-US`,i=t(({app:t})=>{let i=e({locale:r,fallbackLocale:`en-US`,legacy:!1,messages:n});t.use(i)});export{i as default};
