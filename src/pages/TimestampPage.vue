@@ -92,7 +92,10 @@ under the License.
           :hint="
             $t('localDateHint', {
               tzName: selectedTz,
-              utcOffset: formatTzOffset(new Date(unixTimestamp!), selectedTz),
+              utcOffset: formatTzOffset(
+                new Date(snapFloor(unitNs.toMilliseconds(unixTimestampNs))),
+                selectedTz,
+              ),
             })
           "
           @update:model-value="onLocalDateChange"
@@ -159,12 +162,7 @@ under the License.
 
 <script setup lang="ts">
 import { useOrientation } from '@/composables/useOrientation'
-import {
-  dateToString,
-  dateToUTCString,
-  formatTzOffset,
-  parseTzOffsetMinutes,
-} from '@/domain/time'
+import { dateToString, dateToUTCString, formatTzOffset, parseTzOffsetMinutes } from '@/domain/time'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -279,6 +277,12 @@ const TIMESTAMP_UNITS: TimestampUnit[] = [autoUnit, ...autoUnit.knownUnits]
 const unixTimestampNs = ref<number>(unitMs.toNanoseconds(new Date().getTime()))
 const unixTimestampUnit = ref<TimestampUnit>(autoUnit)
 
+/**
+ * Whole units from a float: the ns round trip (x * 1e6 / 1e6) can land just
+ * below the integer (1699999999999.9998), and a plain floor would lose 1 unit.
+ */
+const snapFloor = (x: number) => Math.floor(Math.round(x * 1000) / 1000)
+
 function reset() {
   unixTimestampNs.value = unitMs.toNanoseconds(new Date().getTime())
 }
@@ -301,8 +305,8 @@ watch(
   unixTimestampNs,
   (newValue) => {
     if (isFinite(newValue)) {
-      const internalDate = new Date(unitNs.toMilliseconds(newValue))
-      unixTimestamp.value = Math.floor(unixTimestampUnit.value.fromNanoseconds(newValue))
+      const internalDate = new Date(snapFloor(unitNs.toMilliseconds(newValue)))
+      unixTimestamp.value = snapFloor(unixTimestampUnit.value.fromNanoseconds(newValue))
       dateUTC.value = dateToUTCString(internalDate)
       dateLocalTZ.value = dateToString(internalDate, selectedTz.value)
     }
@@ -310,9 +314,21 @@ watch(
   { immediate: true },
 )
 
+// Re-express the displayed timestamp when the precision changes (the internal
+// value is unchanged)
+watch(unixTimestampUnit, (unit) => {
+  if (unit === autoUnit && Number.isFinite(unixTimestamp.value)) {
+    // Detect the unit from the number currently displayed
+    autoUnit.toNanoseconds(unixTimestamp.value)
+  }
+  if (Number.isFinite(unixTimestampNs.value)) {
+    unixTimestamp.value = snapFloor(unit.fromNanoseconds(unixTimestampNs.value))
+  }
+})
+
 watch(selectedTz, () => {
   dateLocalTZ.value = dateToString(
-    new Date(unitNs.toMilliseconds(unixTimestampNs.value)),
+    new Date(snapFloor(unitNs.toMilliseconds(unixTimestampNs.value))),
     selectedTz.value,
   )
 })
