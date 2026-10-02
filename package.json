@@ -21,6 +21,7 @@
     "@types/js-quantities": "^1.6.6",
     "js-quantities": "^1.8.0",
     "leaflet": "^1.9.4",
+    "pdfjs-dist": "^6.3.289",
     "quasar": "^2.34.0",
     "vite-tsconfig-paths": "^6.1.1",
     "vue": "^3.5.43",
