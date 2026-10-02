@@ -15,6 +15,8 @@
  *   limitations under the License.
  */
 
+import KnownBorders from '@/adapters/data/bordersRepository'
+import { borderKeyFromText, borderPath } from './borders'
 import type { GeoPoint } from './geo'
 import { arcPoints } from './geo'
 import type { GeometryFeature } from './geometry'
@@ -26,7 +28,8 @@ const AIP_LOCATION_SOURCE = String.raw`0?(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,
 
 // Border or coast stretches between two outline points, e.g. "frontière
 // franco-espagnole" or "limite des eaux territoriales atlantique françaises".
-// The real course is not known: the outline goes straight between the points.
+// When the course is not in the border data, the outline goes straight
+// between the points.
 const BORDER_TEXT = /^(?:fronti[èe]re|limite\s+des\s+eaux|c[ôo]te|littoral)\b[^\d°]{0,80}$/i
 
 /**
@@ -94,7 +97,11 @@ export class AIP {
       }
     }
 
-    return { lat, lng: lon }
+    // South and west are negative
+    return {
+      lat: strLatNS.toUpperCase() === 'S' ? -lat : lat,
+      lng: strLonEW.toUpperCase() === 'W' ? -lon : lon,
+    }
   }
 
   findAIPPolygons(text: string | undefined): GeometryFeature[] {
@@ -145,6 +152,14 @@ export class AIP {
       const previous = currentList[currentList.length - 1]
       if (arc !== undefined && previous !== undefined) {
         currentList.push(...arcPoints(arc.center, previous, location, arc.clockwise))
+      } else if (previous !== undefined && between.length != 0) {
+        // Follow the border between the two points, if we know it
+        const key = borderKeyFromText(between, KnownBorders)
+        const chains = key !== null ? KnownBorders[key] : undefined
+        const path = chains !== undefined ? borderPath(chains, previous, location) : null
+        if (path !== null) {
+          currentList.push(...path)
+        }
       }
 
       currentList.push(location)
