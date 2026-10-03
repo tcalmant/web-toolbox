@@ -24,7 +24,7 @@ export default {
   mainTitle: "Tom's Toolbox",
   notamMapperTitle: 'Carte NOTAM',
   fuelComputerTitle: 'Carburant',
-  timestampTitle: 'Dates',
+  timestampTitle: 'Fuseaux horaires',
   checklistTitle: 'Check-list',
 
   // Common ARIA-related sentences
@@ -150,6 +150,24 @@ export default {
   imp_gal: 'gal GB',
 
   // Timestamp
+  worldClockTitle: 'Horloge mondiale',
+  worldClockEmpty: 'Aucun fuseau horaire sélectionné',
+  zoneUtcLabel: 'UTC (Zulu)',
+  addZoneLabel: 'Ajouter un fuseau horaire',
+  addLocalZone: 'Mon fuseau horaire',
+  removeZoneAria: 'Retirer {zone}',
+  resetZones: 'Réinitialiser la liste',
+  presetsLabel: 'Ajout rapide',
+  converterTitle: "Convertisseur d'heure",
+  converterSourceZone: "Fuseau horaire de l'heure saisie",
+  converterDate: 'Date',
+  converterTime: 'Heure',
+  converterNow: 'Maintenant',
+  converterInvalid: 'Saisissez une date et une heure valides',
+  dayShiftBadge: '{shift} j',
+  unixPanelTitle: 'Développeur : temps Unix',
+  unixPanelCaption: 'Temps Unix, date UTC et date locale',
+  noResults: 'Aucun résultat',
   unixLabel: 'Temps Unix',
   unixPrecisionLabel: 'Précision',
   autoPrecisionLabel: 'Automatique ({subUnit})',

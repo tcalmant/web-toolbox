@@ -24,7 +24,7 @@ export default {
   mainTitle: "Tom's Toolbox",
   notamMapperTitle: 'NOTAM mapper',
   fuelComputerTitle: 'Fuel computer',
-  timestampTitle: 'Timestamp',
+  timestampTitle: 'Time zones',
   checklistTitle: 'Checklist',
 
   // Common ARIA-related sentences
@@ -149,6 +149,24 @@ export default {
   imp_gal: 'imp Gal',
 
   // Timestamp
+  worldClockTitle: 'World clock',
+  worldClockEmpty: 'No time zone selected',
+  zoneUtcLabel: 'UTC (Zulu)',
+  addZoneLabel: 'Add a time zone',
+  addLocalZone: 'My time zone',
+  removeZoneAria: 'Remove {zone}',
+  resetZones: 'Reset the list',
+  presetsLabel: 'Quick add',
+  converterTitle: 'Time converter',
+  converterSourceZone: 'Time zone of the entered time',
+  converterDate: 'Date',
+  converterTime: 'Time',
+  converterNow: 'Now',
+  converterInvalid: 'Enter a valid date and time',
+  dayShiftBadge: '{shift} d',
+  unixPanelTitle: 'Developer: Unix timestamp',
+  unixPanelCaption: 'Unix time, UTC date and local date',
+  noResults: 'No results',
   unixLabel: 'Unix Timestamp',
   unixPrecisionLabel: 'Precision',
   autoPrecisionLabel: 'Auto ({subUnit})',
