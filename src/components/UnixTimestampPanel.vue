@@ -32,7 +32,14 @@ under the License.
         @update:model-value="onTimestampChange"
       >
         <template v-slot:prepend>
-          <q-icon name="history" @click="reset()" />
+          <q-btn
+            flat
+            round
+            dense
+            icon="history"
+            :aria-label="$t('unixResetLabel')"
+            @click="reset()"
+          />
         </template>
       </q-input>
       <q-select
@@ -51,7 +58,7 @@ under the License.
       @update:model-value="onUTCDateChange"
     >
       <template v-slot:prepend>
-        <q-icon name="event" class="cursor-pointer">
+        <q-btn flat round dense icon="event" :aria-label="$t('pickDateLabel')">
           <q-popup-proxy cover transition-show="scale" transition-hide="scale">
             <q-date
               :model-value="dateUTC"
@@ -60,14 +67,14 @@ under the License.
               :today-btn="true"
             >
               <div class="row items-center justify-end">
-                <q-btn v-close-popup label="Close" color="primary" flat />
+                <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
               </div>
             </q-date>
           </q-popup-proxy>
-        </q-icon>
+        </q-btn>
       </template>
       <template v-slot:append>
-        <q-icon name="access_time" class="cursor-pointer">
+        <q-btn flat round dense icon="access_time" :aria-label="$t('pickTimeLabel')">
           <q-popup-proxy cover transition-show="scale" transition-hide="scale">
             <q-time
               :model-value="dateUTC"
@@ -76,11 +83,11 @@ under the License.
               :now-btn="true"
             >
               <div class="row items-center justify-end">
-                <q-btn v-close-popup label="Close" color="primary" flat />
+                <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
               </div>
             </q-time>
           </q-popup-proxy>
-        </q-icon>
+        </q-btn>
       </template>
     </q-input>
     <div :class="{ row: !isPortrait, col: isPortrait }">
@@ -100,7 +107,7 @@ under the License.
         @update:model-value="onLocalDateChange"
       >
         <template v-slot:prepend>
-          <q-icon name="event" class="cursor-pointer">
+          <q-btn flat round dense icon="event" :aria-label="$t('pickDateLabel')">
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-date
                 :model-value="dateLocalTZ"
@@ -109,14 +116,14 @@ under the License.
                 :today-btn="true"
               >
                 <div class="row items-center justify-end">
-                  <q-btn v-close-popup label="Close" color="primary" flat />
+                  <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
                 </div>
               </q-date>
             </q-popup-proxy>
-          </q-icon>
+          </q-btn>
         </template>
         <template v-slot:append>
-          <q-icon name="access_time" class="cursor-pointer">
+          <q-btn flat round dense icon="access_time" :aria-label="$t('pickTimeLabel')">
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-time
                 :model-value="dateLocalTZ"
@@ -125,11 +132,11 @@ under the License.
                 :now-btn="true"
               >
                 <div class="row items-center justify-end">
-                  <q-btn v-close-popup label="Close" color="primary" flat />
+                  <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
                 </div>
               </q-time>
             </q-popup-proxy>
-          </q-icon>
+          </q-btn>
         </template>
       </q-input>
       <q-select
@@ -145,12 +152,15 @@ under the License.
           <q-btn
             icon="public"
             flat
+            round
+            dense
+            :aria-label="$t('useLocalTimezoneLabel')"
             @click.prevent="selectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone"
           />
         </template>
         <template v-slot:no-option>
           <q-item>
-            <q-item-section class="text-grey"> No results </q-item-section>
+            <q-item-section class="text-grey"> {{ $t('noResults') }} </q-item-section>
           </q-item>
         </template>
       </q-select>

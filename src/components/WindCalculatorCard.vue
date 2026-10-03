@@ -58,6 +58,7 @@ under the License.
               { label: 'kt', value: 'kt' },
               { label: 'km/h', value: 'kmh' },
             ]"
+            role="group"
             :aria-label="$t('windUnitLabel')"
             @update:model-value="onUnitChange"
           />

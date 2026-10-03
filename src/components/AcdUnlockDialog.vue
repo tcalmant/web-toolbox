@@ -23,6 +23,15 @@ under the License.
 <template>
   <q-dialog v-model="open">
     <div class="acd-dialog">
+      <q-btn
+        v-close-popup
+        class="acd-dialog-close"
+        flat
+        round
+        dense
+        icon="close"
+        :aria-label="$t('closeLabel')"
+      />
       <AcdUnlockCard />
     </div>
   </q-dialog>
@@ -37,7 +46,15 @@ const open = useAcdVault().dialogOpen
 
 <style scoped>
 .acd-dialog {
+  position: relative;
   width: min(28rem, 92vw);
   background: white;
+}
+
+.acd-dialog-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
 }
 </style>

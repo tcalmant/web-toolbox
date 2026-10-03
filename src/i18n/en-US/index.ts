@@ -149,6 +149,11 @@ export default {
   imp_gal: 'imp Gal',
 
   // Timestamp
+  unixResetLabel: 'Set to the current time',
+  pickDateLabel: 'Pick a date',
+  pickTimeLabel: 'Pick a time',
+  useLocalTimezoneLabel: 'Use my time zone',
+  closeLabel: 'Close',
   worldClockTitle: 'World clock',
   worldClockEmpty: 'No time zone selected',
   zoneUtcLabel: 'UTC (Zulu)',
