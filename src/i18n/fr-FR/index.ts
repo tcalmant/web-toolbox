@@ -34,6 +34,7 @@ export default {
   deleteRow: 'Supprimer la ligne',
 
   // Drawer
+  toolsLinks: 'Outils',
   aviationLinks: 'Aviation',
   siaLinkSubtitle: 'SUP-AIP et VAC en France',
   sofiaLinkSubtitle: 'NOTAM et plans de vol',

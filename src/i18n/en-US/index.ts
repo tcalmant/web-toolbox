@@ -34,6 +34,7 @@ export default {
   deleteRow: 'Delete row',
 
   // Drawer
+  toolsLinks: 'Tools',
   aviationLinks: 'Aviation links',
   siaLinkSubtitle: 'French source for SUP-AIP and VAC',
   sofiaLinkSubtitle: 'NOTAM and flight plans',

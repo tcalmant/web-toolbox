@@ -1,1 +1,11 @@
 // app global css in SCSS form
+
+// Touch targets: dense icon buttons are 32-34px, below the recommended 44px.
+// Only on coarse pointers, so desktop keeps its compact look.
+@media (pointer: coarse) {
+  .q-btn.q-btn--dense.q-btn--round,
+  .q-btn.q-btn--dense.q-btn--rectangle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
