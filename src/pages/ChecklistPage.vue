@@ -26,12 +26,18 @@ under the License.
       <q-card
         flat
         bordered
-        class="q-pa-sm checklist-sticky-bar"
+        :class="isMobile ? 'q-pa-xs' : 'q-pa-sm'"
+        class="checklist-sticky-bar"
         :style="{ top: `${headerHeight}px` }"
       >
-        <div class="row items-center q-gutter-md">
+        <div
+          class="row items-center no-wrap"
+          :class="isMobile ? 'q-gutter-xs' : 'q-gutter-md wrap'"
+        >
           <q-select
-            class="col-12 col-sm"
+            class="col"
+            :dense="isMobile"
+            :hide-hint="isMobile"
             v-model="planeIdent"
             :label="$t('checklistPlaneLabel')"
             :hint="$t('checklistPlaneHint')"
@@ -40,10 +46,7 @@ under the License.
             map-options
             @update:model-value="onPlaneSelect"
           />
-          <div
-            class="col-auto text-weight-bold"
-            :class="isMobile ? 'text-body1' : 'text-h6'"
-          >
+          <div class="col-auto text-weight-bold" :class="isMobile ? 'text-body1' : 'text-h6'">
             {{ clock }}
           </div>
           <q-space v-if="isMobile" />

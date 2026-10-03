@@ -28,7 +28,7 @@ under the License.
 
         <q-toolbar-title> {{ $t('mainTitle') }} </q-toolbar-title>
 
-        <q-tabs outside-arrows mobile-arrows style="max-width: 66vw">
+        <q-tabs v-if="$q.screen.gt.sm" outside-arrows mobile-arrows style="max-width: 66vw">
           <q-route-tab :label="$t('notamMapperTitle')" to="/notam-mapper" exact />
           <q-route-tab :label="$t('fuelComputerTitle')" to="/fuel-computer" exact />
           <q-route-tab :label="$t('timestampTitle')" to="/timestamp" exact />
@@ -38,6 +38,19 @@ under the License.
     </q-header>
 
     <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered overlay>
+      <q-list v-if="$q.screen.lt.md" role="navigation" :aria-label="t('toolsLinks')">
+        <q-item-label header> {{ t('toolsLinks') }} </q-item-label>
+        <q-item
+          v-for="tool in tools"
+          :key="tool.to"
+          clickable
+          :to="tool.to"
+          exact
+          @click="leftDrawerOpen = false"
+        >
+          <q-item-section>{{ t(tool.titleKey) }}</q-item-section>
+        </q-item>
+      </q-list>
       <q-list>
         <q-item-label header> {{ t('aviationLinks') }} </q-item-label>
         <EssentialLink v-for="link in aviationLinks" :key="link.id" v-bind="link" />
@@ -63,6 +76,13 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+
+const tools = [
+  { to: '/notam-mapper', titleKey: 'notamMapperTitle' },
+  { to: '/fuel-computer', titleKey: 'fuelComputerTitle' },
+  { to: '/timestamp', titleKey: 'timestampTitle' },
+  { to: '/checklist', titleKey: 'checklistTitle' },
+]
 
 const aviationLinks: EssentialLinkProps[] = [
   {

@@ -22,7 +22,7 @@ under the License.
 
 <template>
   <q-page padding class="col">
-    <div class="q-gutter-md">
+    <div class="column q-gutter-y-md">
       <div class="row q-col-gutter-md items-start print-hide">
         <q-select
           class="col-12 col-md-4"
