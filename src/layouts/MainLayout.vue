@@ -28,16 +28,45 @@ under the License.
 
         <q-toolbar-title> {{ $t('mainTitle') }} </q-toolbar-title>
 
-        <q-tabs outside-arrows mobile-arrows style="max-width: 66vw">
-          <q-route-tab :label="$t('notamMapperTitle')" to="/notam-mapper" exact />
-          <q-route-tab :label="$t('fuelComputerTitle')" to="/fuel-computer" exact />
-          <q-route-tab :label="$t('timestampTitle')" to="/timestamp" exact />
-          <q-route-tab :label="$t('checklistTitle')" to="/checklist" exact />
-        </q-tabs>
+        <nav v-if="$q.screen.gt.sm" :aria-label="$t('toolsLinks')" style="max-width: 66vw">
+          <q-tabs outside-arrows mobile-arrows>
+            <q-route-tab
+              v-for="tool in tools"
+              :key="tool.to"
+              :label="$t(tool.titleKey)"
+              :to="tool.to"
+              exact
+            />
+          </q-tabs>
+        </nav>
       </q-toolbar>
     </q-header>
 
     <q-drawer class="print-hide" v-model="leftDrawerOpen" bordered overlay>
+      <q-list v-if="$q.screen.lt.md" role="navigation" :aria-label="t('toolsLinks')">
+        <q-item-label header> {{ t('toolsLinks') }} </q-item-label>
+        <q-item
+          v-for="tool in tools"
+          :key="tool.to"
+          clickable
+          :to="tool.to"
+          exact
+          @click="leftDrawerOpen = false"
+        >
+          <q-item-section>{{ t(tool.titleKey) }}</q-item-section>
+        </q-item>
+      </q-list>
+      <q-list v-if="vault.status.value !== 'absent'">
+        <q-item-label header> {{ t('acdVaultTitle') }} </q-item-label>
+        <q-item clickable @click="onToggleVault">
+          <q-item-section avatar>
+            <q-icon :name="vault.isUnlocked.value ? 'lock' : 'lock_open'" />
+          </q-item-section>
+          <q-item-section>
+            {{ t(vault.isUnlocked.value ? 'acdLockDrawer' : 'acdUnlockDrawer') }}
+          </q-item-section>
+        </q-item>
+      </q-list>
       <q-list>
         <q-item-label header> {{ t('aviationLinks') }} </q-item-label>
         <EssentialLink v-for="link in aviationLinks" :key="link.id" v-bind="link" />
@@ -50,19 +79,34 @@ under the License.
       <LanguageSwitcher style="position: absolute; bottom: 0" />
     </q-drawer>
 
+    <AcdUnlockDialog />
+
     <q-page-container>
+      <h1 class="sr-only">{{ pageTitle }}</h1>
       <router-view />
     </q-page-container>
   </q-layout>
 </template>
 
 <script setup lang="ts">
+import AcdUnlockDialog from '@/components/AcdUnlockDialog.vue'
 import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import { ref } from 'vue'
+import { useAcdVault } from '@/composables/useAcdVault'
+import { usePageMetadata } from '@/composables/usePageMetadata'
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const { pageTitle } = usePageMetadata()
+
+const tools = [
+  { to: '/notam-mapper', titleKey: 'notamMapperTitle' },
+  { to: '/fuel-computer', titleKey: 'fuelComputerTitle' },
+  { to: '/timestamp', titleKey: 'timestampTitle' },
+  { to: '/weather', titleKey: 'weatherTitle' },
+  { to: '/checklist', titleKey: 'checklistTitle' },
+]
 
 const aviationLinks: EssentialLinkProps[] = [
   {
@@ -104,6 +148,20 @@ const projectLinks: EssentialLinkProps[] = [
     link: 'https://github.com/tcalmant/web-toolbox',
   },
 ]
+
+const vault = useAcdVault()
+
+// Unlock again silently on a device that was told to remember the passphrase
+onMounted(() => void vault.restore())
+
+function onToggleVault() {
+  leftDrawerOpen.value = false
+  if (vault.isUnlocked.value) {
+    void vault.lock()
+  } else {
+    vault.dialogOpen.value = true
+  }
+}
 
 const leftDrawerOpen = ref(false)
 

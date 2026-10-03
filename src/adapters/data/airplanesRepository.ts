@@ -15,19 +15,15 @@
  *   limitations under the License.
  */
 
+import type { AcdPlaneRecord } from '@/domain/acdVault'
 import { AirPlane } from '@/domain/airplanes'
-import type { InputAirplane } from '@/domain/airplanes'
-import AcdAirplanes from '../../fixed-data/acd_planes.json' with { type: 'json' }
 
-const TypedAcdAirplanes: Record<string, InputAirplane> = AcdAirplanes
-
-const KnownAirplanes: Record<string, AirPlane> = {}
-
-for (const immat in TypedAcdAirplanes) {
-  const data = TypedAcdAirplanes[immat]
-  if (data) {
-    KnownAirplanes[immat] = new AirPlane(
-      immat,
+/** Builds the aircraft from the (decrypted) club records. */
+export function buildAirplanes(records: Record<string, AcdPlaneRecord>): Record<string, AirPlane> {
+  const airplanes: Record<string, AirPlane> = {}
+  for (const [immatriculation, data] of Object.entries(records)) {
+    airplanes[immatriculation] = new AirPlane(
+      immatriculation,
       data.brand,
       data.model,
       data.fuel.unit,
@@ -36,6 +32,5 @@ for (const immat in TypedAcdAirplanes) {
       data.fuel.hourlyConsumption,
     )
   }
+  return airplanes
 }
-
-export default KnownAirplanes

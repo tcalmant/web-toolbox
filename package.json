@@ -12,9 +12,12 @@
     "test": "vitest",
     "dev": "quasar dev",
     "build": "quasar build",
+    "build:pwa": "quasar build -m pwa",
     "postinstall": "quasar prepare",
     "test:unit": "vitest",
-    "test:unit:ci": "vitest run"
+    "test:unit:ci": "vitest run",
+    "vault:encrypt": "node scripts/vault.ts encrypt",
+    "vault:decrypt": "node scripts/vault.ts decrypt"
   },
   "dependencies": {
     "@quasar/extras": "^2.1.0",
@@ -23,6 +26,7 @@
     "leaflet": "^1.9.4",
     "pdfjs-dist": "^6.3.289",
     "quasar": "^2.34.0",
+    "register-service-worker": "^1.7.2",
     "vite-tsconfig-paths": "^6.1.1",
     "vue": "^3.5.43",
     "vue-i18n": "^11.4.13",

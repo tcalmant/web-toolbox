@@ -29,3 +29,5 @@ jobs:
         run: npm run test:unit:ci
       - name: Build
         run: npm run build
+      - name: Build (offline app)
+        run: npm run build:pwa

@@ -52,7 +52,8 @@ export default defineConfig(() => {
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
       // publicPath: '/',
-      publicPath: '',
+      // Relative, so the build can be served from any subpath (works with the hash router)
+      publicPath: './',
       // analyze: true,
       // env: {},
       // rawDefine: {}
@@ -166,9 +167,10 @@ export default defineConfig(() => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
+      workboxMode: 'InjectManifest', // the service worker is src-pwa/sw/custom-sw.ts
       // swFilename: 'sw.js',
       // manifestFilename: 'manifest.json',
+      // The manifest is src-pwa/manifest.json
       // extendManifestJson (json) {},
       // useCredentialsForManifestTag: true,
       // injectPwaMetaTags: false,

@@ -56,54 +56,47 @@ under the License.
       />
     </div>
   </q-page>
-  <q-page v-else :style-fn="pageStyleFn">
+  <q-page v-else class="column no-wrap" :style-fn="pageStyleFn">
     <q-tabs v-model="tab">
       <q-tab name="map" :label="$t('notamTabMapTitle')" />
       <q-tab name="mapConfig" :label="$t('notamTabConfigurationTitle')" />
     </q-tabs>
     <q-separator />
-    <div
-      class="scroll"
-      style="position: absolute; bottom: 0ex; left: 0; right: 0; max-height: 85vh"
-    >
-      <q-tab-panels v-model="tab">
-        <q-tab-panel name="map" style="height: 85vh">
-          <div class="map-container">
-            <MapView
-              v-model:notam-list="selectedNotams as NOTAM[] | undefined"
-              v-model:notam-focus="focusedNotam"
-              v-model:aip="parsedAIP"
-              v-model:show-area-of-influence="showAreaOfInfluence"
-              v-model:hovered-notam="hoveredNotam"
-            />
-          </div>
-        </q-tab-panel>
-        <q-tab-panel name="mapConfig">
-          <div class="col column no-wrap">
-            <NotamOptions
-              v-model:ignore-large-notams="ignoreLargeNotams"
-              v-model:max-notam-radius="maxNotamRadius"
-              v-model:only-with-positions="onlyWithPositions"
-              v-model:hide-expired="hideExpired"
-              :total-count="totalCount"
-              :shown-count="parsedNotams?.length ?? 0"
-              v-model:show-area-of-influence="showAreaOfInfluence"
-              v-model:search-query="searchQuery"
-              :notam-count="parsedNotams?.length ?? 0"
-              :aip-area-count="parsedAIP?.polygons.length ?? 0"
-              @show-import="showImport = true"
-            />
-            <NotamTable
-              v-model:focused-notam="focusedNotam"
-              v-model:hovered-notam="hoveredNotam"
-              v-model:notam-columns="notamColumns"
-              v-model:parsed-notams="parsedNotams"
-              v-model:selected-notams="selectedNotams"
-            />
-          </div>
-        </q-tab-panel>
-      </q-tab-panels>
-    </div>
+    <q-tab-panels v-model="tab" class="col" :animated="false">
+      <q-tab-panel name="map" class="q-pa-sm">
+        <div class="map-container">
+          <MapView
+            v-model:notam-list="selectedNotams as NOTAM[] | undefined"
+            v-model:notam-focus="focusedNotam"
+            v-model:aip="parsedAIP"
+            v-model:show-area-of-influence="showAreaOfInfluence"
+            v-model:hovered-notam="hoveredNotam"
+          />
+        </div>
+      </q-tab-panel>
+      <q-tab-panel name="mapConfig" class="q-pa-sm">
+        <NotamOptions
+          v-model:ignore-large-notams="ignoreLargeNotams"
+          v-model:max-notam-radius="maxNotamRadius"
+          v-model:only-with-positions="onlyWithPositions"
+          v-model:hide-expired="hideExpired"
+          :total-count="totalCount"
+          :shown-count="parsedNotams?.length ?? 0"
+          v-model:show-area-of-influence="showAreaOfInfluence"
+          v-model:search-query="searchQuery"
+          :notam-count="parsedNotams?.length ?? 0"
+          :aip-area-count="parsedAIP?.polygons.length ?? 0"
+          @show-import="showImport = true"
+        />
+        <NotamTable
+          v-model:focused-notam="focusedNotam"
+          v-model:hovered-notam="hoveredNotam"
+          v-model:notam-columns="notamColumns"
+          v-model:parsed-notams="parsedNotams"
+          v-model:selected-notams="selectedNotams"
+        />
+      </q-tab-panel>
+    </q-tab-panels>
   </q-page>
 
   <NotamImportDialog v-model="inputText" v-model:show-dialog="showImport" />
