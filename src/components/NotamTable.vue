@@ -67,6 +67,8 @@ under the License.
             color="primary"
             round
             dense
+            :aria-label="$t('toggleNotamDetails', { notam: notamRow(props.row).id })"
+            :aria-expanded="props.expand"
             @click="
               () => {
                 if (props.row != focusedNotam) {

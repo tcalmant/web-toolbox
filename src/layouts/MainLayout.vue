@@ -28,12 +28,17 @@ under the License.
 
         <q-toolbar-title> {{ $t('mainTitle') }} </q-toolbar-title>
 
-        <q-tabs v-if="$q.screen.gt.sm" outside-arrows mobile-arrows style="max-width: 66vw">
-          <q-route-tab :label="$t('notamMapperTitle')" to="/notam-mapper" exact />
-          <q-route-tab :label="$t('fuelComputerTitle')" to="/fuel-computer" exact />
-          <q-route-tab :label="$t('timestampTitle')" to="/timestamp" exact />
-          <q-route-tab :label="$t('checklistTitle')" to="/checklist" exact />
-        </q-tabs>
+        <nav v-if="$q.screen.gt.sm" :aria-label="$t('toolsLinks')" style="max-width: 66vw">
+          <q-tabs outside-arrows mobile-arrows>
+            <q-route-tab
+              v-for="tool in tools"
+              :key="tool.to"
+              :label="$t(tool.titleKey)"
+              :to="tool.to"
+              exact
+            />
+          </q-tabs>
+        </nav>
       </q-toolbar>
     </q-header>
 
@@ -64,6 +69,7 @@ under the License.
     </q-drawer>
 
     <q-page-container>
+      <h1 class="sr-only">{{ pageTitle }}</h1>
       <router-view />
     </q-page-container>
   </q-layout>
@@ -72,10 +78,12 @@ under the License.
 <script setup lang="ts">
 import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { usePageMetadata } from '@/composables/usePageMetadata'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const { pageTitle } = usePageMetadata()
 
 const tools = [
   { to: '/notam-mapper', titleKey: 'notamMapperTitle' },

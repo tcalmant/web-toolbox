@@ -67,6 +67,7 @@ export default {
   notamObject: 'Objet',
   notamScope: 'Périmètre',
   toggleSelectNotam: 'Alterner la sélection du NOTAM {notam}',
+  toggleNotamDetails: 'Afficher ou masquer le détail du NOTAM {notam}',
   notamTabMapTitle: 'Carte',
   notamTabConfigurationTitle: 'Configuration',
   supAipRefsLabel: 'Références SUP-AIP',

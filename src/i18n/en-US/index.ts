@@ -67,6 +67,7 @@ export default {
   notamObject: 'Object',
   notamScope: 'Scope',
   toggleSelectNotam: 'Toggle selection of NOTAM {notam}',
+  toggleNotamDetails: 'Show or hide the details of NOTAM {notam}',
   notamTabMapTitle: 'Map',
   notamTabConfigurationTitle: 'Options',
   supAipRefsLabel: 'Linked SUP-AIP',
