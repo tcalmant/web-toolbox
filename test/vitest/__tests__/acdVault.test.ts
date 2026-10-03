@@ -137,6 +137,29 @@ describe('createAcdVault', () => {
     expect(keyStore.key).toBeNull()
   })
 
+  it('keeps a remembered key when opening fails for another reason than a wrong key', async () => {
+    const keyStore = new MemoryKeyStore()
+    const bundle = await bundleFor('pass')
+    const first = createAcdVault({ bundle, keyStore })
+    await first.restore()
+    await first.unlock('pass', true)
+    const key = keyStore.key
+
+    // Same key, a bundle that decrypts but holds no valid payload: corrupt, not wrong-key
+    const corrupt = await encryptVault(
+      { planes: [], checklists: {} } as unknown as AcdPayload,
+      'pass',
+      {
+        iterations: 1000,
+        salt: bundle.salt,
+      },
+    )
+    const second = createAcdVault({ bundle: corrupt, keyStore })
+    await second.restore()
+    expect(second.status.value).toBe('locked')
+    expect(keyStore.key).toBe(key)
+  })
+
   it('locks: forgets the data and the remembered key', async () => {
     const keyStore = new MemoryKeyStore()
     const vault = createAcdVault({ bundle: await bundleFor('pass'), keyStore })

@@ -25,7 +25,7 @@ Hexagonal layout under `src/`, with `@/` aliasing `src/`:
 - `domain/`: framework-free logic (fuel, NOTAM parsing, geometry, time, AIP, checklist model and merging). Unit-tested in `test/vitest/__tests__/`. Keep it free of Vue and browser APIs.
 - `domain/ports/`: interfaces the domain/use cases depend on (`ChecklistDocumentSource`, `ChecklistStateStore`, `TimezoneListStore`, `VaultKeyStore`).
 - `adapters/`: implementations of ports and external libs: `data/` (bundled XML/JSON repositories), `storage/` (localStorage, IndexedDB), `crypto/` (ACD vault), `leaflet/` (map layers).
-- `composables/`, `components/`, `pages/`, `layouts/`: Vue UI layer. Pages are lazy-loaded and registered in `router/routes.ts` (hash router mode, empty `publicPath`, so the build can be served from any subpath).
+- `composables/`, `components/`, `pages/`, `layouts/`: Vue UI layer. Pages are lazy-loaded and registered in `router/routes.ts` (hash router mode, relative `publicPath: './'`, so the build can be served from any subpath).
 - `i18n/`: `en-US` and `fr-FR` messages via vue-i18n; user-facing strings must be added to both.
 
 ### Checklists (the least obvious part)
@@ -43,7 +43,7 @@ The club (ACD) aircraft and checklists are not public, so the repository only ho
 
 ### Offline app (PWA)
 
-`npm run build:pwa` builds the offline version (`dist/pwa`, Quasar PWA mode, Workbox InjectManifest). The service worker is `src-pwa/sw/custom-sw.ts`: it precaches the whole app (including the encrypted ACD vault) and caches the map tiles the user looks at (bounded to 600 tiles and 30 days, never prefetched). `src-pwa/register-sw.ts` tells the user when a new version is active, `src-pwa/manifest.json` is the manifest. `build.publicPath` is `./` (not empty: Quasar turns an empty one into `/`, which breaks subpath deployments), so the manifest, icons and service worker work from any subpath. The deploy workflow publishes `dist/pwa`, the PR workflow builds both modes. The icons in `public/icons/` are our own (generated, no Quasar logo).
+`npm run build:pwa` builds the offline version (`dist/pwa`, Quasar PWA mode, Workbox InjectManifest). The service worker is `src-pwa/sw/custom-sw.ts`: it precaches the whole app (including the encrypted ACD vault) and caches the map tiles the user looks at (bounded to 600 tiles and 30 days, never prefetched). `src-pwa/register-sw.ts` offers the user to switch to a new version (it waits until accepted, so the running page never loses its lazy chunks), `src-pwa/manifest.json` is the manifest. `build.publicPath` is `./` (not empty: Quasar turns an empty one into `/`, which breaks subpath deployments), so the manifest, icons and service worker work from any subpath. The deploy workflow publishes `dist/pwa`, the PR workflow builds both modes. The icons in `public/icons/` are our own (generated, no Quasar logo).
 
 ### Generated data
 

@@ -46,7 +46,17 @@ under the License.
           min="0"
           max="360"
           :label="$t('windDirectionLabel')"
-          :hint="$t('windDirectionHint')"
+          :hint="directionIsTrue ? $t('windDirectionTrueHint') : $t('windDirectionHint')"
+          @update:model-value="directionIsTrue = false"
+        />
+        <q-input
+          v-if="directionIsTrue"
+          v-model.number="variation"
+          class="col-12"
+          type="number"
+          inputmode="numeric"
+          :label="$t('windVariationLabel')"
+          :hint="$t('windVariationHint')"
         />
         <div class="col-6 col-sm-4 row items-center justify-end">
           <q-btn-toggle
@@ -134,6 +144,10 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const direction = defineModel<number | null>('direction', { default: null })
+// A METAR wind is relative to true north, runway headings are magnetic: the
+// magnetic variation (east positive) converts one to the other
+const directionIsTrue = defineModel<boolean>('directionIsTrue', { default: false })
+const variation = ref<number | null>(null)
 const speed = defineModel<number | null>('speed', { default: null })
 const gust = defineModel<number | null>('gust', { default: null })
 const unit = defineModel<'kt' | 'kmh'>('unit', { default: 'kt' })
@@ -203,7 +217,10 @@ const ends = computed(() => {
   if (!ready.value || heading.value === null || direction.value === null || speed.value === null) {
     return []
   }
-  const dir = direction.value
+  // Magnetic direction = true direction minus the (east positive) variation
+  const dir = directionIsTrue.value
+    ? (((direction.value - (variation.value ?? 0)) % 360) + 360) % 360
+    : direction.value
   const spd = speed.value
   const gst = typeof gust.value === 'number' && gust.value > spd ? gust.value : null
 

@@ -29,6 +29,7 @@ under the License.
         v-model:speed="windSpeed"
         v-model:gust="windGust"
         v-model:unit="windUnit"
+        v-model:direction-is-true="windDirectionIsTrue"
       />
       <DensityAltitudeCard
         v-model:elevation="elevation"
@@ -51,6 +52,7 @@ const windDirection = ref<number | null>(null)
 const windSpeed = ref<number | null>(null)
 const windGust = ref<number | null>(null)
 const windUnit = ref<'kt' | 'kmh'>('kt')
+const windDirectionIsTrue = ref(false)
 
 const elevation = ref<number | null>(null)
 const qnh = ref<number | null>(null)
@@ -63,6 +65,7 @@ function onUseWind(metar: Metar) {
   // METAR speeds are converted to knots, so the calculator must be in knots too
   windUnit.value = 'kt'
   windDirection.value = metar.wind.directionDeg
+  windDirectionIsTrue.value = true
   windSpeed.value = Math.round(windSpeedKt(metar.wind))
   windGust.value =
     metar.wind.gust === null ? null : Math.round(windSpeedKt(metar.wind, metar.wind.gust))

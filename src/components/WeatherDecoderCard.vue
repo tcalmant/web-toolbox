@@ -117,6 +117,9 @@ under the License.
                 <template v-if="report.corrected"> COR</template>
               </span>
             </q-item-label>
+            <q-item-label v-if="report.extras.length" caption class="monospace">
+              {{ $t('decoderTemperatureGroups') }}: {{ report.extras.join(' ') }}
+            </q-item-label>
             <div v-for="(group, gidx) in report.groups" :key="gidx" class="q-mt-sm">
               <div class="text-weight-medium">
                 {{ $t(`tafGroup_${group.kind}`) }}

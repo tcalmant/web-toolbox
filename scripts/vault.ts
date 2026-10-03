@@ -35,6 +35,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createInterface } from 'node:readline'
+import { Writable } from 'node:stream'
 
 import {
   decryptVault,
@@ -53,17 +54,18 @@ function fail(message: string): never {
   process.exit(1)
 }
 
-/** Reads a line without echoing it. */
+/**
+ * Reads a line without ever echoing it. The prompt is written by hand and the
+ * readline interface gets a muted output: readline redraws the whole line
+ * (prompt and typed text) on backspace, arrows or paste, so filtering its
+ * output would leak the passphrase.
+ */
 function askHidden(prompt: string): Promise<string> {
   return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true })
-    const output = rl as unknown as { _writeToOutput: (text: string) => void }
-    const original = output._writeToOutput.bind(rl)
-    output._writeToOutput = (text: string) => {
-      // Let the prompt through, swallow what is typed
-      if (text.startsWith(prompt)) original(text)
-    }
-    rl.question(prompt, (answer) => {
+    const muted = new Writable({ write: (_chunk, _encoding, done) => done() })
+    const rl = createInterface({ input: process.stdin, output: muted, terminal: true })
+    process.stdout.write(prompt)
+    rl.question('', (answer) => {
       rl.close()
       process.stdout.write('\n')
       resolve(answer)

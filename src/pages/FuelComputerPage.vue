@@ -335,7 +335,8 @@ const planeOptions = computed(() =>
 const filterOptions = ref<PlaneOption[]>(planeOptions.value)
 
 // The club aircraft appear when the vault is unlocked and disappear when it is locked
-watch(planeOptions, (options) => {
+watch(knownAirplanes, () => {
+  const options = planeOptions.value
   filterOptions.value = options
   const selected = currentPlane.value
   if (selected && !options.some((o) => o.value.immatriculation === selected.immatriculation)) {

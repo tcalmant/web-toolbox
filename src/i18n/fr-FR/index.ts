@@ -191,6 +191,10 @@ export default {
   windDirectionLabel: 'Direction du vent',
   windDirectionHint: 'Degrés, vent provenant de',
   windUnitLabel: 'Unité de vitesse',
+  windDirectionTrueHint: 'Nord vrai (issu du METAR) : voir la variation ci-dessous',
+  windVariationLabel: 'Variation magnétique',
+  windVariationHint:
+    "Degrés, positive à l'est. Le vent du METAR est vrai, les pistes sont magnétiques",
   windSpeedLabel: 'Vitesse du vent',
   windGustLabel: 'Rafale',
   windLimitLabel: 'Limite de vent traversier',
@@ -225,6 +229,7 @@ export default {
   decoderSky: 'Ciel',
   decoderTemperature: 'Température / point de rosée',
   decoderQnh: 'QNH',
+  decoderTemperatureGroups: 'Prévision de température (maxi TX / mini TN)',
   decoderUnparsed: 'Non décodé',
   decoderUseWind: 'Utiliser ce vent',
   decoderUseDensity: "Utiliser pour l'altitude densité",
