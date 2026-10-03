@@ -23,10 +23,26 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/layouts/MainLayout.vue'),
     children: [
       { path: '', redirect: 'notam-mapper' },
-      { path: 'timestamp', component: () => import('@/pages/TimestampPage.vue') },
-      { path: 'fuel-computer', component: () => import('@/pages/FuelComputerPage.vue') },
-      { path: 'notam-mapper', component: () => import('@/pages/NotamMapperPage.vue') },
-      { path: 'checklist', component: () => import('@/pages/ChecklistPage.vue') },
+      {
+        path: 'timestamp',
+        component: () => import('@/pages/TimestampPage.vue'),
+        meta: { titleKey: 'timestampTitle' },
+      },
+      {
+        path: 'fuel-computer',
+        component: () => import('@/pages/FuelComputerPage.vue'),
+        meta: { titleKey: 'fuelComputerTitle' },
+      },
+      {
+        path: 'notam-mapper',
+        component: () => import('@/pages/NotamMapperPage.vue'),
+        meta: { titleKey: 'notamMapperTitle' },
+      },
+      {
+        path: 'checklist',
+        component: () => import('@/pages/ChecklistPage.vue'),
+        meta: { titleKey: 'checklistTitle' },
+      },
     ],
   },
 
