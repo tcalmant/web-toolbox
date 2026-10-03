@@ -89,6 +89,7 @@ const tools = [
   { to: '/notam-mapper', titleKey: 'notamMapperTitle' },
   { to: '/fuel-computer', titleKey: 'fuelComputerTitle' },
   { to: '/timestamp', titleKey: 'timestampTitle' },
+  { to: '/weather', titleKey: 'weatherTitle' },
   { to: '/checklist', titleKey: 'checklistTitle' },
 ]
 
