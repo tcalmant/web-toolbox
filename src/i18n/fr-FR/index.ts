@@ -299,6 +299,11 @@ export default {
   acdLockDrawer: 'Verrouiller les données ACD',
   acdFuelBanner: "Les avions de l'ACD sont verrouillés : seuls vos propres avions sont listés.",
 
+  // Offline app
+  pwaUpdateMessage: "Une nouvelle version de l'application est disponible.",
+  pwaReloadLabel: 'Recharger',
+  pwaOfflineReady: "L'application fonctionne maintenant hors ligne.",
+
   // Checklist
   checklistPlaneLabel: 'Avion',
   checklistPlaneHint: "Sélectionnez l'avion pour charger sa check-list",
