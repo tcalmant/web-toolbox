@@ -42,7 +42,8 @@ under the License.
 import TimeConverterCard from '@/components/TimeConverterCard.vue'
 import UnixTimestampPanel from '@/components/UnixTimestampPanel.vue'
 import WorldClockCard from '@/components/WorldClockCard.vue'
-import { useNow, useTimezoneList } from '@/composables/useTimezoneList'
+import { useNow } from '@/composables/useNow'
+import { useTimezoneList } from '@/composables/useTimezoneList'
 
 const { zones, add, remove, reset } = useTimezoneList()
 const now = useNow()

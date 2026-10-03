@@ -30,10 +30,7 @@ under the License.
         class="checklist-sticky-bar"
         :style="{ top: `${headerHeight}px` }"
       >
-        <div
-          class="row items-center no-wrap"
-          :class="isMobile ? 'q-gutter-xs' : 'q-gutter-md wrap'"
-        >
+        <div class="row items-center" :class="isMobile ? 'no-wrap q-gutter-xs' : 'q-gutter-md'">
           <q-select
             class="col"
             :dense="isMobile"

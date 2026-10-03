@@ -57,7 +57,9 @@ export class TimezoneListLocalStorageStore implements TimezoneListStore {
         zones.push(value)
       }
     }
-    return zones
+    // An empty list is a valid choice (everything removed), but a list whose
+    // entries were all rejected is garbage and must not hide the defaults
+    return zones.length === 0 && parsed.length > 0 ? null : zones
   }
 
   save(zones: string[]): void {

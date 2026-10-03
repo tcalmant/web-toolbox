@@ -140,8 +140,23 @@ const unit = defineModel<'kt' | 'kmh'>('unit', { default: 'kt' })
 const { t } = useI18n()
 
 const runway = ref('')
-// 40 km/h (22 kt) is the demonstrated crosswind of the club's DR400s
-const limit = ref<number | null>(22)
+// 40 km/h (22 kt) is the demonstrated crosswind of the club's DR400s. It is
+// kept in knots: the unit can be changed by the parent page (a decoded METAR
+// forces knots) without going through the toggle.
+const limitKt = ref<number | null>(22)
+const limit = computed<number | null>({
+  get: () => {
+    if (limitKt.value === null) return null
+    return unit.value === 'kt' ? limitKt.value : Math.round(limitKt.value * KMH_PER_KNOT)
+  },
+  set: (value) => {
+    if (typeof value !== 'number') {
+      limitKt.value = null
+    } else {
+      limitKt.value = unit.value === 'kt' ? value : value / KMH_PER_KNOT
+    }
+  },
+})
 
 const unitLabel = computed(() => (unit.value === 'kt' ? 'kt' : 'km/h'))
 const format = (value: number) => Math.round(value).toString()
@@ -151,7 +166,7 @@ const heading = computed(() => parseRunwayHeading(runway.value))
 function onUnitChange(newUnit: 'kt' | 'kmh') {
   // Convert the entered speeds so that the physical values stay the same
   const factor = newUnit === 'kmh' ? KMH_PER_KNOT : 1 / KMH_PER_KNOT
-  for (const model of [speed, gust, limit]) {
+  for (const model of [speed, gust]) {
     if (typeof model.value === 'number') {
       model.value = Math.round(model.value * factor)
     }

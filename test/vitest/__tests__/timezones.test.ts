@@ -184,6 +184,13 @@ describe('TimezoneListLocalStorageStore', () => {
     ])
   })
 
+  it('keeps an explicitly empty list but rejects a list with no valid entry', () => {
+    expect(new TimezoneListLocalStorageStore(fakeStorage(() => '[]')).load()).toEqual([])
+    expect(
+      new TimezoneListLocalStorageStore(fakeStorage(() => '["Mars/Olympus", 3]')).load(),
+    ).toBeNull()
+  })
+
   it('saves as JSON and does not throw when saving fails', () => {
     let saved: unknown
     const ok = { getItem: () => null, setItem: (_k: string, v: unknown) => (saved = v) }

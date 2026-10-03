@@ -64,18 +64,31 @@ export function localTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
+// Building an Intl.DateTimeFormat is expensive and the world clock asks for
+// the same few zones every second
+const partsFormatters = new Map<string, Intl.DateTimeFormat>()
+
+function partsFormatter(tzName: string): Intl.DateTimeFormat {
+  let formatter = partsFormatters.get(tzName)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tzName,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hourCycle: 'h23',
+    })
+    partsFormatters.set(tzName, formatter)
+  }
+  return formatter
+}
+
 /** Wall-clock fields of the given instant in the given zone. */
 export function zonedParts(date: Date, tzName: string): ZonedParts {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tzName,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-    hourCycle: 'h23',
-  })
+  const formatter = partsFormatter(tzName)
   const values: Record<string, number> = {}
   for (const part of formatter.formatToParts(date)) {
     if (part.type !== 'literal') {
