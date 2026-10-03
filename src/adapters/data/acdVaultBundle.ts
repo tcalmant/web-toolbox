@@ -15,22 +15,16 @@
  *   limitations under the License.
  */
 
-import type { AcdPlaneRecord } from '@/domain/acdVault'
-import { AirPlane } from '@/domain/airplanes'
+import { isVaultBundle, type VaultBundle } from '@/domain/acdVault'
 
-/** Builds the aircraft from the (decrypted) club records. */
-export function buildAirplanes(records: Record<string, AcdPlaneRecord>): Record<string, AirPlane> {
-  const airplanes: Record<string, AirPlane> = {}
-  for (const [immatriculation, data] of Object.entries(records)) {
-    airplanes[immatriculation] = new AirPlane(
-      immatriculation,
-      data.brand,
-      data.model,
-      data.fuel.unit,
-      data.fuel.capacity,
-      data.fuel.consumable,
-      data.fuel.hourlyConsumption,
-    )
-  }
-  return airplanes
-}
+// Optional on purpose: a checkout without the vault file still builds, the app
+// then simply has no ACD data.
+const modules = import.meta.glob<unknown>('../../fixed-data/acd.vault.json', {
+  eager: true,
+  import: 'default',
+})
+
+const candidate = Object.values(modules)[0]
+
+/** The encrypted ACD data shipped with the app, if any. */
+export const acdVaultBundle: VaultBundle | null = isVaultBundle(candidate) ? candidate : null

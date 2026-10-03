@@ -15,22 +15,15 @@
  *   limitations under the License.
  */
 
-import type { AcdPlaneRecord } from '@/domain/acdVault'
-import { AirPlane } from '@/domain/airplanes'
-
-/** Builds the aircraft from the (decrypted) club records. */
-export function buildAirplanes(records: Record<string, AcdPlaneRecord>): Record<string, AirPlane> {
-  const airplanes: Record<string, AirPlane> = {}
-  for (const [immatriculation, data] of Object.entries(records)) {
-    airplanes[immatriculation] = new AirPlane(
-      immatriculation,
-      data.brand,
-      data.model,
-      data.fuel.unit,
-      data.fuel.capacity,
-      data.fuel.consumable,
-      data.fuel.hourlyConsumption,
-    )
-  }
-  return airplanes
+/**
+ * Port: keeps the key that unlocked the ACD data vault, so that a trusted
+ * device does not have to ask for the passphrase again. The key is a
+ * non-extractable CryptoKey: the passphrase itself is never stored.
+ * Implemented by a driven adapter (e.g. one backed by IndexedDB).
+ */
+export interface VaultKeyStore {
+  /** The remembered key, or null when none (or the storage is unavailable). */
+  load(): Promise<CryptoKey | null>
+  save(key: CryptoKey): Promise<void>
+  clear(): Promise<void>
 }

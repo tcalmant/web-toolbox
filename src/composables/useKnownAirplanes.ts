@@ -15,22 +15,13 @@
  *   limitations under the License.
  */
 
-import type { AcdPlaneRecord } from '@/domain/acdVault'
-import { AirPlane } from '@/domain/airplanes'
+import { computed } from 'vue'
 
-/** Builds the aircraft from the (decrypted) club records. */
-export function buildAirplanes(records: Record<string, AcdPlaneRecord>): Record<string, AirPlane> {
-  const airplanes: Record<string, AirPlane> = {}
-  for (const [immatriculation, data] of Object.entries(records)) {
-    airplanes[immatriculation] = new AirPlane(
-      immatriculation,
-      data.brand,
-      data.model,
-      data.fuel.unit,
-      data.fuel.capacity,
-      data.fuel.consumable,
-      data.fuel.hourlyConsumption,
-    )
-  }
-  return airplanes
+import { buildAirplanes } from '@/adapters/data/airplanesRepository'
+import { useAcdVault } from '@/composables/useAcdVault'
+
+/** The club aircraft: empty while the vault is locked. */
+export function useKnownAirplanes() {
+  const vault = useAcdVault()
+  return computed(() => buildAirplanes(vault.payload.value?.planes ?? {}))
 }

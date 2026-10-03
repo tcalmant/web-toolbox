@@ -17,24 +17,34 @@
 
 import type { ChecklistDocumentSource, ChecklistTier } from '@/domain/ports/checklistDocumentSource'
 
-// Airplane models (e.g. "DR400 135 CDI") contain spaces, so filenames can't be
-// resolved with individually named static imports without a slugification
-// scheme. import.meta.glob accepts arbitrary literal path keys instead.
-const xmlModules = import.meta.glob<string>('/src/fixed-data/checklists/**/*.xml', {
+// The general (fallback) checklist holds no club data and ships in clear. The
+// model and plane tiers are the club's and come from the unlocked vault.
+// import.meta.glob accepts arbitrary literal path keys, which the model names
+// (with spaces) need.
+const generalModules = import.meta.glob<string>('/src/fixed-data/checklists/general/*.xml', {
   query: '?raw',
   import: 'default',
   eager: true,
 })
 
 /**
- * Driven adapter for {@link ChecklistDocumentSource}, backed by XML files bundled
- * under src/fixed-data/checklists/. Tries the locale-specific file first, then
- * falls back to a locale-neutral file with no locale suffix.
+ * Driven adapter for {@link ChecklistDocumentSource}. Tries the locale-specific
+ * file first, then falls back to a locale-neutral file with no locale suffix.
+ * @param tiers The club checklists from the vault, by path ("model/DR400 120.xml")
  */
 export class ChecklistXmlSource implements ChecklistDocumentSource {
+  private readonly tiers: Readonly<Record<string, string>>
+
+  constructor(tiers: Readonly<Record<string, string>> = {}) {
+    this.tiers = tiers
+  }
+
   getRawXml(tier: ChecklistTier, key: string, locale: string): string | undefined {
-    const base = tier === 'general' ? 'general/general' : `${tier}/${key}`
-    const path = `/src/fixed-data/checklists/${base}`
-    return xmlModules[`${path}.${locale}.xml`] ?? xmlModules[`${path}.xml`]
+    if (tier === 'general') {
+      const path = '/src/fixed-data/checklists/general/general'
+      return generalModules[`${path}.${locale}.xml`] ?? generalModules[`${path}.xml`]
+    }
+    const path = `${tier}/${key}`
+    return this.tiers[`${path}.${locale}.xml`] ?? this.tiers[`${path}.xml`]
   }
 }

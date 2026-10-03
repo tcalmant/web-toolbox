@@ -278,6 +278,22 @@ export default {
   wx_SS: 'tempête de sable',
   wx_DS: 'tempête de poussière',
 
+  // ACD data vault
+  acdVaultTitle: 'Données ACD',
+  acdLockedMessage:
+    "Les avions et les check-lists de l'Aéroclub du Dauphiné sont protégés. Saisissez le mot de passe du club pour les afficher.",
+  acdAbsentMessage: 'Cette version ne contient pas de données ACD.',
+  acdPassphraseLabel: 'Mot de passe',
+  acdRememberLabel: 'Se souvenir sur cet appareil',
+  acdRememberHint:
+    "Seulement sur un ordinateur de confiance : le déverrouillage reste dans ce navigateur jusqu'au prochain verrouillage.",
+  acdUnlockButton: 'Déverrouiller',
+  acdWrongPassphrase: 'Mot de passe incorrect',
+  acdCorrupt: 'Les données ACD sont endommagées',
+  acdUnlockDrawer: 'Déverrouiller les données ACD',
+  acdLockDrawer: 'Verrouiller les données ACD',
+  acdFuelBanner: "Les avions de l'ACD sont verrouillés : seuls vos propres avions sont listés.",
+
   // Checklist
   checklistPlaneLabel: 'Avion',
   checklistPlaneHint: "Sélectionnez l'avion pour charger sa check-list",
