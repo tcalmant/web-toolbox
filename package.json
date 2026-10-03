@@ -14,7 +14,9 @@
     "build": "quasar build",
     "postinstall": "quasar prepare",
     "test:unit": "vitest",
-    "test:unit:ci": "vitest run"
+    "test:unit:ci": "vitest run",
+    "vault:encrypt": "node scripts/vault.ts encrypt",
+    "vault:decrypt": "node scripts/vault.ts decrypt"
   },
   "dependencies": {
     "@quasar/extras": "^2.1.0",

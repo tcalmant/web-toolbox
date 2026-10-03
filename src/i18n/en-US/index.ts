@@ -277,6 +277,22 @@ export default {
   wx_SS: 'sandstorm',
   wx_DS: 'duststorm',
 
+  // ACD data vault
+  acdVaultTitle: 'ACD data',
+  acdLockedMessage:
+    'The Aéroclub du Dauphiné aircraft and checklists are protected. Enter the club passphrase to display them.',
+  acdAbsentMessage: 'This build contains no ACD data.',
+  acdPassphraseLabel: 'Passphrase',
+  acdRememberLabel: 'Remember on this device',
+  acdRememberHint:
+    'Only on a trusted computer: the unlock is kept in this browser until you lock the data again.',
+  acdUnlockButton: 'Unlock',
+  acdWrongPassphrase: 'Wrong passphrase',
+  acdCorrupt: 'The ACD data is damaged',
+  acdUnlockDrawer: 'Unlock ACD data',
+  acdLockDrawer: 'Lock ACD data',
+  acdFuelBanner: 'The ACD aircraft are locked: only your own aircraft are listed.',
+
   // Checklist
   checklistPlaneLabel: 'Airplane',
   checklistPlaneHint: 'Select the airplane to load its checklist',
