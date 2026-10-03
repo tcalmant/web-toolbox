@@ -150,6 +150,11 @@ export default {
   imp_gal: 'gal GB',
 
   // Timestamp
+  unixResetLabel: "Mettre à l'heure actuelle",
+  pickDateLabel: 'Choisir une date',
+  pickTimeLabel: 'Choisir une heure',
+  useLocalTimezoneLabel: 'Utiliser mon fuseau horaire',
+  closeLabel: 'Fermer',
   worldClockTitle: 'Horloge mondiale',
   worldClockEmpty: 'Aucun fuseau horaire sélectionné',
   zoneUtcLabel: 'UTC (Zulu)',
