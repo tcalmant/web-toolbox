@@ -35,3 +35,6 @@ yarn-error.log*
 
 # Work folder
 /tmp
+
+# ACD data in clear, only the encrypted vault is committed
+/private

@@ -94,6 +94,7 @@ const initMap = () => {
         maxZoom: 18,
         attribution: '&copy; <a href="https://www.geoportail.gouv.fr/">IGN-F/Geoportail</a>',
         tileSize: 256,
+        crossOrigin: true,
       },
     ),
     'IGN Photo': L.tileLayer(
@@ -112,6 +113,7 @@ const initMap = () => {
         maxZoom: 18,
         attribution: '&copy; <a href="https://www.geoportail.gouv.fr/">IGN-F/Geoportail</a>',
         tileSize: 256,
+        crossOrigin: true,
       },
     ),
     'IGN OACI-VFR 2025': L.tileLayer(
@@ -132,14 +134,17 @@ const initMap = () => {
         attribution:
           '&copy; <a href="https://geoservices.ign.fr/">IGN</a> - 2025. <a href="https://geoservices.ign.fr/cgu-licences">Copie et reproduction interdite.</a>',
         tileSize: 256,
+        crossOrigin: true,
       },
     ),
     OpenStreetMap: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
+      crossOrigin: true,
       attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }),
     OpenTopoMap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       maxZoom: 15,
+      crossOrigin: true,
       attribution:
         'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
     }),

@@ -1,0 +1,390 @@
+<!--
+Copyright (c) 2025 Thomas Calmant
+All rights reserved.
+
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+
+<template>
+  <div class="column q-gutter-y-md q-pa-md">
+    <div :class="{ row: !isPortrait, col: isPortrait }">
+      <q-input
+        :class="{ row: isPortrait, col: !isPortrait }"
+        v-model.number="unixTimestamp"
+        type="number"
+        inputmode="numeric"
+        :label="$t('unixLabel')"
+        @update:model-value="onTimestampChange"
+      >
+        <template v-slot:prepend>
+          <q-btn
+            flat
+            round
+            dense
+            icon="history"
+            :aria-label="$t('unixResetLabel')"
+            @click="reset()"
+          />
+        </template>
+      </q-input>
+      <q-select
+        :class="{ row: isPortrait, col: !isPortrait, 'q-mx-md': !isPortrait }"
+        v-model="unixTimestampUnit"
+        :options="TIMESTAMP_UNITS"
+        :option-label="(opt) => opt.getLabel()"
+        :label="$t('unixPrecisionLabel')"
+      >
+      </q-select>
+    </div>
+    <q-input
+      v-model="dateUTC"
+      :label="$t('utcLabel')"
+      :hint="$t('utcHint')"
+      @update:model-value="onUTCDateChange"
+    >
+      <template v-slot:prepend>
+        <q-btn flat round dense icon="event" :aria-label="$t('pickDateLabel')">
+          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+            <q-date
+              :model-value="dateUTC"
+              mask="YYYY-MM-DD HH:mm:ss"
+              @update:model-value="onUTCDateChange"
+              :today-btn="true"
+            >
+              <div class="row items-center justify-end">
+                <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
+              </div>
+            </q-date>
+          </q-popup-proxy>
+        </q-btn>
+      </template>
+      <template v-slot:append>
+        <q-btn flat round dense icon="access_time" :aria-label="$t('pickTimeLabel')">
+          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+            <q-time
+              :model-value="dateUTC"
+              mask="YYYY-MM-DD HH:mm:ss"
+              @update:model-value="onUTCDateChange"
+              :now-btn="true"
+            >
+              <div class="row items-center justify-end">
+                <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
+              </div>
+            </q-time>
+          </q-popup-proxy>
+        </q-btn>
+      </template>
+    </q-input>
+    <div :class="{ row: !isPortrait, col: isPortrait }">
+      <q-input
+        :class="{ row: isPortrait, col: !isPortrait }"
+        v-model="dateLocalTZ"
+        :label="$t('localDateLabel')"
+        :hint="
+          $t('localDateHint', {
+            tzName: selectedTz,
+            utcOffset: formatTzOffset(
+              new Date(snapFloor(unitNs.toMilliseconds(unixTimestampNs))),
+              selectedTz,
+            ),
+          })
+        "
+        @update:model-value="onLocalDateChange"
+      >
+        <template v-slot:prepend>
+          <q-btn flat round dense icon="event" :aria-label="$t('pickDateLabel')">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date
+                :model-value="dateLocalTZ"
+                mask="YYYY-MM-DD HH:mm:ss"
+                @update:model-value="onLocalDateChange"
+                :today-btn="true"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
+                </div>
+              </q-date>
+            </q-popup-proxy>
+          </q-btn>
+        </template>
+        <template v-slot:append>
+          <q-btn flat round dense icon="access_time" :aria-label="$t('pickTimeLabel')">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-time
+                :model-value="dateLocalTZ"
+                mask="YYYY-MM-DD HH:mm:ss"
+                @update:model-value="onLocalDateChange"
+                :now-btn="true"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup :label="$t('closeLabel')" color="primary" flat />
+                </div>
+              </q-time>
+            </q-popup-proxy>
+          </q-btn>
+        </template>
+      </q-input>
+      <q-select
+        :class="{ row: isPortrait, col: !isPortrait, 'q-mx-md': !isPortrait }"
+        v-model="selectedTz"
+        :options="tzList"
+        :label="$t('timezoneLabel')"
+        use-input
+        input-debounce="0"
+        @filter="filterTimezone"
+      >
+        <template v-slot:append>
+          <q-btn
+            icon="public"
+            flat
+            round
+            dense
+            :aria-label="$t('useLocalTimezoneLabel')"
+            @click.prevent="selectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone"
+          />
+        </template>
+        <template v-slot:no-option>
+          <q-item>
+            <q-item-section class="text-grey"> {{ $t('noResults') }} </q-item-section>
+          </q-item>
+        </template>
+      </q-select>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useOrientation } from '@/composables/useOrientation'
+import { dateToString, dateToUTCString, formatTzOffset } from '@/domain/time'
+import { allTimeZones, parseDayAndTime, zonedTimeToInstant } from '@/domain/timezones'
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
+// Display configuration
+const { isPortrait } = useOrientation()
+
+/**
+ * Representation of support timestamp units
+ */
+class TimestampUnit {
+  label: string
+  nanoseconds: number
+  nbNanosecondsDigits: number
+
+  constructor(label: string, nanoseconds: number) {
+    this.label = label
+    this.nanoseconds = nanoseconds
+    this.nbNanosecondsDigits = Math.floor(Math.log10(nanoseconds))
+  }
+
+  getLabel(): string {
+    return this.label
+  }
+
+  fromNanoseconds(value: number): number {
+    return value / this.nanoseconds
+  }
+
+  toNanoseconds(value: number): number {
+    return value * this.nanoseconds
+  }
+
+  toMilliseconds(value: number): number {
+    return (value * this.nanoseconds) / 1000000
+  }
+}
+
+/**
+ * Nanoseconds and milliseconds units are used internally
+ */
+const unitNs = new TimestampUnit('ns', 1)
+const unitSecond = new TimestampUnit('s', 1000000000)
+const unitMs = new TimestampUnit('ms', 1000000)
+const unitMicro = new TimestampUnit('µs', 1000)
+
+class AutoTimestampUnit extends TimestampUnit {
+  knownUnits: TimestampUnit[]
+  nbDigitsNowNs: number
+  lastUnit: TimestampUnit
+
+  constructor(label: string, knownUnits: TimestampUnit[]) {
+    super(label, 0)
+    this.knownUnits = knownUnits
+
+    // Base configuration
+    const now = new Date().getTime()
+    this.nbDigitsNowNs = Math.floor(Math.log10(unitMs.toNanoseconds(now)))
+    this.lastUnit = unitMs
+
+    // Go through the method to update the label
+    this.autoUnit(now)
+  }
+
+  detectUnit(value: number): TimestampUnit {
+    const nbDigitsValue = Math.floor(Math.log10(Math.abs(value)))
+    const matchingUnits = this.knownUnits
+      .filter((u) => nbDigitsValue <= this.nbDigitsNowNs - u.nbNanosecondsDigits)
+      .sort((a, b) => b.nanoseconds - a.nanoseconds)
+
+    const matchingUnit = matchingUnits[0]
+    if (matchingUnit) {
+      return matchingUnit
+    } else {
+      // Fall back to nanoseconds if nothing matches
+      return unitNs
+    }
+  }
+
+  override getLabel(): string {
+    return t('autoPrecisionLabel', { subUnit: this.lastUnit.label })
+  }
+
+  private autoUnit(value: number): TimestampUnit {
+    const newUnit = this.detectUnit(value)
+    this.label = t('autoPrecisionLabel', { subUnit: newUnit.label })
+    this.lastUnit = newUnit
+    return newUnit
+  }
+
+  override fromNanoseconds(value: number): number {
+    return this.lastUnit.fromNanoseconds(value)
+  }
+
+  override toNanoseconds(value: number): number {
+    return this.autoUnit(value).toNanoseconds(value)
+  }
+
+  override toMilliseconds(value: number): number {
+    return this.autoUnit(value).toMilliseconds(value)
+  }
+}
+
+const autoUnit = new AutoTimestampUnit('Auto', [unitSecond, unitMs, unitMicro, unitNs])
+
+const TIMESTAMP_UNITS: TimestampUnit[] = [autoUnit, ...autoUnit.knownUnits]
+
+/**
+ * The internal value, in nanoseconds
+ */
+const unixTimestampNs = ref<number>(unitMs.toNanoseconds(new Date().getTime()))
+const unixTimestampUnit = ref<TimestampUnit>(autoUnit)
+
+/**
+ * Whole units from a float: the ns round trip (x * 1e6 / 1e6) can land just
+ * below the integer (1699999999999.9998), and a plain floor would lose 1 unit.
+ */
+const snapFloor = (x: number) => Math.floor(Math.round(x * 1000) / 1000)
+
+function reset() {
+  unixTimestampNs.value = unitMs.toNanoseconds(new Date().getTime())
+}
+
+/**
+ * Input models
+ */
+const unixTimestamp = ref<number>(new Date().getTime())
+const dateUTC = ref<string>('')
+const dateLocalTZ = ref<string>('')
+
+const allTimezones: string[] = allTimeZones()
+const tzList = ref<string[]>(allTimezones)
+const selectedTz = ref<string>(Intl.DateTimeFormat().resolvedOptions().timeZone)
+
+/**
+ * Update on internal change
+ */
+watch(
+  unixTimestampNs,
+  (newValue) => {
+    if (isFinite(newValue)) {
+      const internalDate = new Date(snapFloor(unitNs.toMilliseconds(newValue)))
+      unixTimestamp.value = snapFloor(unixTimestampUnit.value.fromNanoseconds(newValue))
+      dateUTC.value = dateToUTCString(internalDate)
+      dateLocalTZ.value = dateToString(internalDate, selectedTz.value)
+    }
+  },
+  { immediate: true },
+)
+
+// Re-express the displayed timestamp when the precision changes (the internal
+// value is unchanged)
+watch(unixTimestampUnit, (unit) => {
+  if (unit === autoUnit && Number.isFinite(unixTimestamp.value)) {
+    // Detect the unit from the number currently displayed
+    autoUnit.toNanoseconds(unixTimestamp.value)
+  }
+  if (Number.isFinite(unixTimestampNs.value)) {
+    unixTimestamp.value = snapFloor(unit.fromNanoseconds(unixTimestampNs.value))
+  }
+})
+
+watch(selectedTz, () => {
+  dateLocalTZ.value = dateToString(
+    new Date(snapFloor(unitNs.toMilliseconds(unixTimestampNs.value))),
+    selectedTz.value,
+  )
+})
+
+function filterTimezone(value: string, update: (cb: () => void) => void) {
+  if (value == '') {
+    update(() => {
+      tzList.value = allTimezones
+    })
+  } else {
+    update(() => {
+      const filterStr = value.toLowerCase()
+      tzList.value = allTimezones.filter((tzName) => tzName.toLowerCase().includes(filterStr))
+    })
+  }
+}
+
+function onTimestampChange(newValue: string | number | null) {
+  if (newValue === null || newValue === undefined) {
+    return
+  }
+
+  if (typeof newValue === 'string') {
+    newValue = parseInt(newValue)
+  }
+
+  if (isFinite(newValue)) {
+    unixTimestampNs.value = unixTimestampUnit.value.toNanoseconds(newValue)
+  }
+}
+
+/**
+ * Sets the instant from a "YYYY-MM-DD HH:mm:ss" wall-clock text typed or picked
+ * for the given zone. Incomplete or invalid text is ignored while the user types.
+ */
+function setFromWallClock(text: string | number | null, tzName: string) {
+  if (typeof text !== 'string') {
+    return
+  }
+  const [day = '', time = ''] = text.trim().split(/\s+/)
+  const parts = parseDayAndTime(day, time)
+  if (parts) {
+    unixTimestampNs.value = unitMs.toNanoseconds(zonedTimeToInstant(parts, tzName).getTime())
+  }
+}
+
+const onUTCDateChange = (newValue: string | number | null) => setFromWallClock(newValue, 'UTC')
+const onLocalDateChange = (newValue: string | number | null) =>
+  setFromWallClock(newValue, selectedTz.value)
+</script>

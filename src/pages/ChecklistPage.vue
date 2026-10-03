@@ -22,16 +22,20 @@ under the License.
 
 <template>
   <q-page padding class="col">
-    <div class="q-gutter-md">
+    <AcdUnlockCard v-if="!vault.isUnlocked.value" />
+    <div v-else class="q-gutter-md">
       <q-card
         flat
         bordered
-        class="q-pa-sm checklist-sticky-bar"
+        :class="isMobile ? 'q-pa-xs' : 'q-pa-sm'"
+        class="checklist-sticky-bar"
         :style="{ top: `${headerHeight}px` }"
       >
-        <div class="row items-center q-gutter-md">
+        <div class="row items-center" :class="isMobile ? 'no-wrap q-gutter-xs' : 'q-gutter-md'">
           <q-select
-            class="col-12 col-sm"
+            class="col"
+            :dense="isMobile"
+            :hide-hint="isMobile"
             v-model="planeIdent"
             :label="$t('checklistPlaneLabel')"
             :hint="$t('checklistPlaneHint')"
@@ -40,10 +44,7 @@ under the License.
             map-options
             @update:model-value="onPlaneSelect"
           />
-          <div
-            class="col-auto text-weight-bold"
-            :class="isMobile ? 'text-body1' : 'text-h6'"
-          >
+          <div class="col-auto text-weight-bold" :class="isMobile ? 'text-body1' : 'text-h6'">
             {{ clock }}
           </div>
           <q-space v-if="isMobile" />
@@ -138,11 +139,13 @@ import { computed, nextTick, onMounted, onUnmounted, provide, reactive, ref, wat
 import { useI18n } from 'vue-i18n'
 
 import { ChecklistXmlSource } from '@/adapters/data/checklistXmlSource'
+import AcdUnlockCard from '@/components/AcdUnlockCard.vue'
+import { useAcdVault } from '@/composables/useAcdVault'
+import { useKnownAirplanes } from '@/composables/useKnownAirplanes'
 import { ChecklistLocalStorageStore } from '@/adapters/storage/checklistLocalStorageStore'
 import ChecklistItemList from '@/components/ChecklistItemList.vue'
 import { checklistChangeKey, checklistStateKey } from '@/composables/useChecklistState'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
-import KnownAirplanes from '@/adapters/data/airplanesRepository'
 import type { AirPlane } from '@/domain/airplanes'
 import { ChecklistChoice, type Checklist, type ChecklistSection } from '@/domain/checklist'
 import { resolveChecklistForPlane } from '@/domain/checklistResolver'
@@ -163,18 +166,20 @@ onMounted(() => {
   headerHeight.value = document.querySelector('.q-header')?.getBoundingClientRect().height ?? 0
 })
 
-const xmlSource = new ChecklistXmlSource()
+const vault = useAcdVault()
+const knownAirplanes = useKnownAirplanes()
+const xmlSource = computed(() => new ChecklistXmlSource(vault.payload.value?.checklists ?? {}))
 const stateStore = new ChecklistLocalStorageStore($q.localStorage)
 
 // Plane selection
 const planeOptions = computed(() =>
-  Object.values(KnownAirplanes)
+  Object.values(knownAirplanes.value)
     .sort((a, b) => a.immatriculation.localeCompare(b.immatriculation))
     .map((plane: AirPlane) => ({ label: plane.toString(), value: plane.immatriculation })),
 )
 
 const planeIdent = ref('')
-const currentPlane = computed<AirPlane | null>(() => KnownAirplanes[planeIdent.value] ?? null)
+const currentPlane = computed<AirPlane | null>(() => knownAirplanes.value[planeIdent.value] ?? null)
 
 // Live UTC clock, always visible in 24h format
 const clock = ref(timeToUTCString(new Date()))
@@ -199,7 +204,7 @@ function resolveChecklist() {
     return
   }
 
-  checklist.value = resolveChecklistForPlane(xmlSource, plane, locale.value)
+  checklist.value = resolveChecklistForPlane(xmlSource.value, plane, locale.value)
   for (const section of checklist.value.sections) {
     if (!(section.id in expandedState)) {
       expandedState[section.id] = !section.flags.collapsed
@@ -351,17 +356,29 @@ function onClearAll() {
   })
 }
 
-onMounted(() => {
+// Select the saved (or the first) plane once the club aircraft are available, and
+// forget the checklist when they go away again (vault locked)
+function syncPlaneSelection() {
+  if (planeIdent.value && !knownAirplanes.value[planeIdent.value]) {
+    planeIdent.value = ''
+    checklist.value = null
+  }
+  if (planeIdent.value) {
+    return
+  }
   const savedPlaneIdent = $q.sessionStorage.getItem<string>('checklist.input.planeIdent')
   const initialIdent =
-    savedPlaneIdent && KnownAirplanes[savedPlaneIdent]
+    savedPlaneIdent && knownAirplanes.value[savedPlaneIdent]
       ? savedPlaneIdent
       : (planeOptions.value[0]?.value ?? '')
 
   if (initialIdent) {
     onPlaneSelect(initialIdent)
   }
-})
+}
+
+onMounted(syncPlaneSelection)
+watch(knownAirplanes, syncPlaneSelection)
 </script>
 
 <style scoped>

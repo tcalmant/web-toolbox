@@ -22,7 +22,22 @@ under the License.
 
 <template>
   <q-page padding class="col">
-    <div class="q-gutter-md">
+    <div class="column q-gutter-y-md">
+      <q-banner
+        v-if="vault.status.value === 'locked'"
+        rounded
+        class="bg-blue-1 text-blue-10 print-hide"
+      >
+        {{ $t('acdFuelBanner') }}
+        <template v-slot:action>
+          <q-btn
+            flat
+            no-caps
+            :label="$t('acdUnlockButton')"
+            @click="vault.dialogOpen.value = true"
+          />
+        </template>
+      </q-banner>
       <div class="row q-col-gutter-md items-start print-hide">
         <q-select
           class="col-12 col-md-4"
@@ -191,7 +206,8 @@ under the License.
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar'
-import KnowAirplanes from '@/adapters/data/airplanesRepository'
+import { useAcdVault } from '@/composables/useAcdVault'
+import { useKnownAirplanes } from '@/composables/useKnownAirplanes'
 import InputListTimeline from '@/components/InputListTimeline.vue'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { AirPlane } from '@/domain/airplanes'
@@ -305,16 +321,37 @@ class PlaneOption {
   }
 }
 
+const vault = useAcdVault()
+const knownAirplanes = useKnownAirplanes()
 const customPlanes = ref<AirPlane[]>([])
 
 const planeOptions = computed(() =>
-  Object.values(KnowAirplanes)
+  Object.values(knownAirplanes.value)
     .concat(customPlanes.value)
     .sort((a, b) => a.immatriculation.localeCompare(b.immatriculation))
     .map((plane: AirPlane) => new PlaneOption(plane)),
 )
 
 const filterOptions = ref<PlaneOption[]>(planeOptions.value)
+
+// The club aircraft appear when the vault is unlocked and disappear when it is locked
+watch(knownAirplanes, () => {
+  const options = planeOptions.value
+  filterOptions.value = options
+  const selected = currentPlane.value
+  if (selected && !options.some((o) => o.value.immatriculation === selected.immatriculation)) {
+    currentPlane.value = null
+    planeIdent.value = ''
+    return
+  }
+  if (!selected) {
+    const saved = $q.sessionStorage.getItem<string>('fuel_computer.input.planeIdent')
+    const match = saved ? options.find((o) => o.value.immatriculation === saved) : undefined
+    if (match) {
+      onPlaneSelect(match)
+    }
+  }
+})
 
 const currentPlane = ref(null as AirPlane | null)
 const planeIsCustom = computed(() => currentPlane.value?.isCustom ?? false)
