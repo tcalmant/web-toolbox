@@ -298,6 +298,11 @@ export default {
   acdLockDrawer: 'Lock ACD data',
   acdFuelBanner: 'The ACD aircraft are locked: only your own aircraft are listed.',
 
+  // Offline app
+  pwaUpdateMessage: 'A new version of the app is available.',
+  pwaReloadLabel: 'Reload',
+  pwaOfflineReady: 'The app now works offline.',
+
   // Checklist
   checklistPlaneLabel: 'Airplane',
   checklistPlaneHint: 'Select the airplane to load its checklist',
