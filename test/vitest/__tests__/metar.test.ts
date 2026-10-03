@@ -15,6 +15,7 @@ import {
   parseTaf,
   splitReports,
   windSpeedKt,
+  type Taf,
 } from '../../../src/domain/metar'
 
 describe('parseMetar', () => {
@@ -206,5 +207,37 @@ TAF LFLB 031635Z 0316/0415 VRB04KT CAVOK
   it('returns nothing for empty input', () => {
     expect(splitReports('  \n ')).toEqual([])
     expect(parseReports('')).toEqual([])
+  })
+})
+
+describe('review regressions', () => {
+  it('decodes fractional statute mile visibilities', () => {
+    expect(
+      parseMetar('METAR KJFK 031651Z 18010KT 1 1/2SM -RA BR OVC008 12/11 A3001')?.visibilityM,
+    ).toBe(2414)
+    const quarter = parseMetar('KJFK 031651Z 18010KT M1/4SM FG VV001 12/12 A3001')
+    expect(quarter?.visibilityM).toBe(402)
+    expect(quarter?.unparsed).toEqual([])
+    expect(parseMetar('KJFK 031651Z 18010KT P6SM FEW250 12/11 A3001')?.visibilityM).toBe(9656)
+  })
+
+  it('recognises a TAF without the TAF keyword', () => {
+    const reports = parseReports(
+      'LFPG 031200Z 0312/0418 24010KT 9999 SCT030 BECMG 0315/0317 25015G25KT',
+    )
+    expect(reports).toHaveLength(1)
+    expect(isTaf(reports[0]!)).toBe(true)
+    expect((reports[0] as Taf).groups.map((g) => g.kind)).toEqual(['BASE', 'BECMG'])
+  })
+
+  it('splits several reports written on one line and separated by equals signs', () => {
+    const reports = splitReports(
+      'METAR LFPG 031200Z 24010KT 9999 SCT030 12/08 Q1013= LFPO 031200Z 25008KT CAVOK 13/07 Q1013=',
+    )
+    expect(reports).toEqual([
+      'METAR LFPG 031200Z 24010KT 9999 SCT030 12/08 Q1013',
+      'LFPO 031200Z 25008KT CAVOK 13/07 Q1013',
+    ])
+    expect(parseReports(reports.join('\n')).map((r) => r.station)).toEqual(['LFPG', 'LFPO'])
   })
 })

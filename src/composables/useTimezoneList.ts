@@ -15,7 +15,7 @@
  *   limitations under the License.
  */
 
-import { onMounted, onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 
 import { TimezoneListLocalStorageStore } from '@/adapters/storage/timezoneListLocalStorageStore'
@@ -36,7 +36,7 @@ export function useTimezoneList() {
   }
 
   const saved = store.load()
-  const zones = ref<string[]>(saved && saved.length > 0 ? saved : defaults)
+  const zones = ref<string[]>(saved ?? defaults)
 
   function persist() {
     store.save(zones.value)
@@ -60,17 +60,4 @@ export function useTimezoneList() {
   }
 
   return { zones, add, remove, reset }
-}
-
-/** A Date refreshed every second while the component is mounted. */
-export function useNow(intervalMs = 1000) {
-  const now = ref(new Date())
-  let timer: ReturnType<typeof setInterval> | undefined
-
-  onMounted(() => {
-    timer = setInterval(() => (now.value = new Date()), intervalMs)
-  })
-  onUnmounted(() => clearInterval(timer))
-
-  return now
 }

@@ -220,8 +220,8 @@ function parseConditions(
       c.cavok = true
     } else if (/^\d{4}$/.test(token) && c.visibilityM === null) {
       c.visibilityM = parseInt(token, 10)
-    } else if (/^(P?\d{1,2})SM$/.test(token) && c.visibilityM === null) {
-      c.visibilityM = Math.round(parseInt(token.replace(/\D/g, ''), 10) * M_PER_STATUTE_MILE)
+    } else if (c.visibilityM === null && parseStatuteMiles(token) !== null) {
+      c.visibilityM = Math.round((parseStatuteMiles(token) ?? 0) * M_PER_STATUTE_MILE)
     } else if (token === 'NSW') {
       c.noSignificantWeather = true
     } else if (cloud) {
@@ -252,12 +252,40 @@ function parseConditions(
   return { conditions: c, next: i }
 }
 
+/**
+ * Statute miles ("10SM", "P6SM", "1/4SM", "M1/4SM", "1 1/2SM") as a number of
+ * miles, null when the token is not such a visibility.
+ */
+function parseStatuteMiles(token: string): number | null {
+  const m = /^[PM]?(?:(\d{1,2}) )?(?:(\d{1,2})\/(\d{1,2})|(\d{1,2}))SM$/.exec(token)
+  if (!m) return null
+  const whole = m[1] ? parseInt(m[1], 10) : 0
+  if (m[4]) return whole + parseInt(m[4], 10)
+  const denominator = parseInt(m[3] ?? '', 10)
+  return denominator > 0 ? whole + parseInt(m[2] ?? '', 10) / denominator : null
+}
+
 function tokenize(raw: string): string[] {
-  return raw
+  const tokens = raw
     .replace(/=\s*$/, '')
     .trim()
     .split(/\s+/)
     .filter((t) => t.length > 0)
+  // "1 1/2SM" is written with a space: keep it as a single token
+  const merged: string[] = []
+  for (const token of tokens) {
+    const previous = merged[merged.length - 1]
+    if (
+      previous !== undefined &&
+      /^\d{1,2}$/.test(previous) &&
+      /^\d{1,2}\/\d{1,2}SM$/.test(token)
+    ) {
+      merged[merged.length - 1] = `${previous} ${token}`
+    } else {
+      merged.push(token)
+    }
+  }
+  return merged
 }
 
 const TREND_RE = /^(NOSIG|BECMG|TEMPO)$/
@@ -442,31 +470,37 @@ export function parseTaf(raw: string): Taf | null {
 
 const REPORT_START_RE = /^(METAR|SPECI|TAF)\b|^[A-Z][A-Z0-9]{3}\s+\d{6}Z\b/
 
+// A TAF is recognised by its header, or by the validity period after the issue time
+const TAF_RE = /^(?:TAF\s+)?(?:(?:AMD|COR)\s+)*[A-Z][A-Z0-9]{3}\s+\d{6}Z\s+\d{4}\/\d{4}\b/
+
 /**
- * Splits pasted text into individual reports: a new report starts on a line
- * beginning with METAR, SPECI, TAF or "ICAO DDHHMMZ", other lines continue the
- * previous one (TAF change groups are often wrapped over several lines).
+ * Splits pasted text into individual reports. A report ends at "=" (the
+ * bulletin separator), and a new one starts on a line beginning with METAR,
+ * SPECI, TAF or "ICAO DDHHMMZ"; other lines continue the previous report (TAF
+ * change groups are often wrapped over several lines).
  */
 export function splitReports(text: string): string[] {
   const reports: string[] = []
-  for (const line of text.split(/\r?\n/)) {
+  let closed = true
+  for (const line of text.replace(/=/g, '=\n').split(/\r?\n/)) {
     const trimmed = line.trim()
     if (!trimmed) continue
     const last = reports.length - 1
-    if (REPORT_START_RE.test(trimmed) || last < 0) {
+    if (closed || REPORT_START_RE.test(trimmed)) {
       reports.push(trimmed)
     } else {
       reports[last] = `${reports[last]} ${trimmed}`
     }
+    closed = trimmed.endsWith('=')
   }
-  return reports.map((r) => r.replace(/=\s*$/, '').trim())
+  return reports.map((r) => r.replace(/=\s*$/, '').trim()).filter((r) => r.length > 0)
 }
 
 /** Parses each report found in the text, in order. Unrecognised reports are dropped. */
 export function parseReports(text: string): (Metar | Taf)[] {
   const results: (Metar | Taf)[] = []
   for (const report of splitReports(text)) {
-    const parsed = /^TAF\b/.test(report) ? parseTaf(report) : parseMetar(report)
+    const parsed = TAF_RE.test(report) ? parseTaf(report) : parseMetar(report)
     if (parsed) results.push(parsed)
   }
   return results

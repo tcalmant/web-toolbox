@@ -72,8 +72,7 @@ function onUseDensity(metar: Metar) {
   qnh.value = metar.qnhHpa
   temperature.value = metar.temperatureC
   const airfield = KnownAirfields[metar.station]
-  if (airfield?.elevation != null) {
-    elevation.value = Math.round(airfield.elevation)
-  }
+  // Never keep the elevation of a previous station: unknown stations must be filled in by hand
+  elevation.value = airfield?.elevation != null ? Math.round(airfield.elevation) : null
 }
 </script>
