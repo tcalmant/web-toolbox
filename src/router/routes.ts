@@ -39,6 +39,11 @@ const routes: RouteRecordRaw[] = [
         meta: { titleKey: 'notamMapperTitle' },
       },
       {
+        path: 'weather',
+        component: () => import('@/pages/WeatherPage.vue'),
+        meta: { titleKey: 'weatherTitle' },
+      },
+      {
         path: 'checklist',
         component: () => import('@/pages/ChecklistPage.vue'),
         meta: { titleKey: 'checklistTitle' },
