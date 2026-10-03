@@ -108,10 +108,13 @@ describe.skipIf(!HAS_SOURCES)('club planes', () => {
   })
 
   for (const plane of withModelFile) {
-    it(`resolves a checklist with check-list sections for ${plane.immatriculation}`, () => {
+    it(`resolves a usable checklist for ${plane.immatriculation}`, () => {
       const checklist = resolveChecklistForPlane(source, plane, 'fr-FR')
       expect(checklist.sections.length).toBeGreaterThanOrEqual(3)
-      expect(checklist.sections.some((s) => s.id.startsWith('checklist-'))).toBe(true)
+      // Club check-lists have checklist-* sections, constructor-manual ones a pre-flight do-list
+      expect(
+        checklist.sections.some((s) => s.id.startsWith('checklist-') || s.id === 'preflight'),
+      ).toBe(true)
     })
   }
 
