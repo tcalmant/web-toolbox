@@ -33,13 +33,25 @@ register(import.meta.env.QUASAR_SERVICE_WORKER_FILE, {
     Notify.create({ message: t('pwaOfflineReady'), timeout: 4000, type: 'positive' })
   },
 
-  updated() {
-    // The new version is already active: the open page still runs the old code
+  updated(registration) {
+    // The new version is installed and waits: it only takes over, and the page
+    // only reloads, when the user accepts, so the running code never loses its chunks
     Notify.create({
       message: t('pwaUpdateMessage'),
       timeout: 0,
       actions: [
-        { label: t('pwaReloadLabel'), color: 'white', handler: () => window.location.reload() },
+        {
+          label: t('pwaReloadLabel'),
+          color: 'white',
+          handler: () => {
+            navigator.serviceWorker.addEventListener(
+              'controllerchange',
+              () => window.location.reload(),
+              { once: true },
+            )
+            registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
+          },
+        },
       ],
     })
   },

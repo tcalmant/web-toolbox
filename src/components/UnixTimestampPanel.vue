@@ -170,7 +170,8 @@ under the License.
 
 <script setup lang="ts">
 import { useOrientation } from '@/composables/useOrientation'
-import { dateToString, dateToUTCString, formatTzOffset, parseTzOffsetMinutes } from '@/domain/time'
+import { dateToString, dateToUTCString, formatTzOffset } from '@/domain/time'
+import { allTimeZones, parseDayAndTime, zonedTimeToInstant } from '@/domain/timezones'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -302,7 +303,7 @@ const unixTimestamp = ref<number>(new Date().getTime())
 const dateUTC = ref<string>('')
 const dateLocalTZ = ref<string>('')
 
-const allTimezones: string[] = Intl.supportedValuesOf('timeZone')
+const allTimezones: string[] = allTimeZones()
 const tzList = ref<string[]>(allTimezones)
 const selectedTz = ref<string>(Intl.DateTimeFormat().resolvedOptions().timeZone)
 
@@ -368,34 +369,22 @@ function onTimestampChange(newValue: string | number | null) {
   }
 }
 
-function onUTCDateChange(newValue: string | number | null) {
-  if (newValue === null || newValue === undefined) {
+/**
+ * Sets the instant from a "YYYY-MM-DD HH:mm:ss" wall-clock text typed or picked
+ * for the given zone. Incomplete or invalid text is ignored while the user types.
+ */
+function setFromWallClock(text: string | number | null, tzName: string) {
+  if (typeof text !== 'string') {
     return
   }
-
-  const dateInLocalTz = new Date(newValue)
-  if (!isNaN(dateInLocalTz.getTime())) {
-    // The date is parsed as if it was a local time: convert it back to UTC
-    const utcTimestamp = dateInLocalTz.getTime() - dateInLocalTz.getTimezoneOffset() * 60000
-    unixTimestampNs.value = unitMs.toNanoseconds(utcTimestamp)
+  const [day = '', time = ''] = text.trim().split(/\s+/)
+  const parts = parseDayAndTime(day, time)
+  if (parts) {
+    unixTimestampNs.value = unitMs.toNanoseconds(zonedTimeToInstant(parts, tzName).getTime())
   }
 }
 
-function onLocalDateChange(newValue: string | number | null) {
-  if (newValue === null || newValue === undefined) {
-    return
-  }
-
-  // The date is parsed as if it was the browser's local time: first convert
-  // it back to UTC using the browser's own offset, then re-apply the offset
-  // of the timezone actually selected (which may differ from the browser's).
-  const dateInBrowserTz = new Date(newValue)
-  if (!isNaN(dateInBrowserTz.getTime())) {
-    const utcTimestamp = dateInBrowserTz.getTime() - dateInBrowserTz.getTimezoneOffset() * 60000
-    const selectedTzOffsetMinutes = parseTzOffsetMinutes(
-      formatTzOffset(new Date(utcTimestamp), selectedTz.value),
-    )
-    unixTimestampNs.value = unitMs.toNanoseconds(utcTimestamp - selectedTzOffsetMinutes * 60000)
-  }
-}
+const onUTCDateChange = (newValue: string | number | null) => setFromWallClock(newValue, 'UTC')
+const onLocalDateChange = (newValue: string | number | null) =>
+  setFromWallClock(newValue, selectedTz.value)
 </script>

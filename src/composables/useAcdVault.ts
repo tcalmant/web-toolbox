@@ -62,9 +62,12 @@ export function createAcdVault({ bundle, keyStore }: AcdVaultDeps) {
       try {
         await open(key)
         return
-      } catch {
-        // The vault was re-encrypted with another passphrase: forget the stale key
-        await keyStore.clear()
+      } catch (error) {
+        // Only a key that does not fit any more (vault re-encrypted with another
+        // passphrase) is stale: any other failure must not make the device forget it
+        if (error instanceof VaultError && error.reason === 'wrong-key') {
+          await keyStore.clear()
+        }
       }
     }
     status.value = 'locked'

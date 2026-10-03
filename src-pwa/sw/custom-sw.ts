@@ -35,10 +35,16 @@ import { CacheFirst } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope & typeof globalThis
 
-// A new version takes over as soon as it is installed: the page tells the user
-// (see register-sw.ts) and the next load uses it
-void self.skipWaiting()
+// A new version waits until the user accepts it (see register-sw.ts): swapping
+// the precache under a page that is still running the old code would make its
+// lazy-loaded chunks vanish. clientsClaim only matters for the very first install.
 clientsClaim()
+
+self.addEventListener('message', (event) => {
+  if ((event.data as { type?: string } | null)?.type === 'SKIP_WAITING') {
+    void self.skipWaiting()
+  }
+})
 
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
@@ -56,17 +62,20 @@ const TILE_HOSTS = ['data.geopf.fr', 'tile.openstreetmap.org', /^[abc]\.tile\.op
 
 // Tiles are only cached where the user looked, never prefetched, which is what
 // the tile servers' usage policies ask for. The budget keeps the storage bounded.
+// The map requests tiles with CORS (crossOrigin in MapView.vue) so that the
+// responses are readable: only real 200 tiles are stored, never an error or an
+// opaque response (whose size counts for megabytes against the storage quota).
 registerRoute(
   ({ url, request }) =>
     request.destination === 'image' &&
+    request.mode === 'cors' &&
     TILE_HOSTS.some((host) =>
       typeof host === 'string' ? url.hostname === host : host.test(url.hostname),
     ),
   new CacheFirst({
     cacheName: 'map-tiles',
     plugins: [
-      // 0 is an opaque response: tiles are loaded without CORS
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new CacheableResponsePlugin({ statuses: [200] }),
       new ExpirationPlugin({
         maxEntries: 600,
         maxAgeSeconds: 30 * 24 * 60 * 60,

@@ -119,6 +119,24 @@ describe('vault encryption', () => {
     await expect(decryptVault(bundle, key)).rejects.toMatchObject({ reason: 'corrupt' })
   })
 
+  it('rejects a plane record with a missing or malformed field as corrupt', async () => {
+    const bad = (planes: unknown) =>
+      encryptVault({ planes, checklists: {} } as unknown as AcdPayload, 'p', FAST)
+    const record = PAYLOAD.planes['F-TEST']!
+    for (const planes of [
+      { X: { ...record, fuel: undefined } },
+      { X: { ...record, fuel: { ...record.fuel, unit: 3 } } },
+      { X: { ...record, fuel: { ...record.fuel, capacity: '110' } } },
+      { X: { ...record, fuel: { ...record.fuel, hourlyConsumption: NaN } } },
+      { X: { ...record, model: undefined } },
+      { X: null },
+    ]) {
+      const bundle = await bad(planes)
+      const key = await deriveBundleKey('p', bundle)
+      await expect(decryptVault(bundle, key)).rejects.toMatchObject({ reason: 'corrupt' })
+    }
+  })
+
   it('refuses something that is not a bundle', async () => {
     const bundle = await encryptVault(PAYLOAD, 'p', FAST)
     const key = await deriveBundleKey('p', bundle)

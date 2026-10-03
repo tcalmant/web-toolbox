@@ -83,5 +83,28 @@ export function isAcdPayload(value: unknown): value is AcdPayload {
   if (typeof checklists !== 'object' || checklists === null || Array.isArray(checklists)) {
     return false
   }
-  return Object.values(checklists).every((xml) => typeof xml === 'string')
+  return (
+    Object.values(planes).every(isAcdPlaneRecord) &&
+    Object.values(checklists).every((xml) => typeof xml === 'string')
+  )
+}
+
+function isAcdPlaneRecord(value: unknown): value is AcdPlaneRecord {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const v = value as Record<string, unknown>
+  const fuel = v['fuel']
+  if (typeof fuel !== 'object' || fuel === null) {
+    return false
+  }
+  const f = fuel as Record<string, unknown>
+  return (
+    typeof v['brand'] === 'string' &&
+    typeof v['model'] === 'string' &&
+    typeof f['unit'] === 'string' &&
+    ['capacity', 'consumable', 'hourlyConsumption'].every(
+      (key) => typeof f[key] === 'number' && Number.isFinite(f[key]),
+    )
+  )
 }
