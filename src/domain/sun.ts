@@ -112,6 +112,9 @@ function sunCrossing(
 ): SunCrossing {
   const rise = crossing(latitude, longitude, midnight, altitude, -1)
   const set = crossing(latitude, longitude, midnight, altitude, 1)
+  // A rise without a set (or the reverse) only happens on the day a polar
+  // period starts or ends: the valid crossing is dropped on purpose, the
+  // whole day is reported with the polar state instead
   if (typeof rise !== 'number') {
     return { kind: rise }
   }
@@ -122,10 +125,10 @@ function sunCrossing(
 }
 
 /**
- * Sunrise, sunset and civil twilight of the solar day whose noon falls on
- * the UTC date of `day` (latitude north and longitude east positive, in
- * degrees). Far from Greenwich an event can fall on the previous or next
- * UTC date.
+ * Sunrise, sunset and civil twilight of the solar day following UTC midnight
+ * of `day` (noon at 720 - 4*lon - EoT minutes; latitude north and longitude
+ * east positive, in degrees). Far from Greenwich an event can fall on the
+ * previous or next UTC date.
  */
 export function sunTimes(latitude: number, longitude: number, day: Date): SunTimes {
   const midnight = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate())
@@ -133,4 +136,10 @@ export function sunTimes(latitude: number, longitude: number, day: Date): SunTim
     sun: sunCrossing(latitude, longitude, midnight, SUNRISE_ALTITUDE),
     civil: sunCrossing(latitude, longitude, midnight, CIVIL_TWILIGHT_ALTITUDE),
   }
+}
+
+/** The instant rounded to the minute, upwards, downwards or to the nearest. */
+export function roundToMinute(at: Date, mode: 'up' | 'down' | 'nearest'): Date {
+  const round = { up: Math.ceil, down: Math.floor, nearest: Math.round }[mode]
+  return new Date(round(at.getTime() / 60000) * 60000)
 }

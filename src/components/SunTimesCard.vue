@@ -72,7 +72,7 @@ under the License.
 
 <script setup lang="ts">
 import KnownAirfields from '@/adapters/data/airfieldsRepository'
-import { type SunCrossing, sunTimes } from '@/domain/sun'
+import { roundToMinute, type SunCrossing, sunTimes } from '@/domain/sun'
 import { formatClock, formatDay } from '@/domain/timezones'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -117,35 +117,53 @@ const rows = computed<Row[]>(() => {
     return []
   }
   const { sun, civil } = times.value
+  // The clock shows minutes only: night limits are rounded towards the night
+  // (dawn later, dusk earlier) so a VFR day flight never looks allowed too long
   const civilRows: Row[] =
     civil.kind === 'crossing'
       ? [
-          { label: t('sunCivilDawn'), at: civil.rise, note: t('sunNightEndSera') },
-          { label: t('sunCivilDusk'), at: civil.set, note: t('sunNightStartSera') },
+          {
+            label: t('sunCivilDawn'),
+            at: roundToMinute(civil.rise, 'up'),
+            note: t('sunNightEndSera'),
+          },
+          {
+            label: t('sunCivilDusk'),
+            at: roundToMinute(civil.set, 'down'),
+            note: t('sunNightStartSera'),
+          },
         ]
-      : [{ label: t('sunCivilTwilight'), note: polarNote(civil) }]
+      : [
+          {
+            label: t('sunCivilTwilight'),
+            note: t(civil.kind === 'alwaysAbove' ? 'sunNoNightSera' : 'sunNightAllDaySera'),
+          },
+        ]
   const sunRows: Row[] =
     sun.kind === 'crossing'
       ? [
-          { label: t('sunrise'), at: sun.rise },
-          { label: t('sunset'), at: sun.set },
+          { label: t('sunrise'), at: roundToMinute(sun.rise, 'nearest') },
+          { label: t('sunset'), at: roundToMinute(sun.set, 'nearest') },
           {
             label: t('sunNightEndFormer'),
-            at: new Date(sun.rise.getTime() - FORMER_NIGHT_OFFSET_MS),
+            at: roundToMinute(new Date(sun.rise.getTime() - FORMER_NIGHT_OFFSET_MS), 'up'),
+            note: t('sunFormerNote'),
           },
           {
             label: t('sunNightStartFormer'),
-            at: new Date(sun.set.getTime() + FORMER_NIGHT_OFFSET_MS),
+            at: roundToMinute(new Date(sun.set.getTime() + FORMER_NIGHT_OFFSET_MS), 'down'),
+            note: t('sunFormerNote'),
           },
         ]
       : [{ label: t('sunriseSunset'), note: polarNote(sun) }]
   return [...civilRows, ...sunRows].sort((a, b) => (a.at?.getTime() ?? 0) - (b.at?.getTime() ?? 0))
 })
 
-// Shows the date when the event falls outside the chosen UTC date
+// Shows the date when the event falls outside the chosen date in that zone
 function clock(at: Date, tzName: string): string {
   const time = formatClock(at, tzName)
-  return formatDay(at, 'UTC') === day.value ? time : `${formatDay(at, tzName)} ${time}`
+  const date = formatDay(at, tzName)
+  return date === day.value ? time : `${date} ${time}`
 }
 </script>
 

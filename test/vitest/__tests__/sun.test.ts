@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { type SunCrossing, sunTimes } from '../../../src/domain/sun'
+import { roundToMinute, type SunCrossing, sunTimes } from '../../../src/domain/sun'
 
 // Expected "HH:MM HH:MM" (morning, evening) or the polar state
 function expectCrossing(c: SunCrossing, expected: string) {
@@ -42,5 +42,20 @@ describe('sunTimes', () => {
     const times = sunTimes(lat, lon, new Date(`${day}T18:30:00Z`))
     expectCrossing(times.sun, sun)
     expectCrossing(times.civil, civil)
+  })
+})
+
+describe('roundToMinute', () => {
+  it.each([
+    ['2026-11-04T06:09:50Z', 'up', '2026-11-04T06:10:00Z'],
+    ['2026-11-04T06:09:00Z', 'up', '2026-11-04T06:09:00Z'],
+    ['2026-11-04T16:59:50Z', 'down', '2026-11-04T16:59:00Z'],
+    ['2026-11-04T06:43:29Z', 'nearest', '2026-11-04T06:43:00Z'],
+    ['2026-11-04T06:43:30Z', 'nearest', '2026-11-04T06:44:00Z'],
+    ['2026-11-04T23:59:30Z', 'up', '2026-11-05T00:00:00Z'],
+  ] as const)('%s %s', (at, mode, expected) => {
+    expect(roundToMinute(new Date(at), mode).toISOString()).toEqual(
+      new Date(expected).toISOString(),
+    )
   })
 })
