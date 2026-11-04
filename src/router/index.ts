@@ -15,7 +15,7 @@
  *   limitations under the License.
  */
 
-import { captureSharedText } from '@/composables/shareTarget'
+import { captureShare } from '@/composables/shareTarget'
 import { defineRouter } from '#q-app'
 import {
   createMemoryHistory,
@@ -41,7 +41,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       ? createWebHistory
       : createWebHashHistory
 
-  captureSharedText()
+  captureShare()
 
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),

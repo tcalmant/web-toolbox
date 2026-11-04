@@ -276,7 +276,11 @@ onMounted(() => {
   flightStart.value = $q.sessionStorage.getItem('notam.flight.start') ?? flightStart.value
   flightDuration.value = $q.sessionStorage.getItem('notam.flight.duration') ?? flightDuration.value
   // Text shared from another app is shown for review
-  showImport.value = appendSharedText(inputText)
+  void appendSharedText(inputText).then((shared) => {
+    if (shared) {
+      showImport.value = true
+    }
+  })
 })
 // Parsing is only needed when the text changes, not when filters do
 watch(inputText, (newText) => {

@@ -58,32 +58,51 @@ if (import.meta.env.QUASAR_PROD) {
 }
 
 // Shares from other apps are posted to the share_target action of manifest.json.
-// Only the service worker can read a POST: it keeps the files for the app (see
-// composables/shareTarget.ts) and redirects to it with the text in the query.
+// Only the service worker can read a POST: it keeps the shared data for the app
+// (see composables/shareTarget.ts) and redirects to it. Any page can post here
+// too, so nothing goes through the URL and only a few PDF files are kept.
+const SHARE_MAX_FILES = 10
+const SHARE_MAX_SIZE = 50 * 1024 * 1024
 registerRoute(
   ({ url }) => url.href === new URL('share-target', self.registration.scope).href,
   async ({ request }) => {
-    const data = await request.formData()
-    const cache = await caches.open('shared-files')
-    for (const key of await cache.keys()) {
-      await cache.delete(key)
-    }
-
-    const files = data.getAll('files').filter((file) => file instanceof File)
-    for (const [index, file] of files.entries()) {
-      // The index keeps two files of the same name apart
-      await cache.put(`shared-files/${index}/${encodeURIComponent(file.name)}`, new Response(file))
-    }
-
     const target = new URL(self.registration.scope)
-    for (const name of ['title', 'text', 'url']) {
-      const value = data.get(name)
-      if (typeof value === 'string' && value) {
-        target.searchParams.set(name, value)
+    try {
+      const data = await request.formData()
+      // Cache Storage is per origin, not per scope: the same name is derived
+      // from the page path in composables/shareTarget.ts
+      const cacheName = `shared-files:${target.pathname}`
+      await caches.delete(cacheName)
+      const cache = await caches.open(cacheName)
+
+      const shared = Object.fromEntries(
+        ['title', 'text', 'url'].map((name) => {
+          const value = data.get(name)
+          return [name, typeof value === 'string' ? value : null]
+        }),
+      )
+      await cache.put(new URL('share/text', target), new Response(JSON.stringify(shared)))
+
+      const files = data
+        .getAll('files')
+        .filter(
+          (file) =>
+            file instanceof File &&
+            (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) &&
+            file.size <= SHARE_MAX_SIZE,
+        )
+        .slice(0, SHARE_MAX_FILES) as File[]
+      for (const [index, file] of files.entries()) {
+        // Keyed by index: a name like ".." would be normalised away in a URL
+        await cache.put(
+          new URL(`share/file/${index}`, target),
+          new Response(file, { headers: { 'X-File-Name': encodeURIComponent(file.name) } }),
+        )
       }
-    }
-    if (files.length > 0) {
-      target.searchParams.set('files', String(files.length))
+      target.searchParams.set('share', '1')
+    } catch (error) {
+      // Not a form post: open the app anyway rather than a network error page
+      console.error('Invalid share', error)
     }
     return Response.redirect(target.href, 303)
   },

@@ -17,38 +17,29 @@
 
 /*
  * Text and PDF files shared from another app to the installed app (Web Share
- * Target, see share_target in src-pwa/manifest.json): the service worker opens
- * the app with the shared text in the query of the page URL, and keeps the
- * files in a cache.
+ * Target, see share_target in src-pwa/manifest.json): the service worker keeps
+ * the shared data in a cache and opens the app with share=1 in the query. The
+ * data never comes through the URL, so that a plain link cannot inject text.
  */
 
 import type { Ref } from 'vue'
-import { sharedDataToText } from '@/domain/importedText'
+import { sharedDataToText, type SharedData } from '@/domain/importedText'
 
-// Name of the cache filled by the service worker (src-pwa/sw/custom-sw.ts)
-const SHARED_FILES_CACHE = 'shared-files'
-
-let sharedText = ''
+let sharePending = false
 let hasSharedFiles = false
 
 /**
- * Takes the shared data out of the page URL. It must run before the router is
+ * Takes the share flag out of the page URL. It must run before the router is
  * created: with a relative publicPath, the hash history takes the page path
  * and query as its base, so the query would stick to every route.
  */
-export function captureSharedText(): void {
+export function captureShare(): void {
   if (!window.location.search) {
     return
   }
 
-  const params = new URLSearchParams(window.location.search)
-  sharedText = sharedDataToText({
-    title: params.get('title'),
-    text: params.get('text'),
-    url: params.get('url'),
-  })
-  hasSharedFiles = params.has('files')
-  // A reload must not import the same text again
+  sharePending = new URLSearchParams(window.location.search).get('share') === '1'
+  // A reload must not import the same share again
   window.history.replaceState(
     window.history.state,
     '',
@@ -57,13 +48,36 @@ export function captureSharedText(): void {
 }
 
 /**
+ * Name of the cache filled by the service worker (src-pwa/sw/custom-sw.ts),
+ * derived from its scope as Cache Storage is per origin. The page is served at
+ * that scope, next to the worker.
+ */
+function sharedCacheName(): string {
+  return `shared-files:${new URL('.', window.location.href).pathname}`
+}
+
+/**
  * Adds the shared text, once, after what is already imported.
  *
  * @returns True if something was shared: text, now added, or files
  */
-export function appendSharedText(inputText: Ref<string>): boolean {
-  const text = sharedText
-  sharedText = ''
+export async function appendSharedText(inputText: Ref<string>): Promise<boolean> {
+  if (!sharePending) {
+    return false
+  }
+  sharePending = false
+
+  const cache = await caches.open(sharedCacheName())
+  let text = ''
+  for (const request of await cache.keys()) {
+    const response = await cache.match(request)
+    if (response?.headers.has('X-File-Name')) {
+      hasSharedFiles = true
+    } else if (response) {
+      text = sharedDataToText((await response.json()) as SharedData)
+      await cache.delete(request)
+    }
+  }
   if (text) {
     inputText.value = inputText.value ? `${inputText.value}\n\n${text}` : text
   }
@@ -79,15 +93,16 @@ export async function takeSharedFiles(): Promise<File[]> {
   }
   hasSharedFiles = false
 
-  const cache = await caches.open(SHARED_FILES_CACHE)
+  const cacheName = sharedCacheName()
+  const cache = await caches.open(cacheName)
   const files: File[] = []
   for (const request of await cache.keys()) {
     const response = await cache.match(request)
-    const name = decodeURIComponent(new URL(request.url).pathname.split('/').pop() ?? '')
-    if (response) {
-      files.push(new File([await response.blob()], name))
+    const name = response?.headers.get('X-File-Name')
+    if (response && name) {
+      files.push(new File([await response.blob()], decodeURIComponent(name)))
     }
   }
-  await caches.delete(SHARED_FILES_CACHE)
+  await caches.delete(cacheName)
   return files
 }

@@ -19,13 +19,16 @@
  * specific language governing permissions and limitations
  * under the License.
  *
- * Tests for domain/importedText.ts and adapters/pdf/pdfTextExtractor.ts
+ * Tests for domain/importedText.ts, adapters/pdf/pdfTextExtractor.ts and
+ * composables/shareTarget.ts
  */
 
 import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 
 import { removePageChrome } from '../../../src/adapters/pdf/pdfTextExtractor'
+import { appendSharedText, captureShare } from '../../../src/composables/shareTarget'
 import { AIP } from '../../../src/domain/aip'
 import { sharedDataToText, splitNotamsAndAip } from '../../../src/domain/importedText'
 import { parseNotams } from '../../../src/domain/notam'
@@ -96,7 +99,7 @@ describe('splitNotamsAndAip on a Sofia Briefing copy', () => {
 })
 
 describe('sharedDataToText', () => {
-  const URL = 'https://www.sia.aviation-civile.gouv.fr/sup.pdf'
+  const SUP_URL = 'https://www.sia.aviation-civile.gouv.fr/sup.pdf'
 
   it.each([
     ['nothing', {}, ''],
@@ -104,20 +107,20 @@ describe('sharedDataToText', () => {
     ['only the text', { text: ` ${NOTAM_TEXT}\n` }, NOTAM_TEXT],
     [
       'title, text and URL',
-      { title: 'SUP 123', text: 'LIMITES', url: URL },
-      `SUP 123\nLIMITES\n${URL}`,
+      { title: 'SUP 123', text: 'LIMITES', url: SUP_URL },
+      `SUP 123\nLIMITES\n${SUP_URL}`,
     ],
     [
       'URL put in the text',
-      { title: 'SUP 123', text: `LIMITES ${URL}` },
-      `SUP 123\nLIMITES ${URL}`,
+      { title: 'SUP 123', text: `LIMITES ${SUP_URL}` },
+      `SUP 123\nLIMITES ${SUP_URL}`,
     ],
     [
       'title repeated in the text',
       { title: 'SUP 123', text: 'SUP 123 LIMITES' },
       'SUP 123 LIMITES',
     ],
-    ['only a URL', { url: URL }, URL],
+    ['only a URL', { url: SUP_URL }, SUP_URL],
   ])('builds the text from %s', (_, shared, expected) => {
     expect(sharedDataToText(shared)).toEqual(expected)
   })
@@ -125,6 +128,35 @@ describe('sharedDataToText', () => {
   it('keeps a shared NOTAM readable by the import', () => {
     const text = sharedDataToText({ title: 'Sofia', text: NOTAM_TEXT })
     expect(splitNotamsAndAip(text).notams.length).toEqual(1)
+  })
+})
+
+describe('captureShare', () => {
+  // The service worker keeps the shared text in its cache
+  vi.stubGlobal('caches', {
+    open: () =>
+      Promise.resolve({
+        keys: () => Promise.resolve([new Request('https://app.test/share/text')]),
+        match: () => Promise.resolve(new Response(JSON.stringify({ text: 'SHARED' }))),
+        delete: () => Promise.resolve(true),
+      }),
+  })
+
+  it.each([
+    ['no query', '', ''],
+    ['the share flag', '?share=1', 'SHARED'],
+    ['unrelated parameters', '?lang=fr&share=0', ''],
+    ['a forged text', '?text=FORGED&title=SUP', ''],
+  ])('takes %s out of the URL', async (_, query, expected) => {
+    window.history.replaceState(null, '', `/app/${query}#/notam`)
+    captureShare()
+    expect(window.location.pathname + window.location.search + window.location.hash).toEqual(
+      '/app/#/notam',
+    )
+
+    const inputText = ref('')
+    expect(await appendSharedText(inputText)).toEqual(!!expected)
+    expect(inputText.value).toEqual(expected)
   })
 })
 
