@@ -15,6 +15,7 @@ import {
   haversineDistanceMeters,
 } from '../../../src/domain/geo'
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
+import { escapeHtml, safeAttribution } from '../../../src/adapters/leaflet/safeHtml'
 
 describe('Position', () => {
   it('stores its kind, location and optional category', () => {
@@ -115,5 +116,28 @@ describe('arcPoints', () => {
   it('gives a full turn for coinciding endpoints', () => {
     const start = destinationPoint(center, 0, 20000)
     expect(arcPoints(center, start, start, true).length).toBeGreaterThan(60)
+  })
+})
+
+describe('vault layer markup', () => {
+  it.each([
+    [
+      '&copy; <a href="https://geoservices.ign.fr/">IGN</a>',
+      '© <a href="https://geoservices.ign.fr/" target="_blank" rel="noopener noreferrer">IGN</a>',
+    ],
+    ['<img src=x onerror="alert(1)">IGN', 'IGN'],
+    ['<a href="javascript:alert(1)">IGN</a>', 'IGN'],
+    [
+      '<a href="https://x.example/" onclick="alert(1)">IGN</a>',
+      '<a href="https://x.example/" target="_blank" rel="noopener noreferrer">IGN</a>',
+    ],
+    ['<b>bold</b> <script>alert(1)</script>', 'bold alert(1)'],
+    ['a < b & "c"', 'a &lt; b &amp; &quot;c&quot;'],
+  ])('keeps only text and https links of %s', (html, expected) => {
+    expect(safeAttribution(html)).toBe(expected)
+  })
+
+  it('escapes a layer name', () => {
+    expect(escapeHtml('<img src=x onerror=alert(1)>')).toBe('&lt;img src=x onerror=alert(1)&gt;')
   })
 })
