@@ -39,6 +39,8 @@ under the License.
         v-model:max-notam-radius="maxNotamRadius"
         v-model:only-with-positions="onlyWithPositions"
         v-model:hide-expired="hideExpired"
+        v-model:flight-start="flightStart"
+        v-model:flight-duration="flightDuration"
         :total-count="totalCount"
         :shown-count="parsedNotams?.length ?? 0"
         v-model:show-area-of-influence="showAreaOfInfluence"
@@ -53,6 +55,7 @@ under the License.
         v-model:notam-columns="notamColumns"
         v-model:parsed-notams="parsedNotams"
         v-model:selected-notams="selectedNotams"
+        :flight-window="flightWindow"
       />
     </div>
   </q-page>
@@ -80,6 +83,8 @@ under the License.
           v-model:max-notam-radius="maxNotamRadius"
           v-model:only-with-positions="onlyWithPositions"
           v-model:hide-expired="hideExpired"
+          v-model:flight-start="flightStart"
+          v-model:flight-duration="flightDuration"
           :total-count="totalCount"
           :shown-count="parsedNotams?.length ?? 0"
           v-model:show-area-of-influence="showAreaOfInfluence"
@@ -94,6 +99,7 @@ under the License.
           v-model:notam-columns="notamColumns"
           v-model:parsed-notams="parsedNotams"
           v-model:selected-notams="selectedNotams"
+          :flight-window="flightWindow"
         />
       </q-tab-panel>
     </q-tab-panels>
@@ -113,6 +119,7 @@ import { useOrientation } from '@/composables/useOrientation'
 import { AIP } from '@/domain/aip'
 import { splitNotamsAndAip } from '@/domain/importedText'
 import { formatNotamDate, type NOTAM } from '@/domain/notam'
+import type { TimeWindow } from '@/domain/notamSchedule'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -148,6 +155,17 @@ const hideExpired = ref<boolean>(true)
 const totalCount = ref<number>(0)
 const showAreaOfInfluence = ref<boolean>(true)
 
+// Flight window for the status: start as "YYYY-MM-DDTHH:mm" in UTC, duration in hours.
+// Meant to come from a shared flight context later.
+const flightStart = ref<string>(new Date().toISOString().slice(0, 16))
+const flightDuration = ref<number>(2)
+const flightWindow = computed<TimeWindow>(() => {
+  const start = new Date(`${flightStart.value}:00Z`)
+  const from = isNaN(start.getTime()) ? new Date() : start
+  const hours = Math.max(Number(flightDuration.value) || 0, 0)
+  return { from, to: new Date(from.getTime() + hours * 3_600_000) }
+})
+
 // ... search
 const searchQuery = ref<string>('')
 
@@ -163,7 +181,7 @@ const notamColumns = computed<QTableColumn[]>(() => [
   {
     name: 'status',
     label: t('notamStatus'),
-    field: (r: NOTAM) => r.statusAt(new Date()),
+    field: (r: NOTAM) => r.statusAt(flightWindow.value.from, flightWindow.value.to),
     format: (v: string) => t(`notamStatus_${v}`),
     required: true,
     sortable: true,
@@ -240,6 +258,8 @@ onMounted(() => {
   // Reload data from session storage: the watcher below parses it
   inputText.value =
     $q.sessionStorage.getItem('notam.input.text') ?? loadLegacyInput() ?? inputText.value
+  flightStart.value = $q.sessionStorage.getItem('notam.flight.start') ?? flightStart.value
+  flightDuration.value = $q.sessionStorage.getItem('notam.flight.duration') ?? flightDuration.value
 })
 // Parsing is only needed when the text changes, not when filters do
 watch(inputText, (newText) => {
@@ -247,7 +267,11 @@ watch(inputText, (newText) => {
   parseInput(newText)
   applyNotamFilters(searchQuery.value)
 })
-watch([searchQuery, hideExpired], ([newSearchValue]) => applyNotamFilters(newSearchValue))
+watch([searchQuery, hideExpired, flightWindow], ([newSearchValue]) =>
+  applyNotamFilters(newSearchValue),
+)
+watch(flightStart, (value) => $q.sessionStorage?.setItem('notam.flight.start', value))
+watch(flightDuration, (value) => $q.sessionStorage?.setItem('notam.flight.duration', value))
 
 watch([onlyWithPositions, ignoreLargeNotams, maxNotamRadius], () => updateSelectedNotams())
 
@@ -289,11 +313,11 @@ function parseInput(fullText: string): void {
 }
 
 function applyNotamFilters(search: string): void {
-  // Drop expired NOTAMs first, they are rarely useful in a briefing
+  // Drop NOTAMs expired before the flight first, they are rarely useful in a briefing
   let notams = allNotams
   if (hideExpired.value) {
-    const now = new Date()
-    notams = notams.filter((n) => n.statusAt(now) !== 'expired')
+    const { from, to } = flightWindow.value
+    notams = notams.filter((n) => n.statusAt(from, to) !== 'expired')
   }
 
   // Apply search filter if necessary

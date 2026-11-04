@@ -51,8 +51,8 @@ under the License.
         :props="props"
         :class="[
           props.row.id === focusedNotam?.id || props.row.id === hoveredNotam?.id ? 'bg-info' : '',
-          notamRow(props.row).statusAt(new Date()) === 'expired' ? 'text-grey-6' : '',
-          notamRow(props.row).statusAt(new Date()) === 'future' ? 'text-italic' : '',
+          rowStatus(props.row) === 'expired' ? 'text-grey-6' : '',
+          ['future', 'inactive'].includes(rowStatus(props.row)) ? 'text-italic' : '',
         ]"
       >
         <q-td>
@@ -172,7 +172,8 @@ under the License.
 
 <script setup lang="ts">
 import { type QTableColumn } from 'quasar'
-import { formatNotamDate, type NOTAM } from '@/domain/notam'
+import { formatNotamDate, type NOTAM, type NotamStatus } from '@/domain/notam'
+import type { TimeWindow } from '@/domain/notamSchedule'
 import { onMounted, ref, watch } from 'vue'
 
 const notamColumns = defineModel<QTableColumn[]>('notamColumns')
@@ -180,6 +181,7 @@ const parsedNotams = defineModel<NOTAM[] | undefined>('parsedNotams')
 const selectedNotams = defineModel<NOTAM[] | undefined>('selectedNotams')
 const hoveredNotam = defineModel<NOTAM | undefined>('hoveredNotam')
 const focusedNotam = defineModel<NOTAM | undefined>('focusedNotam')
+const props = defineProps<{ flightWindow: TimeWindow }>()
 
 const notamSelectAll = ref<boolean | null>(true)
 
@@ -221,6 +223,10 @@ watch(focusedNotam, (newSelection) => {
 
 function notamRowId(notam: NOTAM): string {
   return `notam-row-${notam.id}`
+}
+
+function rowStatus(row: unknown): NotamStatus {
+  return notamRow(row).statusAt(props.flightWindow.from, props.flightWindow.to)
 }
 
 // q-table's body slot props aren't generically typed to NOTAM
