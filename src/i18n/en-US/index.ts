@@ -206,6 +206,10 @@ export default {
   windFromLeft: 'from the left',
   windFromRight: 'from the right',
   windWithGust: 'without gust: {cross}',
+  windWorstVariable:
+    'Worst case: variable wind (VRB), any direction possible, so the whole wind is taken as crosswind and as tailwind',
+  windWorstSector:
+    'Worst case: the wind varies between {from}° and {to}° (true), the worst direction of the sector is taken for each runway end',
   densityTitle: 'Density altitude',
   densityElevationLabel: 'Elevation (ft)',
   densityElevationHint: 'Filled in from the airfield when known',

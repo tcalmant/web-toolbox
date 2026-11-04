@@ -84,7 +84,7 @@ under the License.
             </q-item-label>
             <div class="row q-gutter-xs q-mt-xs">
               <q-btn
-                v-if="report.wind && report.wind.directionDeg !== null"
+                v-if="report.wind"
                 outline
                 dense
                 no-caps

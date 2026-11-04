@@ -208,6 +208,10 @@ export default {
   windFromLeft: 'de la gauche',
   windFromRight: 'de la droite',
   windWithGust: 'hors rafale : {cross}',
+  windWorstVariable:
+    'Pire cas : vent variable (VRB), toutes les directions sont possibles, le vent entier est donc pris en travers et en arrière',
+  windWorstSector:
+    'Pire cas : le vent varie entre {from}° et {to}° (vrai), la pire direction du secteur est retenue pour chaque sens de piste',
   densityTitle: 'Altitude densité',
   densityElevationLabel: 'Altitude du terrain (ft)',
   densityElevationHint: "Renseignée d'après l'aérodrome s'il est connu",
