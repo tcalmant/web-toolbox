@@ -57,6 +57,39 @@ if (import.meta.env.QUASAR_PROD) {
   )
 }
 
+// Shares from other apps are posted to the share_target action of manifest.json.
+// Only the service worker can read a POST: it keeps the files for the app (see
+// composables/useShareTarget.ts) and redirects to it with the text in the query.
+registerRoute(
+  ({ url }) => url.href === new URL('share-target', self.registration.scope).href,
+  async ({ request }) => {
+    const data = await request.formData()
+    const cache = await caches.open('shared-files')
+    for (const key of await cache.keys()) {
+      await cache.delete(key)
+    }
+
+    const files = data.getAll('files').filter((file) => file instanceof File)
+    for (const [index, file] of files.entries()) {
+      // The index keeps two files of the same name apart
+      await cache.put(`shared-files/${index}/${encodeURIComponent(file.name)}`, new Response(file))
+    }
+
+    const target = new URL(self.registration.scope)
+    for (const name of ['title', 'text', 'url']) {
+      const value = data.get(name)
+      if (typeof value === 'string' && value) {
+        target.searchParams.set(name, value)
+      }
+    }
+    if (files.length > 0) {
+      target.searchParams.set('files', String(files.length))
+    }
+    return Response.redirect(target.href, 303)
+  },
+  'POST',
+)
+
 // Hosts of the map layers (see components/MapView.vue)
 const TILE_HOSTS = ['data.geopf.fr', 'tile.openstreetmap.org', /^[abc]\.tile\.opentopomap\.org$/]
 

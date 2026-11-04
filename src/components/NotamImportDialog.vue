@@ -97,8 +97,9 @@ under the License.
 
 <script setup lang="ts">
 import { extractPdfText } from '@/adapters/pdf/pdfTextExtractor'
+import { takeSharedFiles } from '@/composables/useShareTarget'
 import { useQuasar } from 'quasar'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
@@ -145,4 +146,11 @@ async function onFilesPicked(files: File[] | null) {
     pdfFiles.value = null
   }
 }
+
+// PDF files shared from another app are read as if picked here
+watch(showDialog, async (shown) => {
+  if (shown) {
+    await onFilesPicked(await takeSharedFiles())
+  }
+})
 </script>
