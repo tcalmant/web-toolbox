@@ -1,1 +1,0 @@
-import{V as e,it as t,rt as n}from"./index-Cr5L1G0q.js";var r=`en-US`,i=e(({app:e})=>{let i=t({locale:r,fallbackLocale:`en-US`,legacy:!1,messages:n});e.use(i)});export{i as default};
