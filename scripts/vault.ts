@@ -187,6 +187,8 @@ async function decrypt(): Promise<void> {
   writeFileSync(join(PRIVATE_DIR, 'planes.json'), `${JSON.stringify(payload.planes, null, 2)}\n`)
   for (const [path, xml] of Object.entries(payload.checklists)) {
     const target = join(PRIVATE_DIR, 'checklists', ...path.split('/'))
+    // isAcdPayload already checks the paths: never write outside the folder anyway
+    if (!target.startsWith(join(PRIVATE_DIR, 'checklists') + sep)) fail(`refused path ${path}`)
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, xml)
   }
