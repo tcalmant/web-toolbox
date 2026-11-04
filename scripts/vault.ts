@@ -26,6 +26,7 @@
  *   planes.json                     the aircraft, by registration
  *   checklists/model/<model>.xml    one file per aircraft model
  *   checklists/plane/<tail>.xml     optional per-aircraft additions
+ *   tileLayers.json                 optional map layers reserved to the club
  *
  * The passphrase is read from ACD_VAULT_PASSPHRASE, or typed (hidden) when the
  * variable is not set. Run with Node 24 (TypeScript is stripped natively).
@@ -118,8 +119,17 @@ function readPlaintext(): AcdPayload {
       checklists[relative(checklistsDir, file).split(sep).join('/')] = readFileSync(file, 'utf8')
     }
   }
-  const payload = { planes, checklists }
-  if (!isAcdPayload(payload)) fail('planes.json is not a registration to aircraft object')
+  const tileLayersFile = join(PRIVATE_DIR, 'tileLayers.json')
+  const payload = existsSync(tileLayersFile)
+    ? {
+        planes,
+        checklists,
+        tileLayers: JSON.parse(readFileSync(tileLayersFile, 'utf8')) as unknown,
+      }
+    : { planes, checklists }
+  if (!isAcdPayload(payload)) {
+    fail('planes.json or tileLayers.json does not have the expected structure')
+  }
   return payload as AcdPayload
 }
 
@@ -153,7 +163,7 @@ async function encrypt(): Promise<void> {
   mkdirSync(dirname(VAULT_FILE), { recursive: true })
   writeFileSync(VAULT_FILE, `${JSON.stringify(bundle, null, 2)}\n`)
   console.log(
-    `${Object.keys(payload.planes).length} aircraft and ${Object.keys(payload.checklists).length} checklist files written to ${relative(ROOT, VAULT_FILE)}`,
+    `${Object.keys(payload.planes).length} aircraft, ${Object.keys(payload.checklists).length} checklist files and ${payload.tileLayers?.length ?? 0} map layers written to ${relative(ROOT, VAULT_FILE)}`,
   )
 }
 
@@ -175,6 +185,12 @@ async function decrypt(): Promise<void> {
     const target = join(PRIVATE_DIR, 'checklists', ...path.split('/'))
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, xml)
+  }
+  if (payload.tileLayers) {
+    writeFileSync(
+      join(PRIVATE_DIR, 'tileLayers.json'),
+      `${JSON.stringify(payload.tileLayers, null, 2)}\n`,
+    )
   }
   console.log(`Plaintext written to ${relative(ROOT, PRIVATE_DIR)}/`)
 }

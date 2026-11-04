@@ -11,8 +11,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { encryptVault } from '../../../src/adapters/crypto/vaultCrypto'
-import { createAcdVault } from '../../../src/composables/useAcdVault'
+import { tileUrlPattern } from '../../../src/adapters/storage/serviceWorkerTileCache'
+import { createAcdVault, type AcdVaultDeps } from '../../../src/composables/useAcdVault'
 import type { AcdPayload } from '../../../src/domain/acdVault'
+import type { TileCache } from '../../../src/domain/ports/tileCache'
 import type { VaultKeyStore } from '../../../src/domain/ports/vaultKeyStore'
 
 const PAYLOAD: AcdPayload = {
@@ -44,12 +46,25 @@ class MemoryKeyStore implements VaultKeyStore {
   }
 }
 
+class MemoryTileCache implements TileCache {
+  forgotten: string[] = []
+
+  async forget(urlTemplates: readonly string[]) {
+    this.forgotten.push(...urlTemplates)
+  }
+}
+
+const vaultOf = (
+  deps: Omit<AcdVaultDeps, 'tileCache'>,
+  tileCache: TileCache = new MemoryTileCache(),
+) => createAcdVault({ ...deps, tileCache })
+
 const bundleFor = (passphrase: string, salt?: string) =>
   encryptVault(PAYLOAD, passphrase, { iterations: 1000, ...(salt ? { salt } : {}) })
 
 describe('createAcdVault', () => {
   it('is absent when the build has no vault', async () => {
-    const vault = createAcdVault({ bundle: null, keyStore: new MemoryKeyStore() })
+    const vault = vaultOf({ bundle: null, keyStore: new MemoryKeyStore() })
     expect(vault.status.value).toBe('absent')
     await vault.restore()
     expect(vault.status.value).toBe('absent')
@@ -57,7 +72,7 @@ describe('createAcdVault', () => {
   })
 
   it('starts restoring, then locked without a remembered key', async () => {
-    const vault = createAcdVault({
+    const vault = vaultOf({
       bundle: await bundleFor('pass'),
       keyStore: new MemoryKeyStore(),
     })
@@ -68,7 +83,7 @@ describe('createAcdVault', () => {
   })
 
   it('refuses a wrong passphrase and stays locked', async () => {
-    const vault = createAcdVault({
+    const vault = vaultOf({
       bundle: await bundleFor('pass'),
       keyStore: new MemoryKeyStore(),
     })
@@ -80,7 +95,7 @@ describe('createAcdVault', () => {
 
   it('unlocks with the right passphrase and remembers the key on request', async () => {
     const keyStore = new MemoryKeyStore()
-    const vault = createAcdVault({ bundle: await bundleFor('pass'), keyStore })
+    const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore })
     await vault.restore()
     vault.dialogOpen.value = true
     expect(await vault.unlock('pass', true)).toBe('ok')
@@ -93,7 +108,7 @@ describe('createAcdVault', () => {
 
   it('does not remember the key unless asked, and forgets an older one', async () => {
     const keyStore = new MemoryKeyStore()
-    const vault = createAcdVault({ bundle: await bundleFor('pass'), keyStore })
+    const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore })
     await vault.restore()
     expect(await vault.unlock('pass', false)).toBe('ok')
     expect(keyStore.key).toBeNull()
@@ -102,11 +117,11 @@ describe('createAcdVault', () => {
   it('unlocks silently on the next visit with the remembered key', async () => {
     const keyStore = new MemoryKeyStore()
     const bundle = await bundleFor('pass')
-    const first = createAcdVault({ bundle, keyStore })
+    const first = vaultOf({ bundle, keyStore })
     await first.restore()
     await first.unlock('pass', true)
 
-    const second = createAcdVault({ bundle, keyStore })
+    const second = vaultOf({ bundle, keyStore })
     await second.restore()
     expect(second.status.value).toBe('unlocked')
     expect(second.payload.value).toEqual(PAYLOAD)
@@ -115,23 +130,23 @@ describe('createAcdVault', () => {
   it('keeps a remembered key valid when the content is re-encrypted with the same salt', async () => {
     const keyStore = new MemoryKeyStore()
     const bundle = await bundleFor('pass')
-    const first = createAcdVault({ bundle, keyStore })
+    const first = vaultOf({ bundle, keyStore })
     await first.restore()
     await first.unlock('pass', true)
 
     const updated = await bundleFor('pass', bundle.salt)
-    const second = createAcdVault({ bundle: updated, keyStore })
+    const second = vaultOf({ bundle: updated, keyStore })
     await second.restore()
     expect(second.status.value).toBe('unlocked')
   })
 
   it('drops a remembered key that no longer fits (new passphrase) and asks again', async () => {
     const keyStore = new MemoryKeyStore()
-    const first = createAcdVault({ bundle: await bundleFor('old pass'), keyStore })
+    const first = vaultOf({ bundle: await bundleFor('old pass'), keyStore })
     await first.restore()
     await first.unlock('old pass', true)
 
-    const second = createAcdVault({ bundle: await bundleFor('new pass'), keyStore })
+    const second = vaultOf({ bundle: await bundleFor('new pass'), keyStore })
     await second.restore()
     expect(second.status.value).toBe('locked')
     expect(keyStore.key).toBeNull()
@@ -140,7 +155,7 @@ describe('createAcdVault', () => {
   it('keeps a remembered key when opening fails for another reason than a wrong key', async () => {
     const keyStore = new MemoryKeyStore()
     const bundle = await bundleFor('pass')
-    const first = createAcdVault({ bundle, keyStore })
+    const first = vaultOf({ bundle, keyStore })
     await first.restore()
     await first.unlock('pass', true)
     const key = keyStore.key
@@ -154,7 +169,7 @@ describe('createAcdVault', () => {
         salt: bundle.salt,
       },
     )
-    const second = createAcdVault({ bundle: corrupt, keyStore })
+    const second = vaultOf({ bundle: corrupt, keyStore })
     await second.restore()
     expect(second.status.value).toBe('locked')
     expect(keyStore.key).toBe(key)
@@ -162,12 +177,57 @@ describe('createAcdVault', () => {
 
   it('locks: forgets the data and the remembered key', async () => {
     const keyStore = new MemoryKeyStore()
-    const vault = createAcdVault({ bundle: await bundleFor('pass'), keyStore })
+    const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore })
     await vault.restore()
     await vault.unlock('pass', true)
     await vault.lock()
     expect(vault.status.value).toBe('locked')
     expect(vault.payload.value).toBeNull()
     expect(keyStore.key).toBeNull()
+  })
+
+  it('locks: forgets the cached tiles of the club map layers', async () => {
+    const url = 'https://tiles.example/{z}/{x}/{y}.png'
+    const layer = { name: 'Club', url, attribution: '', minZoom: 0, maxZoom: 11, bounds: null }
+    const bundle = await encryptVault({ ...PAYLOAD, tileLayers: [layer] }, 'pass', {
+      iterations: 1000,
+    })
+    const tileCache = new MemoryTileCache()
+    const vault = vaultOf({ bundle, keyStore: new MemoryKeyStore() }, tileCache)
+    await vault.restore()
+    await vault.unlock('pass', false)
+    expect(vault.payload.value?.tileLayers).toEqual([layer])
+    await vault.lock()
+    expect(tileCache.forgotten).toEqual([url])
+  })
+})
+
+describe('tileUrlPattern', () => {
+  const ign =
+    'https://data.geopf.fr/private/wmts?SERVICE=WMTS&LAYER=SCAN-OACI&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'
+  it.each([
+    [
+      ign,
+      'https://data.geopf.fr/private/wmts?SERVICE=WMTS&LAYER=SCAN-OACI&TILEMATRIX=9&TILEROW=180&TILECOL=264',
+      true,
+    ],
+    [
+      ign,
+      'https://data.geopf.fr/private/wmts?SERVICE=WMTS&LAYER=OTHER&TILEMATRIX=9&TILEROW=180&TILECOL=264',
+      false,
+    ],
+    [
+      ign,
+      'https://data.geopf.fr/wmts?SERVICE=WMTS&LAYER=SCAN-OACI&TILEMATRIX=9&TILEROW=180&TILECOL=264',
+      false,
+    ],
+    ['https://{s}.tiles.example/{z}/{x}/{y}.png', 'https://a.tiles.example/9/264/180.png', true],
+    [
+      'https://{s}.tiles.example/{z}/{x}/{y}.png',
+      'https://tile.openstreetmap.org/9/264/180.png',
+      false,
+    ],
+  ])('%s matches %s: %s', (template, url, expected) => {
+    expect(tileUrlPattern(template).test(url)).toBe(expected)
   })
 })
