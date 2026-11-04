@@ -61,6 +61,44 @@ export function windComponents(
   }
 }
 
+/** Sector of a variable wind direction, clockwise from `fromDeg` to `toDeg` (METAR 240V300). */
+export interface WindSector {
+  fromDeg: number
+  toDeg: number
+}
+
+/**
+ * Worst components of a wind whose direction is only known to lie in a sector,
+ * or anywhere when the sector is null (VRB): the largest crosswind and the
+ * least headwind (most tailwind) over every possible direction.
+ */
+export function worstWindComponents(
+  runwayHeadingDeg: number,
+  sector: WindSector | null,
+  speed: number,
+): Pick<WindComponents, 'headwind' | 'crosswind'> {
+  const mod = (deg: number) => ((deg % 360) + 360) % 360
+  const span = sector === null ? 0 : sector.toDeg - sector.fromDeg
+  // A full circle (000V360) is as variable as VRB, though its width wraps to 0
+  if (sector === null || (span !== 0 && mod(span) === 0)) {
+    return { headwind: -speed, crosswind: speed }
+  }
+  const width = mod(span)
+  const inSector = (deg: number) => mod(deg - sector.fromDeg) <= width
+  // Extremes are at the sector ends, or at the beam and tail directions when inside it
+  const candidates = [
+    sector.fromDeg,
+    sector.toDeg,
+    ...[90, 180, 270].map((d) => runwayHeadingDeg + d),
+  ]
+    .filter(inSector)
+    .map((deg) => windComponents(runwayHeadingDeg, deg, speed))
+  return {
+    headwind: Math.min(...candidates.map((c) => c.headwind)),
+    crosswind: Math.max(...candidates.map((c) => c.crosswind)),
+  }
+}
+
 /**
  * Parses a runway designator ("22", "04R", "4L") or a 3 digit heading ("220")
  * into a heading in degrees. Returns null when it is neither.

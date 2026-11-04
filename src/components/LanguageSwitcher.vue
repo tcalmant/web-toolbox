@@ -23,12 +23,13 @@ under the License.
 <template>
   <div class="q-pa-md full-width">
     <q-select
-      v-model="locale"
+      :model-value="locale"
       :options="localeOptions"
       :label="t('languageSwitch')"
       dense
       emit-value
       map-options
+      @update:model-value="setLocale"
     >
       <template v-slot:append>
         <q-icon name="public" />
@@ -39,9 +40,11 @@ under the License.
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { useLocale } from '@/composables/useLocale'
 import * as appI18n from '@/i18n'
 
-const { t, locale } = useI18n({ useScope: 'global' })
+const { t } = useI18n({ useScope: 'global' })
+const { locale, setLocale } = useLocale()
 
 class LocaleInfo {
   label: string

@@ -66,6 +66,19 @@ under the License.
             {{ t(vault.isUnlocked.value ? 'acdLockDrawer' : 'acdUnlockDrawer') }}
           </q-item-section>
         </q-item>
+        <q-item v-if="storage.persisted.value !== null" dense>
+          <q-item-section avatar>
+            <q-icon
+              :name="storage.persisted.value ? 'verified_user' : 'warning'"
+              :color="storage.persisted.value ? 'positive' : 'warning'"
+            />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label caption>
+              {{ t(storage.persisted.value ? 'storagePersisted' : 'storageNotPersisted') }}
+            </q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
       <q-list>
         <q-item-label header> {{ t('aviationLinks') }} </q-item-label>
@@ -74,12 +87,19 @@ under the License.
       <q-list>
         <q-item-label header> {{ t('projectLinks') }} </q-item-label>
         <EssentialLink v-for="link in projectLinks" :key="link.id" v-bind="link" />
+        <q-item clickable @click="openNotice">
+          <q-item-section avatar>
+            <q-icon name="gavel" />
+          </q-item-section>
+          <q-item-section>{{ t('noticeTitle') }}</q-item-section>
+        </q-item>
       </q-list>
 
       <LanguageSwitcher style="position: absolute; bottom: 0" />
     </q-drawer>
 
     <AcdUnlockDialog />
+    <NoticeDialog v-model="noticeOpen" />
 
     <q-page-container>
       <h1 class="sr-only">{{ pageTitle }}</h1>
@@ -92,7 +112,9 @@ under the License.
 import AcdUnlockDialog from '@/components/AcdUnlockDialog.vue'
 import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import NoticeDialog from '@/components/NoticeDialog.vue'
 import { useAcdVault } from '@/composables/useAcdVault'
+import { usePersistentStorage } from '@/composables/usePersistentStorage'
 import { usePageMetadata } from '@/composables/usePageMetadata'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -151,8 +173,13 @@ const projectLinks: EssentialLinkProps[] = [
 
 const vault = useAcdVault()
 
+const storage = usePersistentStorage()
+
 // Unlock again silently on a device that was told to remember the passphrase
-onMounted(() => void vault.restore())
+onMounted(() => {
+  void vault.restore()
+  void storage.check()
+})
 
 function onToggleVault() {
   leftDrawerOpen.value = false
@@ -164,6 +191,12 @@ function onToggleVault() {
 }
 
 const leftDrawerOpen = ref(false)
+const noticeOpen = ref(false)
+
+function openNotice() {
+  leftDrawerOpen.value = false
+  noticeOpen.value = true
+}
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value

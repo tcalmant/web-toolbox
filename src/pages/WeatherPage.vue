@@ -30,6 +30,8 @@ under the License.
         v-model:gust="windGust"
         v-model:unit="windUnit"
         v-model:direction-is-true="windDirectionIsTrue"
+        v-model:variable="windVariable"
+        v-model:sector="windSector"
       />
       <DensityAltitudeCard
         v-model:elevation="elevation"
@@ -46,6 +48,7 @@ import DensityAltitudeCard from '@/components/DensityAltitudeCard.vue'
 import WeatherDecoderCard from '@/components/WeatherDecoderCard.vue'
 import WindCalculatorCard from '@/components/WindCalculatorCard.vue'
 import { type Metar, windSpeedKt } from '@/domain/metar'
+import type { WindSector } from '@/domain/wind'
 import { ref } from 'vue'
 
 const windDirection = ref<number | null>(null)
@@ -53,6 +56,8 @@ const windSpeed = ref<number | null>(null)
 const windGust = ref<number | null>(null)
 const windUnit = ref<'kt' | 'kmh'>('kt')
 const windDirectionIsTrue = ref(false)
+const windVariable = ref(false)
+const windSector = ref<WindSector | null>(null)
 
 const elevation = ref<number | null>(null)
 const qnh = ref<number | null>(null)
@@ -66,6 +71,8 @@ function onUseWind(metar: Metar) {
   windUnit.value = 'kt'
   windDirection.value = metar.wind.directionDeg
   windDirectionIsTrue.value = true
+  windVariable.value = metar.wind.directionDeg === null
+  windSector.value = metar.windVariation
   windSpeed.value = Math.round(windSpeedKt(metar.wind))
   windGust.value =
     metar.wind.gust === null ? null : Math.round(windSpeedKt(metar.wind, metar.wind.gust))

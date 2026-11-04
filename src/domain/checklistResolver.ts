@@ -25,8 +25,8 @@ function loadTier(
   key: string,
   locale: string,
 ): ChecklistDocument | null {
-  const raw = source.getRawXml(tier, key, locale)
-  return raw ? new ChecklistDocument(raw) : null
+  const root = source.getRootElement(tier, key, locale)
+  return root ? new ChecklistDocument(root) : null
 }
 
 /**
