@@ -31,6 +31,7 @@ import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leafle
 import 'leaflet/dist/leaflet.css'
 import { useQuasar } from 'quasar'
 import { featuresToLayers } from '@/adapters/leaflet/geometryLayers'
+import { useAcdVault } from '@/composables/useAcdVault'
 import type { AIP } from '@/domain/aip'
 import type { NOTAM } from '@/domain/notam'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
@@ -64,6 +65,13 @@ onBeforeUnmount(() => {
   mapRef.value?.remove()
   mapRef.value = undefined
 })
+
+const vault = useAcdVault()
+const layersControlRef = shallowRef<L.Control.Layers>()
+let defaultBaseLayer: L.Layer | undefined
+let clubLayers: L.TileLayer[] = []
+// Saved choice of a club layer, applied once the vault unlocks
+let pendingClubLayerName: string | undefined
 
 const initMap = () => {
   if (mapRef.value != undefined) {
@@ -116,27 +124,6 @@ const initMap = () => {
         crossOrigin: true,
       },
     ),
-    'IGN OACI-VFR 2025': L.tileLayer(
-      'https://data.geopf.fr/private/wmts?SERVICE=WMTS' +
-        '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
-        '&apikey=ign_scan_ws' +
-        '&STYLE=normal' +
-        '&TILEMATRIXSET=PM' +
-        '&FORMAT=image/jpeg' +
-        '&LAYER=GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN-OACI' +
-        '&TILEMATRIX={z}' +
-        '&TILEROW={y}' +
-        '&TILECOL={x}',
-      {
-        bounds: L.latLngBounds(L.latLng(40.3893, -5.99644), L.latLng(51.4441, 11.146)),
-        minZoom: 6,
-        maxZoom: 11,
-        attribution:
-          '&copy; <a href="https://geoservices.ign.fr/">IGN</a> - 2025. <a href="https://geoservices.ign.fr/cgu-licences">Copie et reproduction interdite.</a>',
-        tileSize: 256,
-        crossOrigin: true,
-      },
-    ),
     OpenStreetMap: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       crossOrigin: true,
@@ -150,15 +137,19 @@ const initMap = () => {
     }),
   }
 
-  L.control.layers(baseLayers, {}, { hideSingleBase: true }).addTo(map)
+  const layersControl = L.control.layers(baseLayers, {}, { hideSingleBase: true }).addTo(map)
 
   // Use the last selected base layer
   const selectedBaseLayerName =
     ($q.sessionStorage.getItem('mapViewer.selectedBaseLayer') as string) ||
     Object.keys(baseLayers)[0]!
 
-  const selectedBaseLayer = baseLayers[selectedBaseLayerName] ?? Object.values(baseLayers)[0]!
+  defaultBaseLayer = Object.values(baseLayers)[0]!
+  const selectedBaseLayer = baseLayers[selectedBaseLayerName] ?? defaultBaseLayer
   selectedBaseLayer.addTo(map)
+  pendingClubLayerName = baseLayers[selectedBaseLayerName] ? undefined : selectedBaseLayerName
+  clubLayers = []
+  layersControlRef.value = layersControl
 
   // Register to base layer change events
   map.on('baselayerchange', (e) => $q.sessionStorage.setItem('mapViewer.selectedBaseLayer', e.name))
@@ -172,6 +163,45 @@ const initMap = () => {
   aipLayer.value.addTo(map)
   notamLayer.value.addTo(map)
 }
+
+/** Offers the map layers of the unlocked vault, and only while it is unlocked. */
+watch([layersControlRef, () => vault.payload.value?.tileLayers], ([control, definitions]) => {
+  const map = mapRef.value
+  if (!map || !control) {
+    return
+  }
+
+  const clubLayerShown = clubLayers.some((layer) => map.hasLayer(layer))
+  for (const layer of clubLayers) {
+    control.removeLayer(layer)
+    layer.remove()
+  }
+  if (clubLayerShown) {
+    defaultBaseLayer?.addTo(map)
+  }
+
+  clubLayers = (definitions ?? []).map((definition) => {
+    const layer = L.tileLayer(definition.url, {
+      minZoom: definition.minZoom,
+      maxZoom: definition.maxZoom,
+      attribution: definition.attribution,
+      tileSize: 256,
+      crossOrigin: true,
+      ...(definition.bounds ? { bounds: L.latLngBounds(definition.bounds) } : {}),
+    })
+    control.addBaseLayer(layer, definition.name)
+    if (definition.name === pendingClubLayerName) {
+      pendingClubLayerName = undefined
+      map.eachLayer((other) => {
+        if (other instanceof L.TileLayer) {
+          other.remove()
+        }
+      })
+      layer.addTo(map)
+    }
+    return layer
+  })
+})
 
 class MapCoordinatesViewer extends L.Control {
   private container!: HTMLElement

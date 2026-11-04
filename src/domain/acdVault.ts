@@ -32,6 +32,19 @@ export interface AcdPlaneRecord {
   }
 }
 
+/** A map base layer reserved to the club members (licence restricted to the association). */
+export interface AcdTileLayer {
+  /** Label in the layer selector. */
+  name: string
+  /** Tile URL template, with the {z}, {x} and {y} placeholders. */
+  url: string
+  attribution: string
+  minZoom: number
+  maxZoom: number
+  /** South-west and north-east corners as [lat, lng] in degrees, or null for no limit. */
+  bounds: [[number, number], [number, number]] | null
+}
+
 /** The decrypted content of the vault. */
 export interface AcdPayload {
   /** Aircraft by registration. */
@@ -41,6 +54,8 @@ export interface AcdPayload {
    * instance "model/DR400 120.xml" or "plane/F-ABCD.xml".
    */
   checklists: Record<string, string>
+  /** Absent from the vaults encrypted before it existed. */
+  tileLayers?: AcdTileLayer[]
 }
 
 /** The encrypted file. Every binary field is base64. */
@@ -83,9 +98,32 @@ export function isAcdPayload(value: unknown): value is AcdPayload {
   if (typeof checklists !== 'object' || checklists === null || Array.isArray(checklists)) {
     return false
   }
+  const tileLayers = v['tileLayers']
   return (
     Object.values(planes).every(isAcdPlaneRecord) &&
-    Object.values(checklists).every((xml) => typeof xml === 'string')
+    Object.values(checklists).every((xml) => typeof xml === 'string') &&
+    (tileLayers === undefined || (Array.isArray(tileLayers) && tileLayers.every(isAcdTileLayer)))
+  )
+}
+
+const isFiniteNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value)
+
+const isLatLng = (value: unknown) =>
+  Array.isArray(value) && value.length === 2 && value.every(isFiniteNumber)
+
+function isAcdTileLayer(value: unknown): value is AcdTileLayer {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const v = value as Record<string, unknown>
+  const bounds = v['bounds']
+  return (
+    typeof v['name'] === 'string' &&
+    typeof v['url'] === 'string' &&
+    typeof v['attribution'] === 'string' &&
+    isFiniteNumber(v['minZoom']) &&
+    isFiniteNumber(v['maxZoom']) &&
+    (bounds === null || (Array.isArray(bounds) && bounds.length === 2 && bounds.every(isLatLng)))
   )
 }
 

@@ -31,6 +31,19 @@ const PAYLOAD: AcdPayload = {
   checklists: {
     'model/DR400 120.xml': '<checklist id="model"><section id="s" title="é"/></checklist>',
   },
+  tileLayers: [
+    {
+      name: 'Club map',
+      url: 'https://tiles.example/{z}/{x}/{y}.png',
+      attribution: 'Club',
+      minZoom: 6,
+      maxZoom: 11,
+      bounds: [
+        [40.4, -6],
+        [51.4, 11.1],
+      ],
+    },
+  ],
 }
 
 // Few iterations: the derivation is the slow part and is not what is tested here
@@ -132,6 +145,34 @@ describe('vault encryption', () => {
       { X: null },
     ]) {
       const bundle = await bad(planes)
+      const key = await deriveBundleKey('p', bundle)
+      await expect(decryptVault(bundle, key)).rejects.toMatchObject({ reason: 'corrupt' })
+    }
+  })
+
+  it('rejects malformed map layers as corrupt', async () => {
+    const layer = PAYLOAD.tileLayers![0]!
+    for (const tileLayers of [
+      {},
+      [null],
+      [{ ...layer, url: undefined }],
+      [{ ...layer, maxZoom: '11' }],
+      [{ ...layer, bounds: [[40, -6]] }],
+      [
+        {
+          ...layer,
+          bounds: [
+            [40, -6],
+            [51, NaN],
+          ],
+        },
+      ],
+    ]) {
+      const bundle = await encryptVault(
+        { ...PAYLOAD, tileLayers } as unknown as AcdPayload,
+        'p',
+        FAST,
+      )
       const key = await deriveBundleKey('p', bundle)
       await expect(decryptVault(bundle, key)).rejects.toMatchObject({ reason: 'corrupt' })
     }

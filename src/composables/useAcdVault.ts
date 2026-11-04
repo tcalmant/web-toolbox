@@ -20,7 +20,9 @@ import { computed, ref, shallowRef } from 'vue'
 import { acdVaultBundle } from '@/adapters/data/acdVaultBundle'
 import { decryptVault, deriveBundleKey, VaultError } from '@/adapters/crypto/vaultCrypto'
 import { IndexedDbVaultKeyStore } from '@/adapters/storage/indexedDbVaultKeyStore'
+import { ServiceWorkerTileCache } from '@/adapters/storage/serviceWorkerTileCache'
 import type { AcdPayload, VaultBundle } from '@/domain/acdVault'
+import type { TileCache } from '@/domain/ports/tileCache'
 import type { VaultKeyStore } from '@/domain/ports/vaultKeyStore'
 
 /**
@@ -36,10 +38,11 @@ export type UnlockResult = 'ok' | 'wrong-passphrase' | 'corrupt'
 export interface AcdVaultDeps {
   bundle: VaultBundle | null
   keyStore: VaultKeyStore
+  tileCache: TileCache
 }
 
 /** Builds the vault state. Exported for tests: the app uses {@link useAcdVault}. */
-export function createAcdVault({ bundle, keyStore }: AcdVaultDeps) {
+export function createAcdVault({ bundle, keyStore, tileCache }: AcdVaultDeps) {
   const status = ref<VaultStatus>(bundle ? 'restoring' : 'absent')
   const payload = shallowRef<AcdPayload | null>(null)
   const dialogOpen = ref(false)
@@ -95,11 +98,14 @@ export function createAcdVault({ bundle, keyStore }: AcdVaultDeps) {
   }
 
   async function lock(): Promise<void> {
+    const clubTiles = payload.value?.tileLayers?.map((layer) => layer.url) ?? []
     payload.value = null
     if (bundle) {
       status.value = 'locked'
     }
     await keyStore.clear()
+    // The club layers are licensed to its members: no offline copy outlives the unlock
+    await tileCache.forget(clubTiles)
   }
 
   return {
@@ -119,6 +125,10 @@ let shared: AcdVault | undefined
 
 /** The app-wide vault: one state shared by every page. */
 export function useAcdVault(): AcdVault {
-  shared ??= createAcdVault({ bundle: acdVaultBundle, keyStore: new IndexedDbVaultKeyStore() })
+  shared ??= createAcdVault({
+    bundle: acdVaultBundle,
+    keyStore: new IndexedDbVaultKeyStore(),
+    tileCache: new ServiceWorkerTileCache(),
+  })
   return shared
 }
