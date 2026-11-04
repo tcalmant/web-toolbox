@@ -15,7 +15,7 @@
  *   limitations under the License.
  */
 
-import { captureSharedText } from '@/composables/useShareTarget'
+import { captureSharedText } from '@/composables/shareTarget'
 import { defineRouter } from '#q-app'
 import {
   createMemoryHistory,

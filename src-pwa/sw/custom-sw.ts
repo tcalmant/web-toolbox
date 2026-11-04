@@ -59,7 +59,7 @@ if (import.meta.env.QUASAR_PROD) {
 
 // Shares from other apps are posted to the share_target action of manifest.json.
 // Only the service worker can read a POST: it keeps the files for the app (see
-// composables/useShareTarget.ts) and redirects to it with the text in the query.
+// composables/shareTarget.ts) and redirects to it with the text in the query.
 registerRoute(
   ({ url }) => url.href === new URL('share-target', self.registration.scope).href,
   async ({ request }) => {
