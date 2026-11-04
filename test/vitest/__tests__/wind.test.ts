@@ -61,6 +61,7 @@ describe('worstWindComponents', () => {
   it.each([
     // runway, sector, speed, worst crosswind, worst headwind
     ['VRB: full crosswind and tailwind', 220, null, 10, 10, -10],
+    ['full circle 000V360 as VRB', 220, { fromDeg: 0, toDeg: 360 }, 10, 10, -10],
     ['360 to 360 on runway 36', 0, { fromDeg: 360, toDeg: 360 }, 10, 0, 10],
     ['sector around the axis', 0, { fromDeg: 350, toDeg: 30 }, 10, 10 * sin(30), 10 * cos(30)],
     ['sector around the axis, runway 18', 180, { fromDeg: 350, toDeg: 30 }, 10, 10 * sin(30), -10],

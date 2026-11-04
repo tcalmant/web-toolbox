@@ -77,11 +77,13 @@ export function worstWindComponents(
   sector: WindSector | null,
   speed: number,
 ): Pick<WindComponents, 'headwind' | 'crosswind'> {
-  if (sector === null) {
+  const mod = (deg: number) => ((deg % 360) + 360) % 360
+  const span = sector === null ? 0 : sector.toDeg - sector.fromDeg
+  // A full circle (000V360) is as variable as VRB, though its width wraps to 0
+  if (sector === null || (span !== 0 && mod(span) === 0)) {
     return { headwind: -speed, crosswind: speed }
   }
-  const mod = (deg: number) => ((deg % 360) + 360) % 360
-  const width = mod(sector.toDeg - sector.fromDeg)
+  const width = mod(span)
   const inSector = (deg: number) => mod(deg - sector.fromDeg) <= width
   // Extremes are at the sector ends, or at the beam and tail directions when inside it
   const candidates = [
