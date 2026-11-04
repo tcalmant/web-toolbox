@@ -24,11 +24,10 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { removePageChrome } from '../../../src/adapters/pdf/pdfTextExtractor'
-import { appendSharedText, captureShare } from '../../../src/composables/shareTarget'
+import { captureShare, takeShare } from '../../../src/composables/shareTarget'
 import { AIP } from '../../../src/domain/aip'
 import { sharedDataToText, splitNotamsAndAip } from '../../../src/domain/importedText'
 import { parseNotams } from '../../../src/domain/notam'
@@ -131,22 +130,38 @@ describe('sharedDataToText', () => {
   })
 })
 
-describe('captureShare', () => {
-  // The service worker keeps the shared text in its cache
-  vi.stubGlobal('caches', {
-    open: () =>
-      Promise.resolve({
-        keys: () => Promise.resolve([new Request('https://app.test/share/text')]),
-        match: () => Promise.resolve(new Response(JSON.stringify({ text: 'SHARED' }))),
-        delete: () => Promise.resolve(true),
-      }),
+describe('takeShare', () => {
+  const CACHE_NAME = 'shared-files:/app/'
+  // What the service worker left in its cache, by URL
+  let entries: Map<string, Response>
+  const cache = {
+    keys: () => Promise.resolve([...entries.keys()].map((url) => new Request(url))),
+    match: (request: Request) => Promise.resolve(entries.get(request.url)),
+  }
+  const caches = {
+    has: vi.fn(() => Promise.resolve(entries.size > 0)),
+    open: vi.fn(() => Promise.resolve(cache)),
+    delete: vi.fn(() => Promise.resolve(true)),
+  }
+
+  beforeEach(() => {
+    entries = new Map([
+      ['https://app.test/share/text', new Response(JSON.stringify({ id: 'ID', text: 'SHARED' }))],
+    ])
+    vi.clearAllMocks()
+    vi.stubGlobal('caches', caches)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it.each([
-    ['no query', '', ''],
-    ['the share flag', '?share=1', 'SHARED'],
-    ['unrelated parameters', '?lang=fr&share=0', ''],
-    ['a forged text', '?text=FORGED&title=SUP', ''],
+    ['no query', '', null],
+    ['the share id', '?share=ID', 'SHARED'],
+    ['an old share id', '?share=OLD', null],
+    ['unrelated parameters', '?lang=fr&share=', null],
+    ['a forged text', '?text=FORGED&title=SUP', null],
   ])('takes %s out of the URL', async (_, query, expected) => {
     window.history.replaceState(null, '', `/app/${query}#/notam`)
     captureShare()
@@ -154,9 +169,27 @@ describe('captureShare', () => {
       '/app/#/notam',
     )
 
-    const inputText = ref('')
-    expect(await appendSharedText(inputText)).toEqual(!!expected)
-    expect(inputText.value).toEqual(expected)
+    const share = await takeShare()
+    expect(share?.text ?? null).toEqual(expected)
+    // The cache is only read for a share id, and always emptied then
+    const read = query.includes('share=') && !query.endsWith('share=')
+    expect(caches.open.mock.calls).toEqual(read ? [[CACHE_NAME]] : [])
+    expect(caches.delete.mock.calls).toEqual(read ? [[CACHE_NAME]] : [])
+    // Only once
+    expect(await takeShare()).toBeNull()
+  })
+
+  it('returns the shared files with their names', async () => {
+    entries.set(
+      'https://app.test/share/file/0',
+      new Response('%PDF', { headers: { 'X-File-Name': encodeURIComponent('SUP 1/26.pdf') } }),
+    )
+    window.history.replaceState(null, '', '/app/?share=ID#/notam')
+    captureShare()
+
+    const share = await takeShare()
+    expect(share?.files.map((file) => file.name)).toEqual(['SUP 1/26.pdf'])
+    expect(caches.delete).toHaveBeenCalledWith(CACHE_NAME)
   })
 })
 

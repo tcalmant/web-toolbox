@@ -60,7 +60,10 @@ if (import.meta.env.QUASAR_PROD) {
 // Shares from other apps are posted to the share_target action of manifest.json.
 // Only the service worker can read a POST: it keeps the shared data for the app
 // (see composables/shareTarget.ts) and redirects to it. Any page can post here
-// too, so nothing goes through the URL and only a few PDF files are kept.
+// too, so nothing goes through the URL and only a few PDF files are kept. Such
+// a post cannot be told from a real share by Sec-Fetch-Site or Origin: Fetch
+// adds them after the service worker (in HTTP-network-or-cache fetch), so the
+// app only imports a share once the user confirms it.
 const SHARE_MAX_FILES = 10
 const SHARE_MAX_SIZE = 50 * 1024 * 1024
 registerRoute(
@@ -75,12 +78,16 @@ registerRoute(
       await caches.delete(cacheName)
       const cache = await caches.open(cacheName)
 
+      // A one-time id in the URL and in the cache: a crafted ?share link
+      // cannot import what an earlier share left behind
+      const id = crypto.randomUUID()
       const shared = Object.fromEntries(
         ['title', 'text', 'url'].map((name) => {
           const value = data.get(name)
           return [name, typeof value === 'string' ? value : null]
         }),
       )
+      shared.id = id
       await cache.put(new URL('share/text', target), new Response(JSON.stringify(shared)))
 
       const files = data
@@ -99,7 +106,7 @@ registerRoute(
           new Response(file, { headers: { 'X-File-Name': encodeURIComponent(file.name) } }),
         )
       }
-      target.searchParams.set('share', '1')
+      target.searchParams.set('share', id)
     } catch (error) {
       // Not a form post: open the app anyway rather than a network error page
       console.error('Invalid share', error)

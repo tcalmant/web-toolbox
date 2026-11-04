@@ -18,27 +18,33 @@
 /*
  * Text and PDF files shared from another app to the installed app (Web Share
  * Target, see share_target in src-pwa/manifest.json): the service worker keeps
- * the shared data in a cache and opens the app with share=1 in the query. The
- * data never comes through the URL, so that a plain link cannot inject text.
+ * the shared data in a cache and opens the app with a one-time share id in the
+ * query. The data never comes through the URL, so that a plain link cannot
+ * inject text, and any page can post to the share target: the import dialog
+ * only imports it once the user confirms.
  */
 
-import type { Ref } from 'vue'
 import { sharedDataToText, type SharedData } from '@/domain/importedText'
 
-let sharePending = false
-let hasSharedFiles = false
+/** What was shared, waiting for the user to import it */
+export interface SharedImport {
+  text: string
+  files: File[]
+}
+
+let shareId: string | null = null
 
 /**
- * Takes the share flag out of the page URL. It must run before the router is
+ * Takes the share id out of the page URL. It must run before the router is
  * created: with a relative publicPath, the hash history takes the page path
  * and query as its base, so the query would stick to every route.
  */
 export function captureShare(): void {
+  shareId = new URLSearchParams(window.location.search).get('share')
   if (!window.location.search) {
     return
   }
 
-  sharePending = new URLSearchParams(window.location.search).get('share') === '1'
   // A reload must not import the same share again
   window.history.replaceState(
     window.history.state,
@@ -48,61 +54,39 @@ export function captureShare(): void {
 }
 
 /**
- * Name of the cache filled by the service worker (src-pwa/sw/custom-sw.ts),
- * derived from its scope as Cache Storage is per origin. The page is served at
- * that scope, next to the worker.
- */
-function sharedCacheName(): string {
-  return `shared-files:${new URL('.', window.location.href).pathname}`
-}
-
-/**
- * Adds the shared text, once, after what is already imported.
+ * Takes what was shared out of the cache filled by the service worker
+ * (src-pwa/sw/custom-sw.ts), once. The cache is named after its scope as Cache
+ * Storage is per origin, and the page is served at that scope.
  *
- * @returns True if something was shared: text, now added, or files
+ * @returns The shared text and files, or null if nothing matches the share id
  */
-export async function appendSharedText(inputText: Ref<string>): Promise<boolean> {
-  if (!sharePending) {
-    return false
+export async function takeShare(): Promise<SharedImport | null> {
+  const id = shareId
+  shareId = null
+  const cacheName = `shared-files:${new URL('.', window.location.href).pathname}`
+  // Opening a cache creates it
+  if (!id || !(await caches.has(cacheName))) {
+    return null
   }
-  sharePending = false
 
-  const cache = await caches.open(sharedCacheName())
-  let text = ''
-  for (const request of await cache.keys()) {
-    const response = await cache.match(request)
-    if (response?.headers.has('X-File-Name')) {
-      hasSharedFiles = true
-    } else if (response) {
-      text = sharedDataToText((await response.json()) as SharedData)
-      await cache.delete(request)
-    }
-  }
-  if (text) {
-    inputText.value = inputText.value ? `${inputText.value}\n\n${text}` : text
-  }
-  return !!text || hasSharedFiles
-}
-
-/**
- * Takes the shared files out of their cache, once.
- */
-export async function takeSharedFiles(): Promise<File[]> {
-  if (!hasSharedFiles) {
-    return []
-  }
-  hasSharedFiles = false
-
-  const cacheName = sharedCacheName()
   const cache = await caches.open(cacheName)
-  const files: File[] = []
-  for (const request of await cache.keys()) {
-    const response = await cache.match(request)
-    const name = response?.headers.get('X-File-Name')
-    if (response && name) {
-      files.push(new File([await response.blob()], decodeURIComponent(name)))
+  let matches = false
+  const share: SharedImport = { text: '', files: [] }
+  try {
+    for (const request of await cache.keys()) {
+      const response = await cache.match(request)
+      const name = response?.headers.get('X-File-Name')
+      if (response && name) {
+        share.files.push(new File([await response.blob()], decodeURIComponent(name)))
+      } else if (response) {
+        const shared = (await response.json()) as SharedData & { id?: string }
+        matches = shared.id === id
+        share.text = sharedDataToText(shared)
+      }
     }
+  } finally {
+    // A share is read only once, even when it is not the one asked for
+    await caches.delete(cacheName)
   }
-  await caches.delete(cacheName)
-  return files
+  return matches && (share.text || share.files.length) ? share : null
 }
