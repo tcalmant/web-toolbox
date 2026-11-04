@@ -1,1 +1,0 @@
-import{H as e,K as t,W as n}from"./index-CtWhJH2i.js";var r=`en-US`,i=e(({app:e})=>{let i=n({locale:r,fallbackLocale:`en-US`,legacy:!1,messages:t});e.use(i)});export{i as default};
