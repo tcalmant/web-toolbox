@@ -166,3 +166,49 @@ export class TimePeriod {
     return `${sign}${hours}:${minutes.toString().padStart(2, '0')}`
   }
 }
+
+const AIRAC_PERIOD_MS = 28 * 86_400_000
+
+// AIRAC cycles follow a fixed 28-day grid (ICAO Annex 15 and Doc 8126,
+// 2.6 "Aeronautical information regulation and control"): any published
+// effective date anchors it, here cycle 2001, effective 2 January 2020
+const AIRAC_EPOCH_MS = Date.UTC(2020, 0, 2)
+
+export interface AiracCycle {
+  /** Identifier YYNN: last two digits of the year, then the rank of the cycle in that year */
+  id: string
+  /** Effective date (00:00 UTC) */
+  effective: Date
+}
+
+function airacIndex(date: Date): number {
+  return Math.floor((date.getTime() - AIRAC_EPOCH_MS) / AIRAC_PERIOD_MS)
+}
+
+/**
+ * Gives the AIRAC cycle in force at the given date.
+ * @param date The date to look up
+ * @returns The cycle identifier and effective date
+ */
+export function airacCycle(date: Date): AiracCycle {
+  const index = airacIndex(date)
+  const effective = new Date(AIRAC_EPOCH_MS + index * AIRAC_PERIOD_MS)
+  const year = effective.getUTCFullYear()
+  // Index of the first cycle effective in that year
+  const firstOfYear = Math.ceil((Date.UTC(year, 0, 1) - AIRAC_EPOCH_MS) / AIRAC_PERIOD_MS)
+  const rank = index - firstOfYear + 1
+  return {
+    id: `${String(year % 100).padStart(2, '0')}${String(rank).padStart(2, '0')}`,
+    effective,
+  }
+}
+
+/**
+ * Counts the AIRAC cycles that started after the one in force at `from`, up to `to`.
+ * @param from The older date
+ * @param to The newer date
+ * @returns The number of cycles between the two dates (negative if `to` is older)
+ */
+export function airacCyclesBetween(from: Date, to: Date): number {
+  return airacIndex(to) - airacIndex(from)
+}

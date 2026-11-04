@@ -26,6 +26,7 @@ The data comes from OpenStreetMap (Overpass API).
 """
 
 import argparse
+import datetime
 import json
 import logging
 import math
@@ -79,20 +80,23 @@ out geom;
 """
 
 
-def overpass(query: str, retries: int = 6) -> list[dict]:
+def overpass(query: str, retries: int = 6) -> dict:
     """
     Runs an Overpass query
 
     :param query: Overpass QL query
     :param retries: Number of attempts (the public server is often busy)
-    :return: The elements of the answer
+    :return: The whole answer (elements and the "osm3s" header with the data date)
     """
     body = urllib.parse.urlencode({"data": query}).encode()
     for attempt in range(1, retries + 1):
         request = urllib.request.Request(OVERPASS_URL, data=body, headers={"User-Agent": USER_AGENT})
         try:
             with urllib.request.urlopen(request, timeout=240) as response:
-                return json.load(response)["elements"]
+                answer = json.load(response)
+                if "elements" not in answer:
+                    raise KeyError("elements")
+                return answer
         except (urllib.error.URLError, json.JSONDecodeError, KeyError) as ex:
             _logger.warning("Overpass attempt %d/%d failed: %s", attempt, retries, ex)
             time.sleep(20 * attempt)
@@ -189,21 +193,25 @@ def simplify(points: list[Point], tolerance: float) -> list[Point]:
     return [point for point, kept in zip(points, keep) if kept]
 
 
-def cached_overpass(name: str, query: str, cache_dir: pathlib.Path) -> list[dict]:
+def cached_overpass(name: str, query: str, cache_dir: pathlib.Path) -> dict:
     """
     Runs an Overpass query, reusing a previous answer when there is one
     """
     cache_file = cache_dir / f"{name}.json"
     if cache_file.exists():
-        _logger.info("Using cached %s", cache_file)
-        return json.loads(cache_file.read_text(encoding="utf-8"))
+        cached = json.loads(cache_file.read_text(encoding="utf-8"))
+        # Caches written before the metadata only hold the elements list
+        if isinstance(cached, dict) and "osm3s" in cached:
+            _logger.info("Using cached %s", cache_file)
+            return cached
+        _logger.warning("Ignoring the outdated cache %s", cache_file)
 
-    elements = overpass(query)
+    answer = overpass(query)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file.write_text(json.dumps(elements), encoding="utf-8")
+    cache_file.write_text(json.dumps(answer), encoding="utf-8")
     # Be nice with the public server
     time.sleep(5)
-    return elements
+    return answer
 
 
 def export_borders(output_file: pathlib.Path, tolerance: float, cache_dir: pathlib.Path) -> int:
@@ -211,12 +219,15 @@ def export_borders(output_file: pathlib.Path, tolerance: float, cache_dir: pathl
     Downloads, stitches and simplifies the borders, then writes them as JSON
     """
     result: dict[str, list[list[list[float]]]] = {}
+    osm_dates: list[str] = []
 
     sources = {name: _LAND_QUERY.format(iso=iso) for name, iso in NEIGHBOURS.items()}
     sources[TERRITORIAL_KEY] = _MARITIME_QUERY.format(bbox=METROPOLE_BBOX)
     for name, query in sources.items():
         _logger.info("Fetching %s", name)
-        chains = stitch(ways_to_points(cached_overpass(name, query, cache_dir)))
+        answer = cached_overpass(name, query, cache_dir)
+        osm_dates.append(answer["osm3s"]["timestamp_osm_base"])
+        chains = stitch(ways_to_points(answer["elements"]))
         simplified = [simplify(chain, tolerance) for chain in chains]
         _logger.info(
             "%s: %d chain(s), %d -> %d points",
@@ -237,6 +248,20 @@ def export_borders(output_file: pathlib.Path, tolerance: float, cache_dir: pathl
         json.dump(result, fd, separators=(",", ":"))
 
     _logger.info("Wrote %s (%d bytes)", output_file, output_file.stat().st_size)
+
+    # ODbL attribution, with the date of the oldest OSM data used
+    metadata = {
+        "source": "OpenStreetMap contributors, through the Overpass API",
+        "licence": "ODbL",
+        "osmBase": min(osm_dates),
+        "generated": datetime.date.today().isoformat(),
+    }
+    metadata_file = output_file.with_suffix(".meta.json")
+    with open(metadata_file, "w", encoding="utf-8") as fd:
+        json.dump(metadata, fd, indent=2)
+        fd.write("\n")
+
+    _logger.info("Wrote %s", metadata_file)
     return 0
 
 

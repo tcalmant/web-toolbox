@@ -53,6 +53,14 @@ export default {
   reportLink: 'Rapport de bug',
   reportLinkSubtitle: 'Dites moi si quelque chose ne va pas',
   srcLink: 'Code source',
+  dataSources: 'Sources des données',
+  dataAirfields: 'Aérodromes : {source}',
+  dataBorders: 'Frontières : {source} ({licence})',
+  dataGenerated: 'Génération : {date}',
+  dataAiracCycle: 'cycle AIRAC {cycle}',
+  dataAiracUnknown: 'cycle AIRAC inconnu',
+  dataCyclesOld: 'cycle en cours | il y a 1 cycle | il y a {n} cycles',
+  dataStale: 'Données anciennes : vérifiez les sources officielles',
 
   // NOTAM Mapper
   importLabel: 'Importer',
