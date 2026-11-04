@@ -175,8 +175,12 @@ async function decrypt(): Promise<void> {
   let payload: AcdPayload
   try {
     payload = await decryptVault(bundle, await deriveBundleKey(passphrase, bundle))
-  } catch {
-    fail('wrong passphrase, or damaged vault')
+  } catch (error) {
+    fail(
+      error instanceof VaultError && error.reason === 'corrupt'
+        ? `the passphrase is right but the content is rejected: ${error.message}`
+        : 'wrong passphrase, or damaged vault',
+    )
   }
 
   mkdirSync(PRIVATE_DIR, { recursive: true })
