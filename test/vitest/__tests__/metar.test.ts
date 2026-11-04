@@ -107,6 +107,15 @@ describe('parseMetar', () => {
     ['////NDV', { visibilityM: null, visibilityNdv: true, missing: ['visibility'] }],
     ['9999 //////', { clouds: [], missing: ['clouds'] }],
     ['9999 //////CB', { clouds: [{ cover: 'FEW', heightFt: null, type: 'CB' }], missing: [] }],
+    ['9999 /////////', { clouds: [], missing: ['clouds'] }],
+    [
+      '///05KT 9999',
+      {
+        wind: { directionDeg: null, speed: 5, gust: null, unit: 'KT' },
+        missing: ['windDirection'],
+      },
+    ],
+    ['9999 RE//', { recentWeather: [], missing: ['recentWeather'] }],
     ['9999 /////', { temperatureC: null, dewPointC: null, missing: ['temperature'] }],
     ['9999 12///', { temperatureC: 12, dewPointC: null, missing: [] }],
     ['9999 Q////', { qnhHpa: null, missing: ['qnh'] }],

@@ -34,12 +34,15 @@ const pad2 = (n: number) => n.toString().padStart(2, '0')
 export function useWeatherFormat() {
   const { t } = useI18n()
 
-  function windText(wind: Wind): string {
+  function windText(wind: Wind, directionMissing = false): string {
     const kt = Math.round(windSpeedKt(wind))
     if (wind.speed === 0) {
       return t('wxCalm')
     }
-    const dir = wind.directionDeg === null ? t('wxVariable') : `${wind.directionDeg}°`
+    const dir =
+      wind.directionDeg !== null
+        ? `${wind.directionDeg}°`
+        : t(directionMissing ? 'wxDirectionMissing' : 'wxVariable')
     let text = t('wxWindText', { dir, speed: kt })
     if (wind.gust !== null) {
       text += `, ${t('wxWindGust', { gust: Math.round(windSpeedKt(wind, wind.gust)) })}`

@@ -57,7 +57,8 @@ under the License.
               </span>
             </q-item-label>
             <q-item-label v-if="report.wind">
-              {{ $t('decoderWind') }}: {{ windText(report.wind) }}
+              {{ $t('decoderWind') }}:
+              {{ windText(report.wind, report.missing.includes('windDirection')) }}
               <template v-if="report.windVariation">
                 ({{ report.windVariation.fromDeg }}° - {{ report.windVariation.toDeg }}°)
               </template>

@@ -24,7 +24,7 @@
 export type WindUnit = 'KT' | 'MPS' | 'KMH'
 
 export interface Wind {
-  /** Degrees the wind blows from, null when variable (VRB). */
+  /** Degrees the wind blows from, null when variable (VRB) or not reported (///05KT). */
   directionDeg: number | null
   speed: number
   gust: number | null
@@ -48,7 +48,15 @@ export interface WeatherPhenomenon {
 export type CompassPoint = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW'
 
 /** Groups an automatic station reports as missing (filled with "/", WMO No. 306 FM 15). */
-export type MissingField = 'wind' | 'visibility' | 'weather' | 'clouds' | 'temperature' | 'qnh'
+export type MissingField =
+  | 'wind'
+  | 'windDirection'
+  | 'visibility'
+  | 'weather'
+  | 'clouds'
+  | 'temperature'
+  | 'qnh'
+  | 'recentWeather'
 
 export interface DayTime {
   day: number
@@ -124,7 +132,7 @@ const KMH_PER_KT = 1.852
 const M_PER_STATUTE_MILE = 1609.344
 const HPA_PER_INHG = 33.8639
 
-const WIND_RE = /^(VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)$/
+const WIND_RE = /^(VRB|\d{3}|\/{3})(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)$/
 const WIND_VARIATION_RE = /^(\d{3})V(\d{3})$/
 const VISIBILITY_RE = /^(\d{4}|\/{4})(NDV)?$/
 const MINIMUM_VISIBILITY_RE = /^(\d{4})(N|NE|E|SE|S|SW|W|NW)$/
@@ -149,7 +157,7 @@ function parseWind(token: string): Wind | null {
   const m = WIND_RE.exec(token)
   if (!m) return null
   return {
-    directionDeg: m[1] === 'VRB' ? null : parseInt(m[1] ?? '', 10),
+    directionDeg: m[1] === 'VRB' || m[1] === '///' ? null : parseInt(m[1] ?? '', 10),
     speed: parseInt(m[2] ?? '', 10),
     gust: m[3] ? parseInt(m[3], 10) : null,
     unit: m[4] as WindUnit,
@@ -232,6 +240,7 @@ function parseConditions(
 
     if (wind && c.wind === null) {
       c.wind = wind
+      if (token.startsWith('///')) c.missing.push('windDirection')
     } else if (/^\/{5}(KT|MPS|KMH)$/.test(token)) {
       c.missing.push('wind')
     } else if (variation) {
@@ -252,7 +261,7 @@ function parseConditions(
       }
     } else if (token === '//') {
       c.missing.push('weather')
-    } else if (token === '//////') {
+    } else if (/^\/{6}(\/{3})?$/.test(token)) {
       c.missing.push('clouds')
     } else if (c.visibilityM === null && parseStatuteMiles(token) !== null) {
       c.visibilityM = Math.round((parseStatuteMiles(token) ?? 0) * M_PER_STATUTE_MILE)
@@ -387,6 +396,10 @@ export function parseMetar(raw: string): Metar | null {
     const a = /^A(\d{4})$/.exec(token)
     if (a) {
       qnhHpa = Math.round((parseInt(a[1] ?? '', 10) / 100) * HPA_PER_INHG)
+      return true
+    }
+    if (token === 'RE//') {
+      metarMissing.push('recentWeather')
       return true
     }
     const recent = /^RE(.+)$/.exec(token)
