@@ -108,7 +108,7 @@ export default {
     "Saisir le carburant au départ, puis les vols et avitaillements dans l'ordre chronologique",
   timelineLevelAfter: 'Dans les réservoirs ensuite : {level}',
   timelineOverflow: 'Ne rentre pas dans les réservoirs : le surplus est ignoré',
-  timelineShortfall: 'Les réservoirs se vident pendant ce vol',
+  timelineShortfall: 'Le carburant utilisable est épuisé pendant ce vol',
   moveUp: 'Avancer',
   moveDown: 'Reculer',
   fuelReserveLabel: 'Réserve (min)',

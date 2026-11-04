@@ -107,7 +107,7 @@ export default {
   timelineEmpty: 'Add the fuel on board, then the flights and refuels in chronological order',
   timelineLevelAfter: 'In the tanks afterwards: {level}',
   timelineOverflow: 'Does not fit in the tanks: the excess is not counted',
-  timelineShortfall: 'The tanks run dry during this flight',
+  timelineShortfall: 'The usable fuel runs out during this flight',
   moveUp: 'Move earlier',
   moveDown: 'Move later',
   fuelReserveLabel: 'Reserve (min)',
