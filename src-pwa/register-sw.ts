@@ -28,7 +28,25 @@ function t(key: 'pwaUpdateMessage' | 'pwaReloadLabel' | 'pwaOfflineReady'): stri
   return messages[locale][key]
 }
 
+// An installed app left open never navigates, so the browser never looks for a
+// new version by itself: look again when it comes back to the foreground
+const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
+
 register(import.meta.env.QUASAR_SERVICE_WORKER_FILE, {
+  registered(registration) {
+    let lastCheck = Date.now()
+    document.addEventListener('visibilitychange', () => {
+      if (
+        document.visibilityState === 'visible' &&
+        Date.now() - lastCheck > UPDATE_CHECK_INTERVAL_MS
+      ) {
+        lastCheck = Date.now()
+        // Offline: nothing to do, the next check will try again
+        registration.update().catch(() => undefined)
+      }
+    })
+  },
+
   cached() {
     Notify.create({ message: t('pwaOfflineReady'), timeout: 4000, type: 'positive' })
   },

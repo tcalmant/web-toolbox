@@ -47,3 +47,18 @@ export function findFirstRegex(text: string, startIdx: number, pattern: RegExp):
   }
   return idx + startIdx
 }
+
+/**
+ * Picks the available locale closest to the requested one: the same tag, else
+ * the same language (a "fr-BE" browser gets "fr-FR"), preferring a bare
+ * language tag ("fr") among several candidates.
+ */
+export function matchLocale(requested: string, available: string[]): string | undefined {
+  const exact = available.find((tag) => tag.toLowerCase() === requested.toLowerCase())
+  if (exact) {
+    return exact
+  }
+  const language = (tag: string) => tag.split('-')[0]!.toLowerCase()
+  const sameLanguage = available.filter((tag) => language(tag) === language(requested)).sort()
+  return sameLanguage.find((tag) => !tag.includes('-')) ?? sameLanguage[0]
+}
