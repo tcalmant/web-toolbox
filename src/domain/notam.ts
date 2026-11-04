@@ -22,6 +22,8 @@ import { arcPoints, geoPointsEqual } from './geo'
 import type { GeometryFeature, PositionKind } from './geometry'
 import { Circle, Line, Polygon, Position } from './geometry'
 import { findShapeDirectives } from './shapeDirectives'
+import type { NotamSchedule } from './notamSchedule'
+import { parseNotamSchedule, scheduleIntersects } from './notamSchedule'
 
 // A single lat/lon pair in Q-code style (e.g. 4500N00500E or 450055N0050055E)
 const LAT_LNG_SOURCE = String.raw`(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:\.\d*)?)(?<lonEW>E|W)`
@@ -203,7 +205,12 @@ export interface NotamValidity {
   estimated: boolean
 }
 
-export type NotamStatus = 'active' | 'future' | 'expired' | 'unknown'
+/**
+ * Status over a time window: 'inactive' when the window falls outside the
+ * D) schedule, 'unknownSchedule' when that schedule could not be read
+ */
+export type NotamStatus =
+  'active' | 'inactive' | 'future' | 'expired' | 'unknown' | 'unknownSchedule'
 
 /**
  * Parses a date as found in NOTAMs, always in UTC.
@@ -583,6 +590,8 @@ export class NOTAM {
   readonly validity: NotamValidity | null
   /** Section D: activity schedule */
   readonly schedule: string | null
+  /** Section D, parsed; null without section D */
+  readonly parsedSchedule: NotamSchedule | null
   /** Section F: lower limit */
   readonly lowerLimit: string | null
   /** Section G: upper limit */
@@ -612,6 +621,7 @@ export class NOTAM {
       this.rawSections.get('C'),
     )
     this.schedule = this.rawSections.get('D') ?? null
+    this.parsedSchedule = this.schedule ? parseNotamSchedule(this.schedule) : null
     this.lowerLimit = this.rawSections.get('F') ?? null
     this.upperLimit = this.rawSections.get('G') ?? null
 
@@ -644,23 +654,34 @@ export class NOTAM {
   }
 
   /**
-   * Computes the status of the NOTAM at the given time.
+   * Computes the status of the NOTAM over a time window, e.g. the flight.
    *
-   * @param now Reference time
+   * @param from Start of the window
+   * @param to End of the window, a single instant by default
    * @returns The status, 'unknown' if no usable validity was found
    */
-  public statusAt(now: Date = new Date()): NotamStatus {
+  public statusAt(from: Date, to: Date = from): NotamStatus {
     const validity = this.validity
     if (!validity || (!validity.from && !validity.to && !validity.permanent)) {
       return 'unknown'
     }
-    if (validity.from && now < validity.from) {
+    if (validity.from && to < validity.from) {
       return 'future'
     }
-    if (validity.to && now > validity.to) {
+    if (validity.to && from > validity.to) {
       return 'expired'
     }
-    return validity.from || validity.to || validity.permanent ? 'active' : 'unknown'
+    if (!this.parsedSchedule) {
+      return 'active'
+    }
+    if (this.parsedSchedule.kind !== 'rules') {
+      return 'unknownSchedule'
+    }
+    const active = scheduleIntersects(this.parsedSchedule.rules, validity.from, validity.to, {
+      from,
+      to,
+    })
+    return active === null ? 'unknownSchedule' : active ? 'active' : 'inactive'
   }
 
   splitSections(text: string): Map<string, string> {

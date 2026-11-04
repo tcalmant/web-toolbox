@@ -163,7 +163,7 @@ const notamColumns = computed<QTableColumn[]>(() => [
   {
     name: 'status',
     label: t('notamStatus'),
-    field: (r: NOTAM) => r.statusAt(),
+    field: (r: NOTAM) => r.statusAt(new Date()),
     format: (v: string) => t(`notamStatus_${v}`),
     required: true,
     sortable: true,

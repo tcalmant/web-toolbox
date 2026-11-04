@@ -51,8 +51,8 @@ under the License.
         :props="props"
         :class="[
           props.row.id === focusedNotam?.id || props.row.id === hoveredNotam?.id ? 'bg-info' : '',
-          notamRow(props.row).statusAt() === 'expired' ? 'text-grey-6' : '',
-          notamRow(props.row).statusAt() === 'future' ? 'text-italic' : '',
+          notamRow(props.row).statusAt(new Date()) === 'expired' ? 'text-grey-6' : '',
+          notamRow(props.row).statusAt(new Date()) === 'future' ? 'text-italic' : '',
         ]"
       >
         <q-td>
