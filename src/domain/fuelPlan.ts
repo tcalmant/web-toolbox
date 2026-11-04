@@ -57,7 +57,7 @@ export interface TimelineStep {
   levelAfter: FuelQuantity
   /** The tanks cannot hold this refuel: the excess is lost. */
   overflow: boolean
-  /** The tanks ran dry during this leg. */
+  /** The usable fuel ran out during this leg. */
   shortfall: boolean
 }
 
@@ -74,7 +74,7 @@ export interface FuelPlan {
   remainingPercent: number
   /** Null when the consumption is zero (the time is unbounded). */
   usableTimeS: number | null
-  /** The tanks ran dry at some point of the timeline. */
+  /** The usable fuel ran out at some point of the timeline. */
   insufficient: boolean
   /** A refuel did not fit in the tanks at some point of the timeline. */
   overflow: boolean
@@ -134,8 +134,10 @@ export function computeFuelPlan(input: FuelPlanInput): FuelPlan {
       const burnt = (perHour * sanitizeAmount(event.durationS)) / 3600
       durationS += sanitizeAmount(event.durationS)
       consumed += burnt
-      if (burnt > level + EPSILON) {
-        level = 0
+      // The unusable fuel stays in the tanks: running into it is a shortfall,
+      // and the engine stops with that fuel still on board
+      if (burnt > Math.max(level - nonUsable, 0) + EPSILON) {
+        level = Math.min(level, nonUsable)
         stepShortfall = true
       } else {
         level = Math.max(0, level - burnt)

@@ -99,12 +99,25 @@ describe('computeFuelPlan', () => {
     expect(plan.status).toBe('alert')
   })
 
-  it('clamps at zero and flags a shortfall', () => {
+  it('stops at the unusable fuel and flags a shortfall', () => {
     const plan = computeFuelPlan({ ...base, events: [fuel(100), flight(4)] })
-    expect(plan.remaining.value.scalar).toBe(0)
+    expect(plan.remaining.value.scalar).toBe(1)
     expect(plan.usable.value.scalar).toBe(0)
     expect(plan.insufficient).toBe(true)
     expect(plan.remainingPercent).toBe(0)
+    expect(plan.status).toBe('alert')
+  })
+
+  it('flags the leg that runs into the unusable fuel, tanks not yet empty', () => {
+    // 100 L on board, 30 L of them unusable: a 75 L leg exhausts the 70 usable ones
+    const plan = computeFuelPlan({
+      ...base,
+      consumable: 80,
+      events: [fuel(100), flight(2), flight(0.5)],
+    })
+    expect(plan.steps.map((step) => step.shortfall)).toEqual([false, false, true])
+    expect(plan.remaining.value.scalar).toBeCloseTo(30)
+    expect(plan.insufficient).toBe(true)
     expect(plan.status).toBe('alert')
   })
 
