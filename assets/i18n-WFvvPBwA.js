@@ -1,1 +1,0 @@
-import{dt as e,lt as t,st as n}from"./index-DBwv_wyT.js";var r=`en-US`,i=n(({app:n})=>{let i=t({locale:r,fallbackLocale:`en-US`,legacy:!1,messages:e});n.use(i)});export{i as default};
