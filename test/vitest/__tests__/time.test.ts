@@ -8,6 +8,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  airacCycle,
+  airacCyclesBetween,
   dateToString,
   dateToUTCString,
   formatTzOffset,
@@ -92,5 +94,35 @@ describe('midnight formatting', () => {
     const midnight = new Date(Date.UTC(2026, 0, 1, 0, 5, 9))
     expect(dateToUTCString(midnight)).toEqual('2026-01-01 00:05:09')
     expect(timeToUTCString(midnight)).toEqual('00:05:09Z')
+  })
+})
+
+describe('airacCycle / airacCyclesBetween', () => {
+  // Published AIRAC effective dates
+  it.each([
+    ['1901', '2019-01-03'],
+    ['2001', '2020-01-02'],
+    ['2014', '2020-12-31'],
+    ['2101', '2021-01-28'],
+    ['2501', '2025-01-23'],
+    ['2601', '2026-01-22'],
+    ['2611', '2026-10-29'],
+    ['2613', '2026-12-24'],
+  ])('cycle %s is effective on %s', (id, effective) => {
+    const start = new Date(`${effective}T00:00:00Z`)
+    expect(airacCycle(start)).toEqual({ id, effective: start })
+    // Still in force on the last millisecond of the cycle
+    expect(airacCycle(new Date(start.getTime() + 28 * 86_400_000 - 1)).id).toEqual(id)
+  })
+
+  it.each([
+    ['2025-09-20', '2026-11-04', 15],
+    ['2026-10-29', '2026-11-25', 0],
+    ['2026-10-29', '2026-11-26', 1],
+    ['2026-11-26', '2026-10-29', -1],
+  ])('counts the cycles from %s to %s', (from, to, expected) => {
+    expect(airacCyclesBetween(new Date(`${from}T12:00:00Z`), new Date(`${to}T12:00:00Z`))).toEqual(
+      expected,
+    )
   })
 })
