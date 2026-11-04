@@ -159,7 +159,12 @@ import ChecklistItemList from '@/components/ChecklistItemList.vue'
 import { checklistChangeKey, checklistStateKey } from '@/composables/useChecklistState'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type { AirPlane } from '@/domain/airplanes'
-import { ChecklistChoice, type Checklist, type ChecklistSection } from '@/domain/checklist'
+import {
+  ChecklistChoice,
+  pickStateEntries,
+  type Checklist,
+  type ChecklistSection,
+} from '@/domain/checklist'
 import { resolveChecklistForPlane } from '@/domain/checklistResolver'
 import { timeToUTCString } from '@/domain/time'
 
@@ -203,6 +208,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   clearInterval(clockTimer)
+  dismissUndo?.()
 })
 
 // Keep the screen on in the cockpit, unless the pilot turns it off to save the battery
@@ -276,6 +282,7 @@ provide(checklistStateKey, checkedState)
 provide(checklistChangeKey, onStateChange)
 
 function onPlaneSelect(immatriculation: string) {
+  dismissUndo?.()
   planeIdent.value = immatriculation
   $q.sessionStorage?.setItem('checklist.input.planeIdent', immatriculation)
   resolveChecklist()
@@ -357,32 +364,29 @@ function collectItemIds(section: ChecklistSection): string[] {
   return ids
 }
 
-// One tap, no confirmation: an undo toast instead, as a section is quick to clear by mistake
+// One tap, no confirmation: an undo toast instead, as a section is quick to clear by mistake.
+// The toast is global and outlives this page, so it goes away whenever its state is replaced.
+let dismissUndo: (() => void) | undefined
+
 function onClearSection(section: ChecklistSection) {
-  const previous: Record<string, string> = {}
-  for (const id of collectItemIds(section)) {
-    if (Object.hasOwn(checkedState, id)) {
-      previous[id] = checkedState[id]!
-      delete checkedState[id]
-    }
-  }
+  const previous = pickStateEntries(checkedState, collectItemIds(section))
   if (!Object.keys(previous).length) {
     return
   }
+  for (const id of Object.keys(previous)) {
+    delete checkedState[id]
+  }
   saveState()
-  const plane = planeIdent.value
-  $q.notify({
+  dismissUndo?.()
+  dismissUndo = $q.notify({
     message: t('checklistSectionClearedMessage', { section: section.title }),
     actions: [
       {
         label: t('checklistUndoLabel'),
         color: 'yellow',
         handler: () => {
-          // The pilot may have switched to another plane meanwhile
-          if (planeIdent.value === plane) {
-            Object.assign(checkedState, previous)
-            saveState()
-          }
+          Object.assign(checkedState, previous)
+          saveState()
         },
       },
     ],
@@ -391,6 +395,7 @@ function onClearSection(section: ChecklistSection) {
 
 function onClearAll() {
   confirmDialog(t('confirmClearAllChecklistMessage')).onOk(() => {
+    dismissUndo?.()
     for (const key of Object.keys(checkedState)) {
       delete checkedState[key]
     }
@@ -432,6 +437,6 @@ watch(knownAirplanes, syncPlaneSelection)
 
 /* A tap or swipe in turbulence must scroll or check, not zoom the list */
 .checklist-sections {
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
 }
 </style>
