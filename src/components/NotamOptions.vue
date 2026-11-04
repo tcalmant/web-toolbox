@@ -50,6 +50,29 @@ under the License.
   <div class="row">
     <q-checkbox v-model="onlyWithPositions" :label="$t('notamFilterLocated')" />
   </div>
+  <div class="row q-gutter-sm">
+    <q-input
+      class="col"
+      dense
+      filled
+      type="datetime-local"
+      v-model="flightStart"
+      :label="$t('notamFlightStart')"
+      :error="!!flightStartError"
+      :error-message="flightStartError"
+    />
+    <q-input
+      class="col-4"
+      dense
+      filled
+      type="number"
+      min="0"
+      max="24"
+      step="0.5"
+      v-model.number="flightDuration"
+      :label="$t('notamFlightDuration')"
+    />
+  </div>
   <div class="row">
     <q-checkbox v-model="hideExpired" :label="$t('notamFilterExpired')" />
   </div>
@@ -88,6 +111,8 @@ const maxNotamRadius = defineModel<number>('maxNotamRadius', { default: 100 })
 const onlyWithPositions = defineModel<boolean>('onlyWithPositions', { default: true })
 const showAreaOfInfluence = defineModel<boolean>('showAreaOfInfluence', { default: true })
 const hideExpired = defineModel<boolean>('hideExpired', { default: true })
+const flightStart = defineModel<string>('flightStart', { default: '' })
+const flightDuration = defineModel<number>('flightDuration', { default: 2 })
 const searchQuery = defineModel<string>('searchQuery', { default: '' })
 withDefaults(
   defineProps<{
@@ -95,6 +120,7 @@ withDefaults(
     aipAreaCount: number
     totalCount?: number
     shownCount?: number
+    flightStartError?: string | undefined
   }>(),
   { totalCount: 0, shownCount: 0 },
 )
