@@ -18,9 +18,21 @@
 export type ChecklistTier = 'general' | 'model' | 'plane'
 
 /**
- * Port: resolves raw checklist XML text for a given tier/key/locale.
+ * The parsed XML element tree the domain reads checklists from. A subset of
+ * the DOM `Element`, so a DOM-based adapter can return its elements as they are.
+ */
+export interface ChecklistXmlElement {
+  readonly tagName: string
+  readonly textContent: string | null
+  readonly children: ArrayLike<ChecklistXmlElement>
+  getAttribute(name: string): string | null
+}
+
+/**
+ * Port: resolves the parsed checklist XML root element for a given tier/key/locale.
  * Implemented by a driven adapter (e.g. one backed by bundled fixed-data files).
  */
 export interface ChecklistDocumentSource {
-  getRawXml(tier: ChecklistTier, key: string, locale: string): string | undefined
+  /** @throws Error if the XML is malformed */
+  getRootElement(tier: ChecklistTier, key: string, locale: string): ChecklistXmlElement | undefined
 }
