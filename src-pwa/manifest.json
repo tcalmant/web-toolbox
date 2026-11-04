@@ -10,6 +10,17 @@
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#1976d2",
+  "share_target": {
+    "action": "share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [{ "name": "files", "accept": ["application/pdf", ".pdf"] }]
+    }
+  },
   "icons": [
     {
       "src": "icons/icon-128x128.png",

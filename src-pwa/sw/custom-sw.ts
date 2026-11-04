@@ -57,6 +57,87 @@ if (import.meta.env.QUASAR_PROD) {
   )
 }
 
+// Shares from other apps are posted to the share_target action of manifest.json.
+// Only the service worker can read a POST: it keeps the shared data for the app
+// (see composables/shareTarget.ts) and redirects to it. Any page can post here
+// too, so nothing goes through the URL and only a few PDF files are kept. Such
+// a post cannot be told from a real share by Sec-Fetch-Site or Origin: Fetch
+// adds them after the service worker (in HTTP-network-or-cache fetch), so the
+// app only imports a share once the user confirms it.
+const SHARE_MAX_FILES = 10
+const SHARE_MAX_BYTES = 20 * 1024 * 1024
+
+/**
+ * Reads a shared form, failing as soon as it is too large. The size cannot be
+ * known in advance: Fetch adds Content-Length after the service worker too, and
+ * formData() would buffer the whole body.
+ */
+async function readShare(request: Request): Promise<FormData> {
+  const reader = request.body!.getReader()
+  const chunks: Uint8Array<ArrayBuffer>[] = []
+  let size = 0
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+    size += chunk.value.byteLength
+    if (size > SHARE_MAX_BYTES) {
+      await reader.cancel()
+      throw new Error(`Share larger than ${SHARE_MAX_BYTES} bytes`)
+    }
+    chunks.push(chunk.value)
+  }
+  const type = request.headers.get('Content-Type') ?? ''
+  return new Response(new Blob(chunks), { headers: { 'Content-Type': type } }).formData()
+}
+
+registerRoute(
+  ({ url }) => url.href === new URL('share-target', self.registration.scope).href,
+  async ({ request }) => {
+    const target = new URL(self.registration.scope)
+    // Cache Storage is per origin, not per scope: the same name is derived
+    // from the page path in composables/shareTarget.ts
+    const cacheName = `shared-files:${target.pathname}`
+    try {
+      const data = await readShare(request)
+      await caches.delete(cacheName)
+      const cache = await caches.open(cacheName)
+
+      // A one-time id in the URL and in the cache: a crafted ?share link
+      // cannot import what an earlier share left behind
+      const id = crypto.randomUUID()
+      const shared = Object.fromEntries(
+        ['title', 'text', 'url'].map((name) => {
+          const value = data.get(name)
+          return [name, typeof value === 'string' ? value : null]
+        }),
+      )
+      shared.id = id
+      await cache.put(new URL('share/text', target), new Response(JSON.stringify(shared)))
+
+      const files = data
+        .getAll('files')
+        .filter(
+          (file) =>
+            file instanceof File && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)),
+        )
+        .slice(0, SHARE_MAX_FILES) as File[]
+      for (const [index, file] of files.entries()) {
+        // Keyed by index: a name like ".." would be normalised away in a URL
+        await cache.put(
+          new URL(`share/file/${index}`, target),
+          new Response(file, { headers: { 'X-File-Name': encodeURIComponent(file.name) } }),
+        )
+      }
+      target.searchParams.set('share', id)
+    } catch (error) {
+      // Not a form post: open the app anyway rather than a network error page
+      console.error('Invalid share', error)
+      // Nothing half written is left for the app
+      await caches.delete(cacheName)
+    }
+    return Response.redirect(target.href, 303)
+  },
+  'POST',
+)
+
 // Hosts of the map layers (see components/MapView.vue)
 const TILE_HOSTS = ['data.geopf.fr', 'tile.openstreetmap.org', /^[abc]\.tile\.opentopomap\.org$/]
 

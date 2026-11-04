@@ -19,17 +19,19 @@
  * specific language governing permissions and limitations
  * under the License.
  *
- * Tests for domain/importedText.ts and adapters/pdf/pdfTextExtractor.ts
+ * Tests for domain/importedText.ts, adapters/pdf/pdfTextExtractor.ts and
+ * composables/shareTarget.ts
  */
 
 import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bundledAirfields } from '../../../src/adapters/data/airfieldsRepository'
 import { bundledBorders } from '../../../src/adapters/data/bordersRepository'
 import { removePageChrome } from '../../../src/adapters/pdf/pdfTextExtractor'
+import { captureShare, takeShare } from '../../../src/composables/shareTarget'
 import { AIP } from '../../../src/domain/aip'
-import { splitNotamsAndAip } from '../../../src/domain/importedText'
+import { sharedDataToText, splitNotamsAndAip } from '../../../src/domain/importedText'
 import { parseNotams } from '../../../src/domain/notam'
 
 const NOTAM_TEXT = `A1234/26 NOTAMN
@@ -97,6 +99,118 @@ describe('splitNotamsAndAip on a Sofia Briefing copy', () => {
     const { aipText } = splitNotamsAndAip(text, bundledAirfields)
     expect(aipText).not.toMatch(/^\s*Q\)/m)
     expect(aipText).not.toContain('QFATT')
+  })
+})
+
+describe('sharedDataToText', () => {
+  const SUP_URL = 'https://www.sia.aviation-civile.gouv.fr/sup.pdf'
+
+  it.each([
+    ['nothing', {}, ''],
+    ['empty fields', { title: ' ', text: '', url: null }, ''],
+    ['only the text', { text: ` ${NOTAM_TEXT}\n` }, NOTAM_TEXT],
+    [
+      'title, text and URL',
+      { title: 'SUP 123', text: 'LIMITES', url: SUP_URL },
+      `SUP 123\nLIMITES\n${SUP_URL}`,
+    ],
+    [
+      'URL put in the text',
+      { title: 'SUP 123', text: `LIMITES ${SUP_URL}` },
+      `SUP 123\nLIMITES ${SUP_URL}`,
+    ],
+    [
+      'title repeated in the text',
+      { title: 'SUP 123', text: 'SUP 123 LIMITES' },
+      'SUP 123 LIMITES',
+    ],
+    ['only a URL', { url: SUP_URL }, SUP_URL],
+  ])('builds the text from %s', (_, shared, expected) => {
+    expect(sharedDataToText(shared)).toEqual(expected)
+  })
+
+  it('keeps a shared NOTAM readable by the import', () => {
+    const text = sharedDataToText({ title: 'Sofia', text: NOTAM_TEXT })
+    expect(splitNotamsAndAip(text, bundledAirfields).notams.length).toEqual(1)
+  })
+})
+
+describe('takeShare', () => {
+  const CACHE_NAME = 'shared-files:/app/'
+  // What the service worker left in its cache, by URL
+  let entries: Map<string, Response>
+  const cache = {
+    keys: () => Promise.resolve([...entries.keys()].map((url) => new Request(url))),
+    match: (request: Request) => Promise.resolve(entries.get(request.url)),
+  }
+  const caches = {
+    has: vi.fn(() => Promise.resolve(entries.size > 0)),
+    open: vi.fn(() => Promise.resolve(cache)),
+    delete: vi.fn(() => Promise.resolve(true)),
+  }
+
+  beforeEach(() => {
+    entries = new Map([
+      ['https://app.test/share/text', new Response(JSON.stringify({ id: 'ID', text: 'SHARED' }))],
+    ])
+    vi.clearAllMocks()
+    vi.stubGlobal('caches', caches)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it.each([
+    ['no query', '', null],
+    ['the share id', '?share=ID', 'SHARED'],
+    ['an old share id', '?share=OLD', null],
+    ['unrelated parameters', '?lang=fr&share=', null],
+    ['a forged text', '?text=FORGED&title=SUP', null],
+  ])('takes %s out of the URL', async (_, query, expected) => {
+    window.history.replaceState(null, '', `/app/${query}#/notam`)
+    captureShare()
+    expect(window.location.pathname + window.location.search + window.location.hash).toEqual(
+      '/app/#/notam',
+    )
+
+    const share = await takeShare()
+    expect(share?.text ?? null).toEqual(expected)
+    // The cache is only read for a share id, and emptied once in any case:
+    // at start when there is no share id, after reading it otherwise
+    const read = query.includes('share=') && !query.endsWith('share=')
+    expect(caches.open.mock.calls).toEqual(read ? [[CACHE_NAME]] : [])
+    expect(caches.delete.mock.calls).toEqual([[CACHE_NAME]])
+    // Only once
+    expect(await takeShare()).toBeNull()
+  })
+
+  it.each([
+    [
+      'a rejected deletion',
+      () => vi.stubGlobal('caches', { delete: () => Promise.reject(new Error('KO')) }),
+    ],
+    ['no Cache Storage', () => vi.stubGlobal('caches', undefined)],
+  ])('only logs %s of the shared files at start', async (_, stub) => {
+    stub()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    window.history.replaceState(null, '', '/app/#/notam')
+    expect(() => captureShare()).not.toThrow()
+    await vi.waitFor(() => expect(error).toHaveBeenCalledOnce())
+    error.mockRestore()
+  })
+
+  it('returns the shared files with their names', async () => {
+    entries.set(
+      'https://app.test/share/file/0',
+      new Response('%PDF', { headers: { 'X-File-Name': encodeURIComponent('SUP 1/26.pdf') } }),
+    )
+    window.history.replaceState(null, '', '/app/?share=ID#/notam')
+    captureShare()
+
+    const share = await takeShare()
+    expect(share?.files.map((file) => file.name)).toEqual(['SUP 1/26.pdf'])
+    expect(caches.delete).toHaveBeenCalledWith(CACHE_NAME)
   })
 })
 

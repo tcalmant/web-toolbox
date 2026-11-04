@@ -62,6 +62,23 @@ under the License.
         <div class="text-caption q-mt-sm">{{ $t('importHint') }}</div>
       </q-card-section>
 
+      <q-card-section v-if="pendingShare" class="q-pt-none">
+        <q-banner class="bg-blue-1 text-blue-10" rounded>
+          <template v-slot:avatar>
+            <q-icon name="share" color="primary" />
+          </template>
+          <div class="text-subtitle2">{{ $t('importSharedTitle') }}</div>
+          <div class="shared-text">{{ pendingShare.text }}</div>
+          <div v-for="(file, index) in pendingShare.files" :key="index">
+            <q-icon name="picture_as_pdf" /> {{ file.name }}
+          </div>
+          <template v-slot:action>
+            <q-btn flat :label="$t('importSharedIgnore')" @click="pendingShare = null" />
+            <q-btn color="primary" unelevated :label="$t('importLabel')" @click="importShare" />
+          </template>
+        </q-banner>
+      </q-card-section>
+
       <q-card-section class="q-pt-none">
         <q-file
           v-model="pdfFiles"
@@ -97,8 +114,9 @@ under the License.
 
 <script setup lang="ts">
 import { extractPdfText } from '@/adapters/pdf/pdfTextExtractor'
+import { takeShare, type SharedImport } from '@/composables/shareTarget'
 import { useQuasar } from 'quasar'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
@@ -145,4 +163,38 @@ async function onFilesPicked(files: File[] | null) {
     pdfFiles.value = null
   }
 }
+
+// Any site can post to the share target and the service worker cannot tell it
+// from a real share (see custom-sw.ts): a share waits for the user to import it
+const pendingShare = ref<SharedImport | null>(null)
+
+onMounted(async () => {
+  try {
+    pendingShare.value = await takeShare()
+  } catch (error) {
+    console.error('Failed to read the shared content', error)
+    $q.notify({ type: 'warning', message: t('importSharedError') })
+  }
+  if (pendingShare.value) {
+    showDialog.value = true
+  }
+})
+
+async function importShare(): Promise<void> {
+  const share = pendingShare.value
+  pendingShare.value = null
+  if (share?.text) {
+    inputText.value = inputText.value ? `${inputText.value}\n\n${share.text}` : share.text
+  }
+  // PDF files shared from another app are read as if picked here
+  await onFilesPicked(share?.files ?? null)
+}
 </script>
+
+<style scoped>
+.shared-text {
+  white-space: pre-wrap;
+  max-height: 10em;
+  overflow: auto;
+}
+</style>

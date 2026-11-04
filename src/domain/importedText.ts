@@ -54,3 +54,26 @@ export function splitNotamsAndAip(fullText: string, airfields: AirfieldLookup): 
 
   return { notams, aipText: aipParts.join('\n\n').trim() }
 }
+
+/** What another app shares with the installed app (Web Share Target) */
+export interface SharedData {
+  title?: string | null
+  text?: string | null
+  url?: string | null
+}
+
+/**
+ * Builds the text to import from what another app shared: the title first, as
+ * a source line (like a PDF file name), then the text, then the URL.
+ *
+ * Android often puts the URL in the text, and some apps repeat the title in
+ * it: a part already found in the text is not added twice.
+ */
+export function sharedDataToText({ title, text, url }: SharedData): string {
+  const body = text?.trim() ?? ''
+  const extra = (part?: string | null) => {
+    const trimmed = part?.trim() ?? ''
+    return body.includes(trimmed) ? '' : trimmed
+  }
+  return [extra(title), body, extra(url)].filter((part) => part).join('\n')
+}
