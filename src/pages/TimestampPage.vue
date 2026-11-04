@@ -25,6 +25,7 @@ under the License.
     <div class="column q-gutter-y-md">
       <WorldClockCard :zones="zones" :now="now" @add="add" @remove="remove" @reset="reset" />
       <TimeConverterCard :zones="zones" />
+      <SunTimesCard />
       <q-expansion-item
         class="shadow-1 overflow-hidden"
         style="border-radius: 4px"
@@ -39,6 +40,7 @@ under the License.
 </template>
 
 <script setup lang="ts">
+import SunTimesCard from '@/components/SunTimesCard.vue'
 import TimeConverterCard from '@/components/TimeConverterCard.vue'
 import UnixTimestampPanel from '@/components/UnixTimestampPanel.vue'
 import WorldClockCard from '@/components/WorldClockCard.vue'
