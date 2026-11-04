@@ -47,7 +47,7 @@ under the License.
           max="360"
           :label="$t('windDirectionLabel')"
           :hint="directionIsTrue ? $t('windDirectionTrueHint') : $t('windDirectionHint')"
-          @update:model-value="directionIsTrue = false"
+          @update:model-value="onDirectionInput"
         />
         <q-input
           v-if="directionIsTrue"
@@ -105,6 +105,10 @@ under the License.
 
     <q-separator />
 
+    <q-banner v-if="ready && worstCaseReason" dense class="bg-orange-1 text-orange-10">
+      <template #avatar><q-icon name="warning" /></template>
+      {{ worstCaseReason }}
+    </q-banner>
     <q-card-section v-if="!ready" class="text-grey">{{ $t('windNeedInput') }}</q-card-section>
     <q-list v-else separator>
       <q-item v-for="end in ends" :key="end.heading" :class="{ 'bg-green-1': end.best }">
@@ -139,6 +143,8 @@ import {
   reciprocalHeading,
   windComponents,
   type WindComponents,
+  type WindSector,
+  worstWindComponents,
 } from '@/domain/wind'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -151,6 +157,10 @@ const variation = ref<number | null>(null)
 const speed = defineModel<number | null>('speed', { default: null })
 const gust = defineModel<number | null>('gust', { default: null })
 const unit = defineModel<'kt' | 'kmh'>('unit', { default: 'kt' })
+// A VRB wind or a variable sector (240V300, true north) has no single
+// direction: the worst direction is taken for each runway end
+const variable = defineModel<boolean>('variable', { default: false })
+const sector = defineModel<WindSector | null>('sector', { default: null })
 
 const { t } = useI18n()
 
@@ -178,6 +188,21 @@ const format = (value: number) => Math.round(value).toString()
 
 const heading = computed(() => parseRunwayHeading(runway.value))
 
+function onDirectionInput() {
+  // A typed direction replaces the decoded METAR wind
+  directionIsTrue.value = false
+  variable.value = false
+  sector.value = null
+}
+
+const worstCaseReason = computed(() => {
+  if (variable.value) return t('windWorstVariable')
+  if (sector.value) {
+    return t('windWorstSector', { from: sector.value.fromDeg, to: sector.value.toDeg })
+  }
+  return ''
+})
+
 function onUnitChange(newUnit: 'kt' | 'kmh') {
   // Convert the entered speeds so that the physical values stay the same
   const factor = newUnit === 'kmh' ? KMH_PER_KNOT : 1 / KMH_PER_KNOT
@@ -191,9 +216,8 @@ function onUnitChange(newUnit: 'kt' | 'kmh') {
 const ready = computed(
   () =>
     heading.value !== null &&
-    typeof direction.value === 'number' &&
-    direction.value >= 0 &&
-    direction.value <= 360 &&
+    (variable.value ||
+      (typeof direction.value === 'number' && direction.value >= 0 && direction.value <= 360)) &&
     typeof speed.value === 'number' &&
     speed.value >= 0,
 )
@@ -214,24 +238,30 @@ function crossLevel(crosswind: number): Level {
 }
 
 const ends = computed(() => {
-  if (!ready.value || heading.value === null || direction.value === null || speed.value === null) {
+  if (!ready.value || heading.value === null || speed.value === null) {
     return []
   }
   // Magnetic direction = true direction minus the (east positive) variation
-  const dir = directionIsTrue.value
-    ? (((direction.value - (variation.value ?? 0)) % 360) + 360) % 360
-    : direction.value
+  const toMagnetic = (deg: number) =>
+    directionIsTrue.value ? (((deg - (variation.value ?? 0)) % 360) + 360) % 360 : deg
+  const dir = toMagnetic(direction.value ?? 0)
+  const worstSector: WindSector | null =
+    sector.value && !variable.value
+      ? { fromDeg: toMagnetic(sector.value.fromDeg), toDeg: toMagnetic(sector.value.toDeg) }
+      : null
+  const worstCase = variable.value || worstSector !== null
+  const components = (h: number, s: number): Pick<WindComponents, 'headwind' | 'crosswind'> =>
+    worstCase ? worstWindComponents(h, worstSector, s) : windComponents(h, dir, s)
   const spd = speed.value
   const gst = typeof gust.value === 'number' && gust.value > spd ? gust.value : null
 
   const rows = [heading.value, reciprocalHeading(heading.value)].map((h) => {
-    const main: WindComponents = windComponents(h, dir, gst ?? spd)
-    const steady: WindComponents = windComponents(h, dir, spd)
+    const main = components(h, gst ?? spd)
+    const steady = components(h, spd)
     const level = crossLevel(main.crosswind)
-    const side =
-      main.crosswindSide === 'none'
-        ? ''
-        : t(main.crosswindSide === 'left' ? 'windFromLeft' : 'windFromRight')
+    // The worst crosswind may come from either side
+    const sideOf = worstCase ? 'none' : windComponents(h, dir, spd).crosswindSide
+    const side = sideOf === 'none' ? '' : t(sideOf === 'left' ? 'windFromLeft' : 'windFromRight')
     const gustNote = gst === null ? '' : t('windWithGust', { cross: format(steady.crosswind) })
     return {
       heading: h,
@@ -243,9 +273,9 @@ const ends = computed(() => {
       caption: [side, gustNote].filter((s) => s.length > 0).join(', '),
     }
   })
-  // Best end: the most headwind (least tailwind)
-  const best = rows[0]!.main.headwind >= rows[1]!.main.headwind ? 0 : 1
-  rows[best]!.best = true
+  // Best end: the most headwind (least tailwind), none on a tie as displayed (VRB)
+  const [first, second] = [Math.round(rows[0]!.main.headwind), Math.round(rows[1]!.main.headwind)]
+  if (first !== second) rows[first > second ? 0 : 1]!.best = true
   return rows
 })
 </script>

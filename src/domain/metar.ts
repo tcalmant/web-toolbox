@@ -24,7 +24,7 @@
 export type WindUnit = 'KT' | 'MPS' | 'KMH'
 
 export interface Wind {
-  /** Degrees the wind blows from, null when variable (VRB). */
+  /** Degrees the wind blows from, null when variable (VRB) or not reported (///05KT). */
   directionDeg: number | null
   speed: number
   gust: number | null
@@ -45,6 +45,19 @@ export interface WeatherPhenomenon {
   phenomena: string[]
 }
 
+export type CompassPoint = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW'
+
+/** Groups an automatic station reports as missing (filled with "/", WMO No. 306 FM 15). */
+export type MissingField =
+  | 'wind'
+  | 'windDirection'
+  | 'visibility'
+  | 'weather'
+  | 'clouds'
+  | 'temperature'
+  | 'qnh'
+  | 'recentWeather'
+
 export interface DayTime {
   day: number
   hour: number
@@ -58,6 +71,10 @@ export interface Conditions {
   windVariation: { fromDeg: number; toDeg: number } | null
   /** Visibility in metres, null when not reported or CAVOK. */
   visibilityM: number | null
+  /** NDV: the station cannot report directional variations of the visibility. */
+  visibilityNdv: boolean
+  /** Lowest visibility and its direction, when reported apart (e.g. 1500SW). */
+  minimumVisibility: { distanceM: number; direction: CompassPoint } | null
   cavok: boolean
   weather: WeatherPhenomenon[]
   /** NSW: no significant weather (TAF). */
@@ -65,6 +82,7 @@ export interface Conditions {
   clouds: CloudLayer[]
   /** NSC, NCD, SKC or CLR when stated instead of layers. */
   skyClear: 'NSC' | 'NCD' | 'SKC' | 'CLR' | null
+  missing: MissingField[]
   unparsed: string[]
 }
 
@@ -77,6 +95,10 @@ export interface Metar extends Conditions {
   temperatureC: number | null
   dewPointC: number | null
   qnhHpa: number | null
+  /** RE groups: weather of the last hour, no longer observed. */
+  recentWeather: WeatherPhenomenon[]
+  /** WS groups, null when none. */
+  windShear: { allRunways: boolean; runways: string[] } | null
   /** Trend group (NOSIG, BECMG..., TEMPO...), raw. */
   trend: string
   /** Remarks after RMK, raw. */
@@ -110,11 +132,13 @@ const KMH_PER_KT = 1.852
 const M_PER_STATUTE_MILE = 1609.344
 const HPA_PER_INHG = 33.8639
 
-const WIND_RE = /^(VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)$/
+const WIND_RE = /^(VRB|\d{3}|\/{3})(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)$/
 const WIND_VARIATION_RE = /^(\d{3})V(\d{3})$/
+const VISIBILITY_RE = /^(\d{4}|\/{4})(NDV)?$/
+const MINIMUM_VISIBILITY_RE = /^(\d{4})(N|NE|E|SE|S|SW|W|NW)$/
 const CLOUD_RE = /^(FEW|SCT|BKN|OVC)(\d{3}|\/\/\/)(CB|TCU|\/\/\/)?$/
 const VERTICAL_VISIBILITY_RE = /^VV(\d{3}|\/\/\/)$/
-const UNKNOWN_COVER_RE = /^\/\/\/(CB|TCU)$/
+const UNKNOWN_COVER_RE = /^(?:\/{3}){1,2}(CB|TCU)$/
 const WEATHER_INTENSITY = ['-', '+', 'VC']
 const WEATHER_DESCRIPTORS = ['MI', 'BC', 'PR', 'DR', 'BL', 'SH', 'TS', 'FZ']
 const WEATHER_PHENOMENA = [
@@ -133,7 +157,7 @@ function parseWind(token: string): Wind | null {
   const m = WIND_RE.exec(token)
   if (!m) return null
   return {
-    directionDeg: m[1] === 'VRB' ? null : parseInt(m[1] ?? '', 10),
+    directionDeg: m[1] === 'VRB' || m[1] === '///' ? null : parseInt(m[1] ?? '', 10),
     speed: parseInt(m[2] ?? '', 10),
     gust: m[3] ? parseInt(m[3], 10) : null,
     unit: m[4] as WindUnit,
@@ -177,11 +201,14 @@ function emptyConditions(): Conditions {
     wind: null,
     windVariation: null,
     visibilityM: null,
+    visibilityNdv: false,
+    minimumVisibility: null,
     cavok: false,
     weather: [],
     noSignificantWeather: false,
     clouds: [],
     skyClear: null,
+    missing: [],
     unparsed: [],
   }
 }
@@ -205,12 +232,17 @@ function parseConditions(
 
     const wind = parseWind(token)
     const variation = WIND_VARIATION_RE.exec(token)
+    const visibility = VISIBILITY_RE.exec(token)
+    const minimumVisibility = MINIMUM_VISIBILITY_RE.exec(token)
     const cloud = CLOUD_RE.exec(token)
     const vv = VERTICAL_VISIBILITY_RE.exec(token)
     const weather = parseWeather(token)
 
     if (wind && c.wind === null) {
       c.wind = wind
+      if (token.startsWith('///')) c.missing.push('windDirection')
+    } else if (/^\/{5}(KT|MPS|KMH)$/.test(token)) {
+      c.missing.push('wind')
     } else if (variation) {
       c.windVariation = {
         fromDeg: parseInt(variation[1] ?? '', 10),
@@ -218,8 +250,19 @@ function parseConditions(
       }
     } else if (token === 'CAVOK') {
       c.cavok = true
-    } else if (/^\d{4}$/.test(token) && c.visibilityM === null) {
-      c.visibilityM = parseInt(token, 10)
+    } else if (visibility && c.visibilityM === null && !c.missing.includes('visibility')) {
+      if (visibility[1] === '////') c.missing.push('visibility')
+      else c.visibilityM = parseInt(visibility[1] ?? '', 10)
+      c.visibilityNdv = visibility[2] === 'NDV'
+    } else if (minimumVisibility) {
+      c.minimumVisibility = {
+        distanceM: parseInt(minimumVisibility[1] ?? '', 10),
+        direction: minimumVisibility[2] as CompassPoint,
+      }
+    } else if (token === '//') {
+      c.missing.push('weather')
+    } else if (/^\/{6}(\/{3})?$/.test(token)) {
+      c.missing.push('clouds')
     } else if (c.visibilityM === null && parseStatuteMiles(token) !== null) {
       c.visibilityM = Math.round((parseStatuteMiles(token) ?? 0) * M_PER_STATUTE_MILE)
     } else if (token === 'NSW') {
@@ -276,9 +319,12 @@ function tokenize(raw: string): string[] {
   for (const token of tokens) {
     const previous = merged[merged.length - 1]
     if (
-      previous !== undefined &&
-      /^\d{1,2}$/.test(previous) &&
-      /^\d{1,2}\/\d{1,2}SM$/.test(token)
+      (previous !== undefined &&
+        /^\d{1,2}$/.test(previous) &&
+        /^\d{1,2}\/\d{1,2}SM$/.test(token)) ||
+      // Same for the wind shear groups "WS R26L" and "WS ALL RWY"
+      (previous === 'WS' && /^(?:R|RWY)\d{2}[LRC]?$|^ALL$/.test(token)) ||
+      (previous === 'WS ALL' && token === 'RWY')
     ) {
       merged[merged.length - 1] = `${previous} ${token}`
     } else {
@@ -316,6 +362,9 @@ export function parseMetar(raw: string): Metar | null {
   let temperatureC: number | null = null
   let dewPointC: number | null = null
   let qnhHpa: number | null = null
+  const metarMissing: MissingField[] = []
+  const recentWeather: WeatherPhenomenon[] = []
+  let windShear: Metar['windShear'] = null
 
   const handleMetarOnly = (token: string): boolean => {
     if (token === 'AUTO') {
@@ -326,11 +375,17 @@ export function parseMetar(raw: string): Metar | null {
       correction = true
       return true
     }
-    const temp = /^(M?\d{2})\/(M?\d{2})?$/.exec(token)
-    if (temp) {
-      const toNumber = (s: string) => parseInt(s.replace('M', '-'), 10)
-      temperatureC = toNumber(temp[1] ?? '')
-      dewPointC = temp[2] ? toNumber(temp[2]) : null
+    const temp = /^(M?\d{2}|\/\/)\/(M?\d{2}|\/\/)?$/.exec(token)
+    if (temp && token !== '///') {
+      const toNumber = (s: string | undefined) =>
+        s && s !== '//' ? parseInt(s.replace('M', '-'), 10) : null
+      temperatureC = toNumber(temp[1])
+      dewPointC = toNumber(temp[2])
+      if (temperatureC === null) metarMissing.push('temperature')
+      return true
+    }
+    if (token === 'Q////') {
+      metarMissing.push('qnh')
       return true
     }
     const q = /^Q(\d{4})$/.exec(token)
@@ -343,8 +398,25 @@ export function parseMetar(raw: string): Metar | null {
       qnhHpa = Math.round((parseInt(a[1] ?? '', 10) / 100) * HPA_PER_INHG)
       return true
     }
-    // Runway visual range and recent weather are not decoded
-    return /^R\d{2}[LRC]?\//.test(token) || /^RE[A-Z]{2,}/.test(token)
+    if (token === 'RE//') {
+      metarMissing.push('recentWeather')
+      return true
+    }
+    const recent = /^RE(.+)$/.exec(token)
+    const recentPhenomenon = recent ? parseWeather(recent[1] ?? '') : null
+    if (recentPhenomenon) {
+      recentWeather.push(recentPhenomenon)
+      return true
+    }
+    const shear = /^WS (?:ALL RWY|(?:R|RWY)(\d{2}[LRC]?))$/.exec(token)
+    if (shear) {
+      windShear ??= { allRunways: false, runways: [] }
+      if (shear[1]) windShear.runways.push(shear[1])
+      else windShear.allRunways = true
+      return true
+    }
+    // Runway visual range is not decoded
+    return /^R\d{2}[LRC]?\//.test(token)
   }
 
   const { conditions, next } = parseConditions(
@@ -362,6 +434,7 @@ export function parseMetar(raw: string): Metar | null {
 
   return {
     ...conditions,
+    missing: [...conditions.missing, ...metarMissing],
     kind,
     station,
     time,
@@ -370,6 +443,8 @@ export function parseMetar(raw: string): Metar | null {
     temperatureC,
     dewPointC,
     qnhHpa,
+    recentWeather,
+    windShear,
     trend,
     remarks,
   }

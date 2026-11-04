@@ -19,6 +19,7 @@ import {
   type CloudLayer,
   type Conditions,
   type DayTime,
+  type Metar,
   type Wind,
   type WeatherPhenomenon,
   windSpeedKt,
@@ -33,12 +34,15 @@ const pad2 = (n: number) => n.toString().padStart(2, '0')
 export function useWeatherFormat() {
   const { t } = useI18n()
 
-  function windText(wind: Wind): string {
+  function windText(wind: Wind, directionMissing = false): string {
     const kt = Math.round(windSpeedKt(wind))
     if (wind.speed === 0) {
       return t('wxCalm')
     }
-    const dir = wind.directionDeg === null ? t('wxVariable') : `${wind.directionDeg}°`
+    const dir =
+      wind.directionDeg !== null
+        ? `${wind.directionDeg}°`
+        : t(directionMissing ? 'wxDirectionMissing' : 'wxVariable')
     let text = t('wxWindText', { dir, speed: kt })
     if (wind.gust !== null) {
       text += `, ${t('wxWindGust', { gust: Math.round(windSpeedKt(wind, wind.gust)) })}`
@@ -50,14 +54,29 @@ export function useWeatherFormat() {
     if (c.cavok) {
       return t('wxCavok')
     }
-    const m = c.visibilityM
-    if (m === null) {
-      return '-'
+    const distance = (m: number) =>
+      m >= 9999 ? t('wxVisTenKm') : m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`
+    const parts = [c.visibilityM === null ? '-' : distance(c.visibilityM)]
+    if (c.minimumVisibility) {
+      const { distanceM, direction } = c.minimumVisibility
+      parts.push(t('wxVisMinimum', { vis: distance(distanceM), dir: t(`wxDir_${direction}`) }))
     }
-    if (m >= 9999) {
-      return t('wxVisTenKm')
+    if (c.visibilityNdv) {
+      parts.push(t('wxVisNdv'))
     }
-    return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`
+    return parts.join(', ')
+  }
+
+  function windShearText(m: Metar): string {
+    if (!m.windShear) {
+      return ''
+    }
+    const runways = m.windShear.runways.map((runway) => t('wxWindShearRunway', { runway }))
+    return [...(m.windShear.allRunways ? [t('wxWindShearAll')] : []), ...runways].join(', ')
+  }
+
+  function missingText(c: Conditions): string {
+    return c.missing.map((field) => t(`wxMissing_${field}`)).join(', ')
   }
 
   function cloudText(layer: CloudLayer): string {
@@ -89,9 +108,22 @@ export function useWeatherFormat() {
     return c.noSignificantWeather ? t('wxNsw') : ''
   }
 
+  function recentWeatherText(m: Metar): string {
+    return m.recentWeather.map(weatherText).join(', ')
+  }
+
   function dayTimeText(dt: DayTime): string {
     return t('wxDayTime', { day: dt.day, time: `${pad2(dt.hour)}:${pad2(dt.minute)}Z` })
   }
 
-  return { windText, visibilityText, skyText, weatherListText, dayTimeText }
+  return {
+    windText,
+    visibilityText,
+    skyText,
+    weatherListText,
+    recentWeatherText,
+    windShearText,
+    missingText,
+    dayTimeText,
+  }
 }

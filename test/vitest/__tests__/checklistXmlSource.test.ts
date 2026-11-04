@@ -39,4 +39,24 @@ describe('ChecklistXmlSource', () => {
   it('does not look the club tiers up in the public bundle', () => {
     expect(new ChecklistXmlSource().getRawXml('model', 'DR400 135 CDI', 'fr-FR')).toBeUndefined()
   })
+
+  it.each([
+    ['model', 'DR400 120', source, 'checklist'],
+    ['plane', 'F-TEST', source, 'checklist'],
+    ['general', 'general', source, 'checklist'],
+    ['model', 'DR400 120', new ChecklistXmlSource(), undefined],
+    ['plane', 'F-NONE', source, undefined],
+  ] as const)('parses the %s tier %s into its root element', (tier, key, tiers, rootTag) => {
+    expect(tiers.getRootElement(tier, key, 'fr-FR')?.tagName).toBe(rootTag)
+  })
+
+  it('reports a malformed tier', () => {
+    expect(() =>
+      new ChecklistXmlSource({ 'model/Broken.xml': '<checklist' }).getRootElement(
+        'model',
+        'Broken',
+        'fr-FR',
+      ),
+    ).toThrow('Invalid checklist XML')
+  })
 })

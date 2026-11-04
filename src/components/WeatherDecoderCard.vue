@@ -57,7 +57,8 @@ under the License.
               </span>
             </q-item-label>
             <q-item-label v-if="report.wind">
-              {{ $t('decoderWind') }}: {{ windText(report.wind) }}
+              {{ $t('decoderWind') }}:
+              {{ windText(report.wind, report.missing.includes('windDirection')) }}
               <template v-if="report.windVariation">
                 ({{ report.windVariation.fromDeg }}° - {{ report.windVariation.toDeg }}°)
               </template>
@@ -76,6 +77,16 @@ under the License.
             <q-item-label v-if="report.qnhHpa !== null">
               {{ $t('decoderQnh') }}: {{ report.qnhHpa }} hPa
             </q-item-label>
+            <q-item-label v-if="report.recentWeather.length">
+              {{ $t('decoderRecentWeather') }}: {{ recentWeatherText(report) }}
+            </q-item-label>
+            <q-item-label v-if="report.windShear" class="text-negative">
+              <q-icon name="warning" class="q-mr-xs" />
+              {{ $t('decoderWindShear') }}: {{ windShearText(report) }}
+            </q-item-label>
+            <q-item-label v-if="report.missing.length" caption class="text-orange-9">
+              {{ $t('decoderMissing') }}: {{ missingText(report) }}
+            </q-item-label>
             <q-item-label v-if="report.trend" caption class="monospace">
               {{ report.trend }}
             </q-item-label>
@@ -84,7 +95,7 @@ under the License.
             </q-item-label>
             <div class="row q-gutter-xs q-mt-xs">
               <q-btn
-                v-if="report.wind && report.wind.directionDeg !== null"
+                v-if="report.wind"
                 outline
                 dense
                 no-caps
@@ -157,7 +168,16 @@ import { computed, ref } from 'vue'
 
 const emit = defineEmits<{ useWind: [metar: Metar]; useDensity: [metar: Metar] }>()
 
-const { windText, visibilityText, skyText, weatherListText, dayTimeText } = useWeatherFormat()
+const {
+  windText,
+  visibilityText,
+  skyText,
+  weatherListText,
+  recentWeatherText,
+  windShearText,
+  missingText,
+  dayTimeText,
+} = useWeatherFormat()
 
 const text = ref('')
 const reports = computed(() => parseReports(text.value ?? ''))

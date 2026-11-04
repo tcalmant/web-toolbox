@@ -91,9 +91,52 @@ describe('parseMetar', () => {
     expect(m?.qnhHpa).toBe(1027)
   })
 
-  it('ignores RVR and recent weather groups', () => {
-    const m = parseMetar('LFPG 031700Z 27005KT 0800 R26L/1200U FG VV001 08/08 Q1018 RERA')
+  it('ignores RVR groups', () => {
+    const m = parseMetar('LFPG 031700Z 27005KT 0800 R26L/1200U R27R///// FG VV001 08/08 Q1018')
     expect(m?.unparsed).toEqual([])
+  })
+
+  // WMO No. 306 FM 15: NDV, directional minimum visibility, "/" missing groups, RE and WS
+  it.each([
+    ['9999NDV', { visibilityM: 9999, visibilityNdv: true, minimumVisibility: null }],
+    ['0800NDV FG', { visibilityM: 800, visibilityNdv: true }],
+    ['6000 1500SW', { visibilityM: 6000, minimumVisibility: { distanceM: 1500, direction: 'SW' } }],
+    ['4000NE', { visibilityM: null, minimumVisibility: { distanceM: 4000, direction: 'NE' } }],
+    ['/////KT 9999', { wind: null, missing: ['wind'] }],
+    ['//// //', { visibilityM: null, missing: ['visibility', 'weather'] }],
+    ['////NDV', { visibilityM: null, visibilityNdv: true, missing: ['visibility'] }],
+    ['9999 //////', { clouds: [], missing: ['clouds'] }],
+    ['9999 //////CB', { clouds: [{ cover: 'FEW', heightFt: null, type: 'CB' }], missing: [] }],
+    ['9999 /////////', { clouds: [], missing: ['clouds'] }],
+    [
+      '///05KT 9999',
+      {
+        wind: { directionDeg: null, speed: 5, gust: null, unit: 'KT' },
+        missing: ['windDirection'],
+      },
+    ],
+    ['9999 RE//', { recentWeather: [], missing: ['recentWeather'] }],
+    ['9999 /////', { temperatureC: null, dewPointC: null, missing: ['temperature'] }],
+    ['9999 12///', { temperatureC: 12, dewPointC: null, missing: [] }],
+    ['9999 Q////', { qnhHpa: null, missing: ['qnh'] }],
+    [
+      '9999 RETS RESHRA',
+      {
+        recentWeather: [
+          { intensity: '', descriptors: ['TS'], phenomena: [] },
+          { intensity: '', descriptors: ['SH'], phenomena: ['RA'] },
+        ],
+      },
+    ],
+    ['9999 WS R26L WS RWY08', { windShear: { allRunways: false, runways: ['26L', '08'] } }],
+    ['9999 WS ALL RWY', { windShear: { allRunways: true, runways: [] } }],
+  ])('decodes %s', (groups, expected) => {
+    const m = parseMetar(`LFXX 031700Z AUTO ${groups} NOSIG`)
+    expect(m).toMatchObject({ ...expected, unparsed: [] })
+  })
+
+  it('keeps an unknown recent weather group as not decoded', () => {
+    expect(parseMetar('LFXX 031700Z 24005KT 9999 REXX 10/08 Q1015')?.unparsed).toEqual(['REXX'])
   })
 
   it('handles automatic station cloud type without cover', () => {

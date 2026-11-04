@@ -3,55 +3,22 @@
 </template>
 
 <script setup lang="ts">
-import type { QuasarLanguage } from 'quasar'
-import { useQuasar } from 'quasar'
-import languages from 'quasar/lang/index.json'
-import messages from '@/i18n'
+import { useLocale } from '@/composables/useLocale'
 import { onBeforeMount } from 'vue'
-import { useI18n } from 'vue-i18n'
 
-// Auto-select locale
-const $q = useQuasar()
-const { locale } = useI18n({ useScope: 'global' })
+const { initLocale } = useLocale()
 
-function findBestMatch(name: string, allowed: string[]): string | undefined {
-  return allowed.filter((m) => m.includes(name)).sort((a, b) => a.length - b.length)[0]
-}
-
-// Try to find the closest locale
-const baseLocale = $q.lang.getLocale() || 'en-US'
-
-// Find i18n locale
-let detectedLocale = baseLocale
-if (!Object.keys(messages).includes(detectedLocale)) {
-  // No direct match
-  detectedLocale = findBestMatch(detectedLocale, Object.keys(messages)) ?? 'en-US'
-}
-
-// Set the overall locale
-locale.value = detectedLocale
-
-async function setQuasarLanguagePack(baseLocale: string) {
-  try {
-    // Find Quasar language pack
-    const detectedLanguagePack = findBestMatch(
-      baseLocale,
-      languages.map((lng) => lng.isoName),
-    )
-
-    // Set the quasar language pack
-    const modules = import.meta.glob<{ default: QuasarLanguage }>(
-      '../node_modules/quasar/lang/*.js',
-    )
-    const langModule = modules[`../node_modules/quasar/lang/${detectedLanguagePack}.js`]
-    if (langModule) {
-      const lang = await langModule()
-      $q.lang.set(lang.default)
-    }
-  } catch {
-    console.error('Error loading Quasar language pack for %s', baseLocale)
+// A tab still running a replaced version no longer finds its lazy chunks (new
+// deployment, or old precache cleaned up): reload it on the current version, at
+// most once in a while so that a chunk missing for another reason cannot loop
+const RELOAD_KEY = 'app.chunkReloadAt'
+window.addEventListener('vite:preloadError', () => {
+  const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0)
+  if (Date.now() - last > 10_000) {
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()))
+    window.location.reload()
   }
-}
+})
 
-onBeforeMount(async () => await setQuasarLanguagePack(baseLocale))
+onBeforeMount(() => void initLocale())
 </script>

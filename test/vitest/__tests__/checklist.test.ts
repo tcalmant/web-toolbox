@@ -26,6 +26,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { LocalStorage } from 'quasar'
 
+import { parseChecklistXml } from '../../../src/adapters/data/checklistXmlSource'
 import { ChecklistLocalStorageStore } from '../../../src/adapters/storage/checklistLocalStorageStore'
 import { AirPlane } from '../../../src/domain/airplanes'
 import {
@@ -34,12 +35,18 @@ import {
   ChecklistDocument,
   ChecklistInfo,
   ChecklistRow,
+  pickStateEntries,
 } from '../../../src/domain/checklist'
 import { resolveChecklistForPlane } from '../../../src/domain/checklistResolver'
 import type {
   ChecklistDocumentSource,
   ChecklistTier,
+  ChecklistXmlElement,
 } from '../../../src/domain/ports/checklistDocumentSource'
+
+function parseDocument(xml: string): ChecklistDocument {
+  return new ChecklistDocument(parseChecklistXml(xml))
+}
 
 describe('ChecklistDocument parsing', () => {
   it('parses sections, rows, notes, emergency, collapsed and dolist flags', () => {
@@ -56,7 +63,7 @@ describe('ChecklistDocument parsing', () => {
         </section>
       </checklist>
     `
-    const doc = new ChecklistDocument(xml)
+    const doc = parseDocument(xml)
 
     expect(doc.id).toEqual('general')
     expect(doc.replace).toBe(false)
@@ -101,7 +108,7 @@ describe('ChecklistDocument parsing', () => {
         </section>
       </checklist>
     `
-    const doc = new ChecklistDocument(xml)
+    const doc = parseDocument(xml)
     const section = doc.sections[0]!
     expect(section.items).toHaveLength(2)
 
@@ -119,18 +126,18 @@ describe('ChecklistDocument parsing', () => {
   })
 
   it('throws on malformed XML', () => {
-    expect(() => new ChecklistDocument('<checklist><unterminated>')).toThrowError()
+    expect(() => parseDocument('<checklist><unterminated>')).toThrowError()
   })
 
   it('throws when the root element is not <checklist>', () => {
-    expect(() => new ChecklistDocument('<foo id="x"></foo>')).toThrowError(
+    expect(() => parseDocument('<foo id="x"></foo>')).toThrowError(
       /must have a <checklist> root element/,
     )
   })
 })
 
 describe('Checklist tier merge', () => {
-  const general = new ChecklistDocument(`
+  const general = parseDocument(`
     <checklist id="general">
       <section id="preflight" title="Pre-flight">
         <row id="preflight.fuel" note="Check level">Check fuel</row>
@@ -149,7 +156,7 @@ describe('Checklist tier merge', () => {
   })
 
   it('uses the model tier alone, ignoring the general tier entirely, when a model tier exists', () => {
-    const model = new ChecklistDocument(`
+    const model = parseDocument(`
       <checklist id="model">
         <section id="preflight" title="Pre-flight">
           <row id="preflight.fuel" note="min 2/4 tanks">Check fuel</row>
@@ -170,14 +177,14 @@ describe('Checklist tier merge', () => {
   })
 
   it('lets the plane tier merge onto the model tier, without the general tier being involved', () => {
-    const model = new ChecklistDocument(`
+    const model = parseDocument(`
       <checklist id="model">
         <section id="preflight" title="Pre-flight">
           <row id="preflight.canopy">Check canopy lock</row>
         </section>
       </checklist>
     `)
-    const plane = new ChecklistDocument(`
+    const plane = parseDocument(`
       <checklist id="plane">
         <section id="preflight" title="Pre-flight">
           <row id="preflight.canopy" note="Known sticky latch">Check canopy lock</row>
@@ -194,7 +201,7 @@ describe('Checklist tier merge', () => {
   })
 
   it('falls back to the plane tier alone (bypassing general) when there is no model tier', () => {
-    const plane = new ChecklistDocument(`
+    const plane = parseDocument(`
       <checklist id="plane">
         <section id="only" title="Plane-only section">
           <row id="only.row">Only row</row>
@@ -208,14 +215,14 @@ describe('Checklist tier merge', () => {
   })
 
   it('lets a plane tier with replace="true" ignore general and model entirely', () => {
-    const model = new ChecklistDocument(`
+    const model = parseDocument(`
       <checklist id="model">
         <section id="preflight" title="Pre-flight">
           <row id="preflight.canopy">Check canopy lock</row>
         </section>
       </checklist>
     `)
-    const plane = new ChecklistDocument(`
+    const plane = parseDocument(`
       <checklist id="plane" replace="true">
         <section id="only" title="Only section">
           <row id="only.row">Only row</row>
@@ -229,7 +236,7 @@ describe('Checklist tier merge', () => {
   })
 
   it('merges a choice by branch id when the plane tier merges onto the model tier', () => {
-    const model = new ChecklistDocument(`
+    const model = parseDocument(`
       <checklist id="model">
         <section id="malfunction" title="Malfunction" emergency="true">
           <choice id="symptom" prompt="Which symptom?">
@@ -243,7 +250,7 @@ describe('Checklist tier merge', () => {
         </section>
       </checklist>
     `)
-    const plane = new ChecklistDocument(`
+    const plane = parseDocument(`
       <checklist id="plane">
         <section id="malfunction" title="Malfunction">
           <choice id="symptom" prompt="Which symptom?">
@@ -268,14 +275,14 @@ describe('Checklist tier merge', () => {
   })
 
   it('accumulates the emergency flag between model and plane tiers without letting an override un-flag it', () => {
-    const model = new ChecklistDocument(`
+    const model = parseDocument(`
       <checklist id="model">
         <section id="emergency" title="Fire" emergency="true">
           <row id="emergency.mixture">Mixture OFF</row>
         </section>
       </checklist>
     `)
-    const plane = new ChecklistDocument(`
+    const plane = parseDocument(`
       <checklist id="plane">
         <section id="emergency" title="Fire">
           <row id="emergency.extra">Extra action</row>
@@ -292,14 +299,14 @@ describe('Checklist tier merge', () => {
   })
 
   it('accumulates the dolist flag between model and plane tiers, independent of collapsed', () => {
-    const model = new ChecklistDocument(`
+    const model = parseDocument(`
       <checklist id="model">
         <section id="preflight" title="Walkaround" dolist="true">
           <row id="preflight.fuel">Check fuel</row>
         </section>
       </checklist>
     `)
-    const plane = new ChecklistDocument(`
+    const plane = parseDocument(`
       <checklist id="plane">
         <section id="preflight" title="Walkaround">
           <row id="preflight.canopy">Check canopy</row>
@@ -318,9 +325,14 @@ describe('Checklist tier merge', () => {
 class FakeChecklistDocumentSource implements ChecklistDocumentSource {
   constructor(private readonly files: Record<string, string>) {}
 
-  getRawXml(tier: ChecklistTier, key: string, locale: string): string | undefined {
+  getRootElement(
+    tier: ChecklistTier,
+    key: string,
+    locale: string,
+  ): ChecklistXmlElement | undefined {
     const base = tier === 'general' ? 'general/general' : `${tier}/${key}`
-    return this.files[`${base}.${locale}.xml`] ?? this.files[`${base}.xml`]
+    const raw = this.files[`${base}.${locale}.xml`] ?? this.files[`${base}.xml`]
+    return raw ? parseChecklistXml(raw) : undefined
   }
 }
 
@@ -373,6 +385,26 @@ describe('resolveChecklistForPlane', () => {
     const source = new FakeChecklistDocumentSource({})
     const checklist = resolveChecklistForPlane(source, plane, 'en-US')
     expect(checklist.sections).toHaveLength(0)
+  })
+})
+
+describe('pickStateEntries', () => {
+  it.each<[string, Record<string, string>, string[], Record<string, string>]>([
+    [
+      'checked rows and branches',
+      { a: '12:00', c: 'b1', d: '12:01' },
+      ['a', 'b', 'c'],
+      { a: '12:00', c: 'b1' },
+    ],
+    ['nothing to clear', { d: '12:01' }, ['a'], {}],
+    ['no inherited member', {}, ['constructor', 'toString'], {}],
+  ])('%s', (_, state, ids, picked) => {
+    const before = { ...state }
+    expect(pickStateEntries(state, ids)).toEqual(picked)
+    expect(state).toEqual(before)
+    // Undo: assigning them back after the clear restores the state
+    const cleared = Object.fromEntries(Object.entries(state).filter(([id]) => !ids.includes(id)))
+    expect(Object.assign(cleared, pickStateEntries(state, ids))).toEqual(state)
   })
 })
 
