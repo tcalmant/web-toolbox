@@ -98,20 +98,38 @@ describe('AIP location parsing', () => {
     ).toBe(false)
   })
 
+  // From north back to east: a quarter turn clockwise (the default), three quarters otherwise
   it.each([
-    ['arc horaire de 10 NM de rayon centré sur', false],
-    ['arc de cercle de 10 NM de rayon centré sur', true],
-  ])('closes an outline with "%s ... jusqu\'au point de départ"', (arc, uncertain) => {
-    const aip = new AIP(
-      `45°00'N 005°24'08"E-45°10'N 005°10'E-${arc} 45°00'N 005°10'E jusqu'au point de départ`,
-    )
-    expect(aip.polygons.length).toEqual(1)
-    const polygon = aip.polygons[0] as Polygon
-    expect(polygon).toBeInstanceOf(Polygon)
-    // Two points, then a quarter turn from north back to east (clockwise is the default)
-    expect(polygon.locations.length).toBeGreaterThan(15)
-    expect(polygon.locations.length).toBeLessThan(25)
-    expect(aip.geometryUncertain).toBe(uncertain)
+    ['arc horaire de 10 NM de rayon centré sur', '', 15, 25, false],
+    ['arc de cercle de 10 NM de rayon centré sur', '', 15, 25, true],
+    ['arc de cercle de 10 NM de rayon centré sur', ' dans le sens anti-horaire', 50, 65, false],
+  ])(
+    'closes an outline with "%s ...%s jusqu\'au point de départ"',
+    (before, after, min, max, uncertain) => {
+      const aip = new AIP(
+        `45°00'N 005°24'08"E-45°10'N 005°10'E-${before} 45°00'N 005°10'E${after} jusqu'au point de départ`,
+      )
+      expect(aip.polygons.length).toEqual(1)
+      const polygon = aip.polygons[0] as Polygon
+      expect(polygon).toBeInstanceOf(Polygon)
+      expect(polygon.locations.length).toBeGreaterThan(min)
+      expect(polygon.locations.length).toBeLessThan(max)
+      expect(aip.geometryUncertain).toBe(uncertain)
+      expect(aip.uncertainFeatures.has(polygon)).toBe(uncertain)
+    },
+  )
+
+  it.each([
+    ["Reference point 45°65'N 005°00'E on the chart.", 0],
+    ["Reference point 45°00'75\"N 005°00'E on the chart.", 0],
+    ["45°00'N 005°00'E-45°00'N 185°00'E-45°10'N 005°10'E-45°10'N 005°00'E", 2],
+  ])('rejects the out of range coordinates of "%s"', (text, count) => {
+    const aip = new AIP(text)
+    expect(aip.polygons.length).toEqual(count)
+    expect(aip.geometryUncertain).toBe(true)
+    for (const feature of aip.polygons) {
+      expect(aip.uncertainFeatures.has(feature)).toBe(true)
+    }
   })
 
   it('keeps an outline in one piece across a border stretch', () => {

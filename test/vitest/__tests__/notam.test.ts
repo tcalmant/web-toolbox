@@ -970,9 +970,33 @@ A) LFBB B) 2501010000 C) 2501020000
   it.each(['456500N0050000E', '450075N0050000E', '9100N00500E', '4500N18100E'])(
     'rejects the out of range point %s',
     (point) => {
-      expect(new NOTAM(header + `E) OBST ${point}.`, 0).polygons).toEqual([])
+      const notam = new NOTAM(header + `E) OBST ${point}.`, 0)
+      expect(notam.polygons).toEqual([])
+      expect(notam.geometryUncertain).toBe(true)
     },
   )
+
+  it.each([
+    ['4530.995N00500.10E', 45.5 + 0.995 / 60, 5 + 0.1 / 60],
+    ['455959N0055959E', 45 + 59 / 60 + 59 / 3600, 5 + 59 / 60 + 59 / 3600],
+  ])('accepts the point %s', (point, lat, lng) => {
+    const notam = new NOTAM(header + `E) OBST ${point}.`, 0)
+    expect(notam.polygons.length).toEqual(1)
+    const position = notam.polygons[0] as Position
+    expect(position.location.lat).toBeCloseTo(lat, 3)
+    expect(position.location.lng).toBeCloseTo(lng, 3)
+    expect(notam.geometryUncertain).toBe(false)
+  })
+
+  it.each([
+    ['an outline vertex', 'AREA 450000N0050000E TO 456500N0052408E TO 451000N0051000E'],
+    [
+      'an arc center',
+      'AREA 450000N0050000E TO 450000N0052408E THEN CLOCKWISE VIA A 10 NM ARC CENTERED AT 456500N0051000E TO 451000N0051000E',
+    ],
+  ])('flags the geometry when %s is rejected', (_, text) => {
+    expect(new NOTAM(header + `E) ${text}.`, 0).geometryUncertain).toBe(true)
+  })
 
   it.each([
     ['RDL 067.3/10.48NM ARP LFDC', 67.3, 10.48],
@@ -1052,6 +1076,8 @@ A) LFFF B) 2501010000 C) 2501020000
     ['ALONG THE ARC OF A CIRCLE OF 10 NM RADIUS CENTRED ON', ' (COUNTER-CLOCKWISE)', false, false],
     ['ANTICLOCKWISE ARC RADIUS 10NM CENTRED ON', '', false, false],
     ['COUNTER-CLOCKWISE VIA A 18.52 KM ARC CENTERED AT', '', false, false],
+    ['COUNTER-CLOCKWISE ARC 10NM CENTERED AT', '', false, false],
+    ['ANTICLOCKWISE ARC DE 10NM CENTERED AT', '', false, false],
     // No direction: drawn clockwise, but flagged
     ['ALONG AN ARC OF 10 NM RADIUS CENTERED AT', '', true, true],
   ])('reads the "%s ...%s" arc wording', (before, after, clockwise, uncertain) => {
@@ -1069,18 +1095,45 @@ A) LFFF B) 2501010000 C) 2501020000
     expect(notam.geometryUncertain).toBe(uncertain)
   })
 
-  it('closes an outline with an arc back to the point of origin', () => {
+  it('follows an English and a French arc in text order', () => {
+    // East to north, then north to west, both counter-clockwise: a half turn
     const notam = new NOTAM(
       header +
-        'E) AREA 450000N0052408E TO 451000N0051000E THEN CLOCKWISE ALONG AN ARC OF 10NM RADIUS CENTRED ON 450000N0051000E TO POINT OF ORIGIN.',
+        'E) AREA 450000N0052408E ARC DE CERCLE DE 10 NM DE RAYON CENTRE SUR 450000N0051000E DANS LE SENS ANTI-HORAIRE 451000N0051000E THEN COUNTER-CLOCKWISE VIA A 10 NM ARC CENTERED AT 450000N0051000E TO 450000N0045552E.',
       0,
     )
     expect(notam.polygons.length).toEqual(1)
     const polygon = notam.polygons[0] as Polygon
-    expect(polygon).toBeInstanceOf(Polygon)
+    expect(polygon.locations.length).toBeGreaterThan(30)
+    expect(polygon.locations.length).toBeLessThan(45)
+    for (const p of polygon.locations) {
+      expect(Math.abs(haversineDistanceMeters(arcCenter, p) - 10 * 1852)).toBeLessThan(150)
+    }
+    expect(polygon.locations.every((p) => p.lat > 44.99)).toBe(true)
+    expect(notam.geometryUncertain).toBe(false)
+  })
+
+  const closingArc =
+    'CLOCKWISE ALONG AN ARC OF 10NM RADIUS CENTRED ON 450000N0051000E TO POINT OF ORIGIN.'
+  it.each([
     // Two points, then a quarter turn from north back to east
-    expect(polygon.locations.length).toBeGreaterThan(15)
-    expect(polygon.locations.length).toBeLessThan(25)
+    ['after two points', `450000N0052408E TO 451000N0051000E THEN ${closingArc}`, 1, 15, 25],
+    [
+      'followed by another outline',
+      `450000N0052408E TO 451000N0051000E THEN ${closingArc} AREA 2: 460000N0060000E TO 461000N0060000E TO 461000N0061000E.`,
+      2,
+      15,
+      25,
+    ],
+    // A full turn
+    ['after a single point', `451000N0051000E THEN ${closingArc}`, 1, 60, 80],
+  ])('closes an outline with an arc %s', (_, text, count, min, max) => {
+    const notam = new NOTAM(header + `E) AREA ${text}`, 0)
+    expect(notam.polygons.length).toEqual(count)
+    expect(notam.polygons.every((p) => p instanceof Polygon)).toBe(true)
+    const polygon = notam.polygons[0] as Polygon
+    expect(polygon.locations.length).toBeGreaterThan(min)
+    expect(polygon.locations.length).toBeLessThan(max)
     for (const p of polygon.locations) {
       expect(Math.abs(haversineDistanceMeters(arcCenter, p) - 10 * 1852)).toBeLessThan(150)
     }

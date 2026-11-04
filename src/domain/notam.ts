@@ -34,7 +34,7 @@ const LAT_LNG_SOURCE = String.raw`(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lo
  *
  * @param strAngle String representation of the angle
  * @param hemisphere Target hemisphere (N, S, E or W)
- * @returns The value of the parsed angle, NaN if minutes or seconds reach 60
+ * @returns The value of the parsed angle, NaN if its minutes or seconds reach 60
  */
 function parseQAngle(strAngle: string, hemisphere: string): number {
   const nbDegreesDigits = 'NS'.includes(hemisphere) ? 2 : 3
@@ -55,6 +55,9 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
   if (nextPart.length == 2) {
     // Minutes only
     minutes = parseInt(nextPart)
+    if (minutes >= 60) {
+      return NaN
+    }
     if (Number.isFinite(extra)) {
       // Add decimal part as seconds
       seconds = Math.round(extra * 60)
@@ -63,13 +66,13 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
     // Minutes and seconds
     minutes = parseInt(nextPart.substring(0, 2))
     seconds = parseInt(nextPart.substring(2))
+    if (minutes >= 60 || seconds >= 60) {
+      return NaN
+    }
     if (Number.isFinite(extra)) {
       // Add decimal part to seconds
       seconds += extra
     }
-  }
-  if (minutes >= 60 || seconds >= 60) {
-    return NaN
   }
 
   const angle = degrees + minutes / 60 + seconds / 3600
@@ -560,7 +563,10 @@ export class NOTAM {
   readonly text: string
   readonly rawSections: Map<string, string>
   readonly polygons: GeometryFeature[]
-  /** An arc has no stated direction: the drawing must be checked against the text */
+  /**
+   * An arc has no stated direction or a coordinate was rejected: the drawing
+   * must be checked against the text
+   */
   geometryUncertain = false
   readonly sectionA: SectionA | null
   readonly sectionQ: SectionQ | null
@@ -804,6 +810,8 @@ export class NOTAM {
 
       const latLng = latLngFromGroups(match.groups)
       if (latLng === null) {
+        // Also catches the rejected centers, left in the text
+        this.geometryUncertain = true
         continue
       }
 

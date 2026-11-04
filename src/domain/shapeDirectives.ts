@@ -67,9 +67,10 @@ const FR_DIRECTION = String.raw`(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE|(?:INVERS
 const ARC_WORDINGS: string[] = [
   // "CLOCKWISE VIA A 30 NM ARC", "CLOCKWISE ALONG AN ARC OF 5NM RADIUS",
   // "ANTICLOCKWISE ARC RADIUS 5NM", "ALONG THE ARC OF A CIRCLE OF 15 NM RADIUS"
-  String.raw`(?:(?<dir>${EN_DIRECTION})\s+)?(?:(?:VIA|ALONG)\s+)?(?:(?:A|AN|THE)\s+)?(?:${RADIUS}\s+(?:RADIUS\s+)?)?ARC(?:\s+OF\s+A\s+CIRCLE)?(?:\s+(?:OF\s+${RADIUS}\s+RADIUS|(?:OF\s+)?RADIUS\s+${RADIUS}|${RADIUS}\s+RADIUS))?`,
-  // "arc de cercle de 5 NM de rayon", "arc horaire de 5 nm de rayon"
-  String.raw`ARC(?:\s+(?<dir>(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE))?(?:\s+DE\s+CERCLE)?(?:\s+(?:DE\s+)?${RADIUS}(?:\s+DE\s+RAYON)?)?`,
+  String.raw`(?:(?<dir>${EN_DIRECTION})\s+)?(?:(?:VIA|ALONG)\s+)?(?:(?:A|AN|THE)\s+)?(?:${RADIUS}\s+(?:RADIUS\s+)?)?ARC(?:\s+OF\s+A\s+CIRCLE)?(?:\s+(?:OF\s+${RADIUS}\s+RADIUS|(?:OF\s+)?RADIUS\s+${RADIUS}|${RADIUS}\s+RADIUS|(?:DE\s+)?${RADIUS}))?`,
+  // "arc de cercle de 5 NM de rayon", "arc horaire de 5 nm de rayon", never
+  // after an English direction that the row above failed to take
+  String.raw`(?<!CLOCKWISE\s+)ARC(?:\s+(?<dir>(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE))?(?:\s+DE\s+CERCLE)?(?:\s+(?:DE\s+)?${RADIUS}(?:\s+DE\s+RAYON)?)?`,
 ]
 
 /**
