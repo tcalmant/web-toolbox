@@ -199,8 +199,12 @@ def cached_overpass(name: str, query: str, cache_dir: pathlib.Path) -> dict:
     """
     cache_file = cache_dir / f"{name}.json"
     if cache_file.exists():
-        _logger.info("Using cached %s", cache_file)
-        return json.loads(cache_file.read_text(encoding="utf-8"))
+        cached = json.loads(cache_file.read_text(encoding="utf-8"))
+        # Caches written before the metadata only hold the elements list
+        if isinstance(cached, dict) and "osm3s" in cached:
+            _logger.info("Using cached %s", cache_file)
+            return cached
+        _logger.warning("Ignoring the outdated cache %s", cache_file)
 
     answer = overpass(query)
     cache_dir.mkdir(parents=True, exist_ok=True)

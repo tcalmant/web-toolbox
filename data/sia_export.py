@@ -131,8 +131,8 @@ def export_sia(input_file: pathlib.Path, output_file: pathlib.Path) -> int:
     # An AIXM 4.5 snapshot carries its dates as attributes of the root element
     metadata = {
         "source": "SIA, AIXM 4.5 export",
-        "created": root.get("created"),
-        "effective": root.get("effective"),
+        "created": (root.get("created") or "")[:10] or None,
+        "effective": (root.get("effective") or "")[:10] or None,
         "generated": datetime.date.today().isoformat(),
     }
     metadata_file = output_file.with_suffix(".meta.json")

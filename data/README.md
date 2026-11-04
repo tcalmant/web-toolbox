@@ -10,7 +10,7 @@ This file can requested on the SIA (Service de l'Information Aéronautique) shop
 
 It will generate the `src/fixed-data/airfields_fr.json` file associating a location to each airfield found in the AIXM file.
 
-It also writes `src/fixed-data/airfields_fr.meta.json`: the source, the `created` and `effective` dates of the AIXM snapshot (attributes of its root element, `null` when absent) and the generation date. The application shows them with the AIRAC cycle and warns when the data is several cycles old. The metadata of the current file was written by hand from the git history (generated on 2025-09-20, export dates unknown).
+It also writes `src/fixed-data/airfields_fr.meta.json`: the source, the `created` and `effective` dates of the AIXM snapshot (attributes of its root element, `null` when absent) and the generation date. The application shows the generation date and, when the effective date is known, the AIRAC cycle, and warns when the data is several cycles old. The metadata of the current file was written by hand from the git history (generated on 2025-09-20, export dates unknown).
 
 ## `borders_export.py`
 

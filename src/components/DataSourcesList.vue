@@ -33,7 +33,7 @@ under the License.
       <q-item-section>
         <q-item-label>{{ t('dataAirfields', { source: AirfieldsMetadata.source }) }}</q-item-label>
         <q-item-label caption>
-          {{ t('dataGenerated', { date: AirfieldsMetadata.generated.slice(0, 10) }) }},
+          {{ t('dataGenerated', { date: AirfieldsMetadata.generated }) }},
           {{
             airfieldsCycle ? t('dataAiracCycle', { cycle: airfieldsCycle }) : t('dataAiracUnknown')
           }},
@@ -55,7 +55,7 @@ under the License.
           }}
         </q-item-label>
         <q-item-label caption>
-          {{ t('dataGenerated', { date: BordersMetadata.generated.slice(0, 10) }) }}
+          {{ t('dataGenerated', { date: BordersMetadata.generated }) }}
         </q-item-label>
       </q-item-section>
     </q-item>
@@ -73,12 +73,15 @@ const STALE_AFTER_CYCLES = 2
 
 const { t } = useI18n()
 
-const effective = AirfieldsMetadata.effective
+// Date only: a date-time without offset would be read as local time (ECMA-262
+// Date Time String Format) and could fall in the previous cycle
+const effective = AirfieldsMetadata.effective?.slice(0, 10) ?? null
 const airfieldsCycle = effective ? airacCycle(new Date(effective)).id : null
-// Without the effective date, the generation date gives a lower bound of the age
-const airfieldsAge = airacCyclesBetween(
-  new Date(effective ?? AirfieldsMetadata.generated),
-  new Date(),
+// Without the effective date, the generation date gives a lower bound of the age.
+// Data published ahead of its effective date counts as current, not as older
+const airfieldsAge = Math.max(
+  0,
+  airacCyclesBetween(new Date(effective ?? AirfieldsMetadata.generated), new Date()),
 )
 const airfieldsStale = airfieldsAge >= STALE_AFTER_CYCLES
 </script>
