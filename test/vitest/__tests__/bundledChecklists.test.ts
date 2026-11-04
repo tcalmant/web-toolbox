@@ -27,7 +27,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { ChecklistXmlSource } from '../../../src/adapters/data/checklistXmlSource'
+import {
+  ChecklistXmlSource,
+  parseChecklistXml,
+} from '../../../src/adapters/data/checklistXmlSource'
 import { buildAirplanes } from '../../../src/adapters/data/airplanesRepository'
 import { resolveChecklistForPlane } from '../../../src/domain/checklistResolver'
 import {
@@ -70,7 +73,7 @@ describe.skipIf(!HAS_SOURCES)('bundled checklists', () => {
 
   for (const file of files) {
     describe(file, () => {
-      const doc = new ChecklistDocument(readFileSync(join(ROOT, file), 'utf8'))
+      const doc = new ChecklistDocument(parseChecklistXml(readFileSync(join(ROOT, file), 'utf8')))
 
       it('has unique section and item ids', () => {
         const ids = doc.sections.map((s) => s.id)
@@ -128,14 +131,16 @@ describe.skipIf(!HAS_SOURCES)('club planes', () => {
       const plane = planes[tail]
       expect(plane, `no aircraft ${tail}`).toBeDefined()
       if (!plane) return
-      const own = new ChecklistDocument(tiers[file] ?? '').sections.map((s) => s.id)
+      const own = new ChecklistDocument(parseChecklistXml(tiers[file] ?? '')).sections.map(
+        (s) => s.id,
+      )
       const merged = resolveChecklistForPlane(source, plane, 'fr-FR').sections.map((s) => s.id)
       // The plane sections are added, the model ones are kept
       for (const id of own) {
         expect(merged, id).toContain(id)
       }
       const modelIds = new ChecklistDocument(
-        tiers[join('model', `${plane.model}.xml`)] ?? '',
+        parseChecklistXml(tiers[join('model', `${plane.model}.xml`)] ?? ''),
       ).sections.map((s) => s.id)
       for (const id of modelIds) {
         expect(merged, id).toContain(id)

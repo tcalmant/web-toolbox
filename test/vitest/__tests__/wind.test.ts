@@ -14,6 +14,7 @@ import {
   pressureAltitudeFt,
   reciprocalHeading,
   windComponents,
+  worstWindComponents,
 } from '../../../src/domain/wind'
 
 describe('windComponents', () => {
@@ -51,6 +52,33 @@ describe('windComponents', () => {
     // 30 degrees to the right of the runway heading
     expect(w.crosswindSide).toBe('right')
     expect(w.crosswind).toBeCloseTo(5, 6)
+  })
+})
+
+describe('worstWindComponents', () => {
+  const sin = (deg: number) => Math.sin((deg * Math.PI) / 180)
+  const cos = (deg: number) => Math.cos((deg * Math.PI) / 180)
+  it.each([
+    // runway, sector, speed, worst crosswind, worst headwind
+    ['VRB: full crosswind and tailwind', 220, null, 10, 10, -10],
+    ['full circle 000V360 as VRB', 220, { fromDeg: 0, toDeg: 360 }, 10, 10, -10],
+    ['360 to 360 on runway 36', 0, { fromDeg: 360, toDeg: 360 }, 10, 0, 10],
+    ['sector around the axis', 0, { fromDeg: 350, toDeg: 30 }, 10, 10 * sin(30), 10 * cos(30)],
+    ['sector around the axis, runway 18', 180, { fromDeg: 350, toDeg: 30 }, 10, 10 * sin(30), -10],
+    ['sector across the beam', 220, { fromDeg: 240, toDeg: 330 }, 20, 20, 20 * cos(110)],
+    ['sector on one side', 220, { fromDeg: 240, toDeg: 300 }, 20, 20 * sin(80), 20 * cos(80)],
+    [
+      'wrap-around sector on runway 04',
+      40,
+      { fromDeg: 350, toDeg: 30 },
+      10,
+      10 * sin(50),
+      10 * cos(50),
+    ],
+  ])('%s', (_, runway, sector, speed, crosswind, headwind) => {
+    const w = worstWindComponents(runway, sector, speed)
+    expect(w.crosswind).toBeCloseTo(crosswind, 6)
+    expect(w.headwind).toBeCloseTo(headwind, 6)
   })
 })
 
