@@ -27,6 +27,16 @@ export default {
   timestampTitle: 'Fuseaux horaires',
   checklistTitle: 'Check-list',
 
+  // Notice shown on first launch
+  noticeTitle: 'Avertissement',
+  noticeGeneral:
+    "Aide personnelle à la préparation des vols. Ni source officielle d'information aéronautique, ni outil certifié, ni moyen de navigation. Vérifiez toujours les sources officielles (SIA, SOFIA, AeroWeb), le manuel de vol et les documents de l'avion. Le commandant de bord reste seul responsable.",
+  noticeNotam:
+    'Les zones des NOTAM et des SUP AIP sont déduites automatiquement de leur texte : elles peuvent être fausses ou incomplètes, le texte fait foi.',
+  noticeChecklist:
+    'Les check-lists ne sont que des transcriptions : le manuel de vol approuvé fait foi. Gardez la check-list papier à bord.',
+  noticeAcknowledge: "J'ai compris",
+
   // Common ARIA-related sentences
   toggleSelectAll: 'Alterner la sélection intégrale',
   addEntry: 'Ajouter une entrée',

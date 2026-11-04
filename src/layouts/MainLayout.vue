@@ -74,12 +74,19 @@ under the License.
       <q-list>
         <q-item-label header> {{ t('projectLinks') }} </q-item-label>
         <EssentialLink v-for="link in projectLinks" :key="link.id" v-bind="link" />
+        <q-item clickable @click="openNotice">
+          <q-item-section avatar>
+            <q-icon name="gavel" />
+          </q-item-section>
+          <q-item-section>{{ t('noticeTitle') }}</q-item-section>
+        </q-item>
       </q-list>
 
       <LanguageSwitcher style="position: absolute; bottom: 0" />
     </q-drawer>
 
     <AcdUnlockDialog />
+    <NoticeDialog v-model="noticeOpen" />
 
     <q-page-container>
       <h1 class="sr-only">{{ pageTitle }}</h1>
@@ -92,6 +99,7 @@ under the License.
 import AcdUnlockDialog from '@/components/AcdUnlockDialog.vue'
 import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import NoticeDialog from '@/components/NoticeDialog.vue'
 import { useAcdVault } from '@/composables/useAcdVault'
 import { usePageMetadata } from '@/composables/usePageMetadata'
 import { onMounted, ref } from 'vue'
@@ -164,6 +172,12 @@ function onToggleVault() {
 }
 
 const leftDrawerOpen = ref(false)
+const noticeOpen = ref(false)
+
+function openNotice() {
+  leftDrawerOpen.value = false
+  noticeOpen.value = true
+}
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value

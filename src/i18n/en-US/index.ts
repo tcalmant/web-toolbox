@@ -27,6 +27,16 @@ export default {
   timestampTitle: 'Time zones',
   checklistTitle: 'Checklist',
 
+  // Notice shown on first launch
+  noticeTitle: 'Notice',
+  noticeGeneral:
+    'Personal flight preparation aid. Not an official source of aeronautical information, not certified, not for navigation. Always check the official sources (SIA, SOFIA, AeroWeb), the flight manual and the aircraft documents. The pilot-in-command remains solely responsible.',
+  noticeNotam:
+    'NOTAM and SUP AIP areas are deduced automatically from their text: they may be wrong or incomplete, the text prevails.',
+  noticeChecklist:
+    'Checklists are transcriptions only: the approved flight manual prevails. Keep the paper checklist on board.',
+  noticeAcknowledge: 'I understand',
+
   // Common ARIA-related sentences
   toggleSelectAll: 'Toggle table selection',
   addEntry: 'Add entry',
