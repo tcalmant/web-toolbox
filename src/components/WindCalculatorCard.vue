@@ -273,9 +273,9 @@ const ends = computed(() => {
       caption: [side, gustNote].filter((s) => s.length > 0).join(', '),
     }
   })
-  // Best end: the most headwind (least tailwind)
-  const best = rows[0]!.main.headwind >= rows[1]!.main.headwind ? 0 : 1
-  rows[best]!.best = true
+  // Best end: the most headwind (least tailwind), none on a tie (VRB)
+  const [first, second] = [rows[0]!.main.headwind, rows[1]!.main.headwind]
+  if (first !== second) rows[first > second ? 0 : 1]!.best = true
   return rows
 })
 </script>
