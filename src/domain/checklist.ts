@@ -306,3 +306,16 @@ export class Checklist {
     return this.sections.filter((section) => section.flags.emergency)
   }
 }
+
+/**
+ * The entries of `ids` in a checked/branch state, set aside before clearing them so the
+ * clear can be undone by assigning them back. Own entries only, as in `isChecked`.
+ */
+export function pickStateEntries(
+  state: Readonly<Record<string, string>>,
+  ids: readonly string[],
+): Record<string, string> {
+  return Object.fromEntries(
+    ids.filter((id) => Object.hasOwn(state, id)).map((id) => [id, state[id]!]),
+  )
+}

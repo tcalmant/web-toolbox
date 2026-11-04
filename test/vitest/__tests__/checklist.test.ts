@@ -35,6 +35,7 @@ import {
   ChecklistDocument,
   ChecklistInfo,
   ChecklistRow,
+  pickStateEntries,
 } from '../../../src/domain/checklist'
 import { resolveChecklistForPlane } from '../../../src/domain/checklistResolver'
 import type {
@@ -384,6 +385,26 @@ describe('resolveChecklistForPlane', () => {
     const source = new FakeChecklistDocumentSource({})
     const checklist = resolveChecklistForPlane(source, plane, 'en-US')
     expect(checklist.sections).toHaveLength(0)
+  })
+})
+
+describe('pickStateEntries', () => {
+  it.each<[string, Record<string, string>, string[], Record<string, string>]>([
+    [
+      'checked rows and branches',
+      { a: '12:00', c: 'b1', d: '12:01' },
+      ['a', 'b', 'c'],
+      { a: '12:00', c: 'b1' },
+    ],
+    ['nothing to clear', { d: '12:01' }, ['a'], {}],
+    ['no inherited member', {}, ['constructor', 'toString'], {}],
+  ])('%s', (_, state, ids, picked) => {
+    const before = { ...state }
+    expect(pickStateEntries(state, ids)).toEqual(picked)
+    expect(state).toEqual(before)
+    // Undo: assigning them back after the clear restores the state
+    const cleared = Object.fromEntries(Object.entries(state).filter(([id]) => !ids.includes(id)))
+    expect(Object.assign(cleared, pickStateEntries(state, ids))).toEqual(state)
   })
 })
 

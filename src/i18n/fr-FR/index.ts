@@ -312,6 +312,8 @@ export default {
   acdCorrupt: 'Les données ACD sont endommagées',
   acdUnlockDrawer: 'Déverrouiller les données ACD',
   acdLockDrawer: 'Verrouiller les données ACD',
+  storagePersisted: 'Stockage persistant : le navigateur conserve les données hors ligne',
+  storageNotPersisted: 'Stockage non garanti : le navigateur peut effacer les données hors ligne',
   acdFuelBanner: "Les avions de l'ACD sont verrouillés : seuls vos propres avions sont listés.",
 
   // Offline app
@@ -325,6 +327,9 @@ export default {
   checklistNoPlaneSelected: 'Sélectionnez un avion pour voir sa check-list',
   checklistEmergencyJumpLabel: "Check-lists d'urgence :",
   checklistClearSectionLabel: 'Vider cette section',
+  checklistSectionClearedMessage: 'Section vidée : {section}',
+  checklistUndoLabel: 'Annuler',
+  checklistKeepAwakeLabel: "Garder l'écran allumé",
   checklistCollapseAllLabel: 'Tout réduire',
   checklistClearAllLabel: 'Tout vider',
   confirmClearAllChecklistMessage: 'Vider toute la check-list ?',
