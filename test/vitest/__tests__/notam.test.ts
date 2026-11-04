@@ -1086,6 +1086,17 @@ describe('NOTAM schedule (field D)', () => {
     ['0800-1600', [every(480, 960)]],
     ['0000-2359', [every(0, 1440)]],
     ['1500-0400', [every(900, 240)]],
+    ['0800-2400', [every(480, 1440)]],
+    ['FRI-MON 2200-0200', [{ ...every(1320, 120), days: [weekdays(5, 1)] }]],
+    [
+      'DEC 28-JAN 03 0800-1700',
+      [
+        {
+          ...every(480, 1020),
+          days: [{ kind: 'dates', from: { month: 11, day: 28 }, to: { month: 0, day: 3 } }],
+        },
+      ],
+    ],
     ['DAILY 0600-1800', [every(360, 1080)]],
     ['MON-FRI 0700-1700', [{ ...every(420, 1020), days: [weekdays(1, 5)] }]],
     ['MON TUE 0800-1200', [{ ...every(480, 720), days: [weekdays(1, 1), weekdays(2, 2)] }]],
@@ -1153,6 +1164,17 @@ describe('NOTAM schedule (field D)', () => {
     ['0800-1700 EXC SUN 0900-1000', 'notUnderstood'],
     ['ACT 0800-1700 SEE E)', 'notUnderstood'],
     ['0800-1200,', 'notUnderstood'],
+    ['2400-0600', 'notUnderstood'],
+    // EXC without days
+    ['MON-FRI EXC 0800-1700', 'notUnderstood'],
+    ['EXC 0800-1700', 'notUnderstood'],
+    ['0800-1700 EXC', 'notUnderstood'],
+    ['0800-1700 EXC, SAT 0900-1200', 'notUnderstood'],
+    // Same month, end before start
+    ['NOV 28-03 0800-1700', 'notUnderstood'],
+    // Full day or nothing
+    ['0000-0000', 'notUnderstood'],
+    ['1200-1200', 'notUnderstood'],
   ])('does not guess %s', (text, kind) => {
     expect(parseNotamSchedule(text)).toEqual({ kind })
   })
@@ -1176,6 +1198,35 @@ ${schedule ? `D) ${schedule}\n` : ''}E) TEST`,
     [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 10), utc(2026, 11, 9, 12), 'active'],
     [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 16), utc(2026, 11, 9, 18), 'active'],
     [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 17, 30), utc(2026, 11, 9, 19), 'inactive'],
+    // Both bounds included: touching the period start or end counts
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 5), utc(2026, 11, 9, 7), 'active'],
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 17), utc(2026, 11, 9, 19), 'active'],
+    // 2026-11-07 is a Saturday: the Friday period runs until 02:00
+    [november, 'FRI 2200-0200', utc(2026, 11, 7, 1), utc(2026, 11, 7, 1), 'active'],
+    [november, 'FRI 2200-0200', utc(2026, 11, 7, 2), utc(2026, 11, 7, 2), 'active'],
+    [november, 'FRI 2200-0200', utc(2026, 11, 7, 2, 1), utc(2026, 11, 7, 2, 1), 'inactive'],
+    [
+      '20 12 2026 00:00 AU: 10 01 2027 23:59',
+      'DEC 28-JAN 03 0800-1700',
+      utc(2027, 1, 2, 10),
+      utc(2027, 1, 2, 12),
+      'active',
+    ],
+    [
+      '20 12 2026 00:00 AU: 10 01 2027 23:59',
+      'DEC 28-JAN 03 0800-1700',
+      utc(2027, 1, 5, 10),
+      utc(2027, 1, 5, 12),
+      'inactive',
+    ],
+    // The window straddles B), the period that day is over before B)
+    [
+      '05 11 2026 12:00 AU: 30 11 2026 23:59',
+      '0800-1000',
+      utc(2026, 11, 5, 9),
+      utc(2026, 11, 5, 13),
+      'inactive',
+    ],
     [november, 'DAILY 0700-1700 EXC SUN', utc(2026, 11, 8, 10), utc(2026, 11, 8, 12), 'inactive'],
     [november, 'H24', utc(2026, 11, 8, 10), utc(2026, 11, 8, 12), 'active'],
     [november, 'MON-FRI 0700-1700', utc(2026, 12, 1, 10), utc(2026, 12, 1, 12), 'expired'],

@@ -129,6 +129,10 @@ export function parseNotamSchedule(text: string): NotamSchedule {
       throw new NotUnderstood()
     }
     const end = timeBound(true)
+    // "0000-0000" could be a full day or nothing
+    if (start !== null && start === end) {
+      throw new NotUnderstood()
+    }
     return start === null || end === null ? null : { start, end }
   }
 
@@ -164,8 +168,13 @@ export function parseNotamSchedule(text: string): NotamSchedule {
     // A dash followed by a time is not a day range
     if (peek() === '-' && !isTimeStart(peek(1))) {
       pos++
+      const ownMonth = MONTHS.includes(peek() ?? '')
       to = dayOfYear()
-      if ((from.month === null) !== (to.month === null)) {
+      // "NOV 28-03" would wrap over the whole year
+      if (
+        (from.month === null) !== (to.month === null) ||
+        (from.month !== null && !ownMonth && to.day < from.day)
+      ) {
         throw new NotUnderstood()
       }
     }
@@ -197,7 +206,7 @@ export function parseNotamSchedule(text: string): NotamSchedule {
           pos++
         } else if (isTimeStart(token)) {
           // "0800-1700 EXC SUN 0900-1000" has no clear reading
-          if (exceptAfterTimes) {
+          if (exceptAfterTimes || (excepting && rule.except.length === 0)) {
             throw new NotUnderstood()
           }
           excepting = false
@@ -208,6 +217,10 @@ export function parseNotamSchedule(text: string): NotamSchedule {
         } else {
           ;(excepting ? rule.except : rule.days).push(daySelector())
         }
+      }
+      if (excepting && rule.except.length === 0) {
+        // An EXC without days to exclude
+        throw new NotUnderstood()
       }
       if (peek() === ',') {
         pos++
@@ -296,7 +309,8 @@ export function scheduleIntersects(
       for (const { start, end } of rule.times) {
         const periodStart = day + start * 60_000
         const periodEnd = day + (end > start ? end : end + DAY_MINUTES) * 60_000
-        if (periodStart <= upper && periodEnd > lower) {
+        // Both bounds included, on the safe side
+        if (periodStart <= upper && periodEnd >= lower) {
           return true
         }
       }
