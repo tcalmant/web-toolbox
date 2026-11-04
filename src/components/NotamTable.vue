@@ -80,6 +80,16 @@ under the License.
               props.row == focusedNotam ? 'radio_button_unchecked' : props.expand ? 'remove' : 'add'
             "
           />
+          <q-icon
+            v-if="notamRow(props.row).geometryUncertain"
+            name="warning"
+            color="warning"
+            size="sm"
+            class="q-ml-xs"
+            :aria-label="$t('notamGeometryUncertain')"
+          >
+            <q-tooltip>{{ $t('notamGeometryUncertain') }}</q-tooltip>
+          </q-icon>
         </q-td>
         <q-td
           v-for="col in props.cols"
@@ -97,6 +107,9 @@ under the License.
       <q-tr v-if="props.expand || props.row == focusedNotam" :props="props">
         <q-td colspan="100%">
           <div class="row q-gutter-md q-mb-sm text-body2">
+            <div v-if="notamRow(props.row).geometryUncertain" class="text-warning">
+              <q-icon name="warning" /> {{ $t('notamGeometryUncertain') }}
+            </div>
             <div v-if="notamRow(props.row).validity">
               <strong>{{ $t('notamValidityLabel') }}</strong
               >:

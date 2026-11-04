@@ -21,7 +21,7 @@ import type { GeoPoint } from './geo'
 import { arcPoints } from './geo'
 import type { GeometryFeature } from './geometry'
 import { Circle, Line, Polygon, Position } from './geometry'
-import { findShapeDirectives } from './shapeDirectives'
+import { closeWithArc, findShapeDirectives } from './shapeDirectives'
 
 // A single AIP-formatted lat/lon pair (e.g. 45°30'15"N 005°45'E)
 const AIP_LOCATION_SOURCE = String.raw`0?(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2}(?:\.\d+)?)(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2}(?:\.\d+)?)(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])`
@@ -50,6 +50,13 @@ function toGeometryFeature(points: GeoPoint[]): GeometryFeature | null {
 export class AIP {
   text: string
   polygons: GeometryFeature[]
+  /**
+   * An arc has no stated direction or a coordinate was rejected: the drawing
+   * must be checked against the text
+   */
+  geometryUncertain = false
+  /** The features whose outline is concerned, when it is known */
+  uncertainFeatures = new Set<GeometryFeature>()
 
   constructor(fullText: string) {
     this.text = fullText
@@ -81,6 +88,13 @@ export class AIP {
       return null
     }
 
+    const minutes = [strLatMin, strLatSec, strLonMin, strLonSec].map((v) =>
+      v === undefined ? 0 : parseFloat(v),
+    )
+    if (minutes.some((v) => v >= 60)) {
+      return null
+    }
+
     let lat = parseInt(strLatDeg)
     if (strLatMin !== undefined) {
       lat += parseInt(strLatMin) / 60
@@ -95,6 +109,9 @@ export class AIP {
       if (strLonSec !== undefined) {
         lon += parseFloat(strLonSec) / 3600
       }
+    }
+    if (lat > 90 || lon > 180) {
+      return null
     }
 
     // South and west are negative
@@ -113,6 +130,7 @@ export class AIP {
     // Circles and arcs: their centers must not be taken for outline points
     const directives = findShapeDirectives(text, AIP_LOCATION_SOURCE, (g) => this.parseAIPGroups(g))
     text = directives.cleaned
+    this.geometryUncertain = directives.arcs.some((a) => a.uncertain)
 
     // Look for AIP-formatted locations
     const aipLocation = new RegExp(AIP_LOCATION_SOURCE, 'g')
@@ -121,6 +139,21 @@ export class AIP {
       (c) => new Circle(c.center, c.radiusMeters),
     )
     let currentList: GeoPoint[] = []
+    // A rejected point may belong to the outline before or after it: flag both
+    let listUncertain = false
+    let nextUncertain = false
+    const flush = (points: GeoPoint[]) => {
+      const feature = toGeometryFeature(points)
+      if (feature !== null) {
+        features.push(feature)
+        if (listUncertain) {
+          this.uncertainFeatures.add(feature)
+        }
+      }
+      listUncertain = nextUncertain
+      nextUncertain = false
+      currentList = []
+    }
     let lastEndIdx = 0
     let match
     while ((match = aipLocation.exec(text)) != null) {
@@ -132,6 +165,9 @@ export class AIP {
       const location = this.parseAIPLocation(match)
       if (location === null) {
         console.warn("Couldn't parse location %s", match[0])
+        this.geometryUncertain = true
+        listUncertain = true
+        nextUncertain = true
         continue
       }
 
@@ -141,18 +177,18 @@ export class AIP {
       // Dashes, commas and semicolons only separate the points of a same shape
       const between = text.substring(lastEndIdx, match.index).trim()
       const onlySeparators = between.replace(/[\s,;-]/g, '').length == 0
-      if (arc === undefined && !onlySeparators && !BORDER_TEXT.test(between)) {
+      if (arc?.closing === true) {
+        // The arc ended the previous outline, this point starts a new one
+        listUncertain ||= arc.uncertain
+        flush(closeWithArc(currentList, arc))
+      } else if (arc === undefined && !onlySeparators && !BORDER_TEXT.test(between)) {
         // Found text between previous and current number
-        const feature = toGeometryFeature(currentList)
-        if (feature !== null) {
-          features.push(feature)
-        }
-
-        currentList = []
+        flush(currentList)
       }
 
       const previous = currentList[currentList.length - 1]
       if (arc !== undefined && previous !== undefined) {
+        listUncertain ||= arc.uncertain
         currentList.push(...arcPoints(arc.center, previous, location, arc.clockwise))
       } else if (previous !== undefined && !onlySeparators) {
         // Follow the border between the two points, if we know it
@@ -169,10 +205,9 @@ export class AIP {
     }
 
     // Handle what's left
-    const feature = toGeometryFeature(currentList)
-    if (feature !== null) {
-      features.push(feature)
-    }
+    const closing = directives.arcs.find((a) => a.closing && a.start >= lastEndIdx)
+    listUncertain ||= closing?.uncertain === true
+    flush(closing !== undefined ? closeWithArc(currentList, closing) : currentList)
 
     return features
   }

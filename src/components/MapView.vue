@@ -30,14 +30,16 @@ under the License.
 import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useQuasar } from 'quasar'
-import { featuresToLayers } from '@/adapters/leaflet/geometryLayers'
+import { featuresToLayers, featureToLayer } from '@/adapters/leaflet/geometryLayers'
 import { escapeHtml, safeAttribution } from '@/adapters/leaflet/safeHtml'
 import { useAcdVault } from '@/composables/useAcdVault'
 import type { AIP } from '@/domain/aip'
 import type { NOTAM } from '@/domain/notam'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 export interface MapProps {
   center?: LatLngTuple
@@ -249,7 +251,16 @@ class MapCoordinatesViewer extends L.Control {
 const aipLayer = computed<FeatureGroup>(() => {
   const groupLayer = new FeatureGroup()
   if (mapRef.value && aip.value && aip.value.polygons) {
-    featuresToLayers(aip.value.polygons).forEach((l) => groupLayer.addLayer(l))
+    for (const feature of aip.value.polygons) {
+      const layer = featureToLayer(feature)
+      if (layer !== null) {
+        if (aip.value.uncertainFeatures.has(feature)) {
+          // Sticky: follows the cursor over large areas
+          layer.bindTooltip(t('notamGeometryUncertain'), { sticky: true })
+        }
+        groupLayer.addLayer(layer)
+      }
+    }
   }
   return groupLayer
 })
@@ -290,6 +301,10 @@ const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
     }
 
     if (layer.getLayers().length != 0) {
+      if (notam.geometryUncertain) {
+        // Bound to the group: the events of its member layers reach it
+        layer.bindTooltip(t('notamGeometryUncertain'), { sticky: true })
+      }
       layer.on('click', () => {
         focusedNotam.value = notam
       })

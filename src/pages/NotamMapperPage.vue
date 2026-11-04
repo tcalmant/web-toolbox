@@ -48,6 +48,7 @@ under the License.
         v-model:search-query="searchQuery"
         :notam-count="parsedNotams?.length ?? 0"
         :aip-area-count="parsedAIP?.polygons.length ?? 0"
+        :aip-geometry-uncertain="parsedAIP?.geometryUncertain ?? false"
         @show-import="showImport = true"
       />
       <NotamTable
@@ -93,6 +94,7 @@ under the License.
           v-model:search-query="searchQuery"
           :notam-count="parsedNotams?.length ?? 0"
           :aip-area-count="parsedAIP?.polygons.length ?? 0"
+          :aip-geometry-uncertain="parsedAIP?.geometryUncertain ?? false"
           @show-import="showImport = true"
         />
         <NotamTable

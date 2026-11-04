@@ -18,10 +18,10 @@
 import type { Airfield } from './airfields'
 import KnownAirfields from '@/adapters/data/airfieldsRepository'
 import type { GeoPoint } from './geo'
-import { arcPoints, geoPointsEqual } from './geo'
+import { arcPoints, destinationPoint, geoPointsEqual } from './geo'
 import type { GeometryFeature, PositionKind } from './geometry'
 import { Circle, Line, Polygon, Position } from './geometry'
-import { findShapeDirectives } from './shapeDirectives'
+import { closeWithArc, findShapeDirectives } from './shapeDirectives'
 import type { NotamSchedule } from './notamSchedule'
 import { parseNotamSchedule, scheduleIntersects } from './notamSchedule'
 
@@ -36,7 +36,7 @@ const LAT_LNG_SOURCE = String.raw`(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lo
  *
  * @param strAngle String representation of the angle
  * @param hemisphere Target hemisphere (N, S, E or W)
- * @returns The value of the parsed angle
+ * @returns The value of the parsed angle, NaN if its minutes or seconds reach 60
  */
 function parseQAngle(strAngle: string, hemisphere: string): number {
   const nbDegreesDigits = 'NS'.includes(hemisphere) ? 2 : 3
@@ -57,6 +57,9 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
   if (nextPart.length == 2) {
     // Minutes only
     minutes = parseInt(nextPart)
+    if (minutes >= 60) {
+      return NaN
+    }
     if (Number.isFinite(extra)) {
       // Add decimal part as seconds
       seconds = Math.round(extra * 60)
@@ -65,6 +68,9 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
     // Minutes and seconds
     minutes = parseInt(nextPart.substring(0, 2))
     seconds = parseInt(nextPart.substring(2))
+    if (minutes >= 60 || seconds >= 60) {
+      return NaN
+    }
     if (Number.isFinite(extra)) {
       // Add decimal part to seconds
       seconds += extra
@@ -79,7 +85,7 @@ function parseQAngle(strAngle: string, hemisphere: string): number {
  * Reads lat/lon angle groups out of a regex match and turns them into a GeoPoint.
  *
  * @param groups Named capture groups, expected to contain lat/latNS/lon/lonEW
- * @returns The parsed point, or null if any group is missing
+ * @returns The parsed point, or null if any group is missing or out of range
  */
 function latLngFromGroups(groups: Record<string, string | undefined>): GeoPoint | null {
   const strLat = groups['lat']
@@ -90,10 +96,13 @@ function latLngFromGroups(groups: Record<string, string | undefined>): GeoPoint 
     return null
   }
 
-  return {
-    lat: parseQAngle(strLat, strLatNS),
-    lng: parseQAngle(strLon, strLonEW),
+  const lat = parseQAngle(strLat, strLatNS)
+  const lng = parseQAngle(strLon, strLonEW)
+  // NaN fails both comparisons
+  if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) {
+    return null
   }
+  return { lat, lng }
 }
 
 /**
@@ -547,33 +556,11 @@ export class RelativeLocation {
       return null
     }
 
-    // Constants
-    const EARTH_RADIUS_NM = 3440.065 // Earth radius in nautical miles
-    // Convert degrees to radians
-    const bearingRad = (this.azimuth * Math.PI) / 180
-    const lat1Rad = (this.baseAirfield.latitude * Math.PI) / 180
-    const lon1Rad = (this.baseAirfield.longitude * Math.PI) / 180
-
-    // Calculate the destination latitude
-    const angularDistance = this.distanceNM / EARTH_RADIUS_NM
-    const lat2Rad = Math.asin(
-      Math.sin(lat1Rad) * Math.cos(angularDistance) +
-        Math.cos(lat1Rad) * Math.sin(angularDistance) * Math.cos(bearingRad),
+    return destinationPoint(
+      { lat: this.baseAirfield.latitude, lng: this.baseAirfield.longitude },
+      this.azimuth,
+      this.distanceNM * 1852,
     )
-
-    // Calculate the destination longitude
-    const lon2Rad =
-      lon1Rad +
-      Math.atan2(
-        Math.sin(bearingRad) * Math.sin(angularDistance) * Math.cos(lat1Rad),
-        Math.cos(angularDistance) - Math.sin(lat1Rad) * Math.sin(lat2Rad),
-      )
-
-    // Convert back to degrees and normalize longitude
-    const lat2Deg = (lat2Rad * 180) / Math.PI
-    const lon2Deg = (((lon2Rad * 180) / Math.PI + 540) % 360) - 180
-
-    return { lat: lat2Deg, lng: lon2Deg }
   }
 }
 
@@ -583,6 +570,11 @@ export class NOTAM {
   readonly text: string
   readonly rawSections: Map<string, string>
   readonly polygons: GeometryFeature[]
+  /**
+   * An arc has no stated direction or a coordinate was rejected: the drawing
+   * must be checked against the text
+   */
+  geometryUncertain = false
   readonly sectionA: SectionA | null
   readonly sectionQ: SectionQ | null
   readonly linkedSupAIPs: SupAipRef[] = []
@@ -766,6 +758,7 @@ export class NOTAM {
     // Circles and arcs: their centers must not be taken for outline points
     const directives = findShapeDirectives(text, LAT_LNG_SOURCE, latLngFromGroups)
     text = directives.cleaned
+    this.geometryUncertain = directives.arcs.some((a) => a.uncertain)
     for (const circle of directives.circles) {
       features.push(new Circle(circle.center, circle.radiusMeters))
     }
@@ -838,6 +831,8 @@ export class NOTAM {
 
       const latLng = latLngFromGroups(match.groups)
       if (latLng === null) {
+        // Also catches the rejected centers, left in the text
+        this.geometryUncertain = true
         continue
       }
 
@@ -851,7 +846,14 @@ export class NOTAM {
 
       const separator = text.substring(lastEndIdx, match.index).trim()
       // Consider spaces, commas and "TO" as polygon separators
-      if (
+      if (arc?.closing === true) {
+        // The arc ended the previous outline, this point starts a new one
+        const closed = closeWithArc(currentList, arc)
+        if (closed.length > 2) {
+          features.push(new Polygon(closed))
+        }
+        currentList = []
+      } else if (
         arc === undefined &&
         lastEndIdx != 0 &&
         separator.length != 0 &&
@@ -897,6 +899,10 @@ export class NOTAM {
     }
 
     // Handle what's left
+    const closing = directives.arcs.find((a) => a.closing && a.start >= lastEndIdx)
+    if (closing !== undefined) {
+      currentList = closeWithArc(currentList, closing)
+    }
     if (currentList.length == 1) {
       features.push(new Position('POINT', currentList[0]!))
     } else if (currentList.length == 2) {
@@ -908,7 +914,7 @@ export class NOTAM {
     // Look for relative locations, only if no other location has been found
     if (features.length == 0) {
       const relativePlacePattern =
-        /RDL(\/D)?\s*:?\s*(?<azimuth>\d{2,3})\s*\/\s*(?<distance>\d+([.,]\d+)?)\s*(?<unit>\w+)/gm
+        /RDL(\/D)?\s*:?\s*(?<azimuth>\d{2,3}(?:[.,]\d+)?)\s*\/\s*(?<distance>\d+([.,]\d+)?)\s*(?<unit>\w+)/gm
 
       while ((match = relativePlacePattern.exec(text)) != null) {
         if (match.groups === undefined) {
@@ -923,7 +929,7 @@ export class NOTAM {
           continue
         }
 
-        const azimuth = parseInt(strAzimuth)
+        const azimuth = parseFloat(strAzimuth.replace(',', '.'))
         if (isNaN(azimuth) || azimuth < 0 || azimuth >= 360) {
           // Invalid azimuth
           continue
