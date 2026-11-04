@@ -167,6 +167,8 @@ describe('vault encryption', () => {
           ],
         },
       ],
+      [{ ...layer, url: 'http://tiles.example/{z}/{x}/{y}.png' }],
+      [{ ...layer, url: 'javascript:alert(1)' }],
     ]) {
       const bundle = await encryptVault(
         { ...PAYLOAD, tileLayers } as unknown as AcdPayload,
@@ -176,6 +178,28 @@ describe('vault encryption', () => {
       const key = await deriveBundleKey('p', bundle)
       await expect(decryptVault(bundle, key)).rejects.toMatchObject({ reason: 'corrupt' })
     }
+  })
+
+  it.each([
+    ['../../../.git/hooks/pre-commit'],
+    ['model/../../planes.json.xml'],
+    ['model/sub/DR400.xml'],
+    ['model\\..\\DR400.xml'],
+    ['other/DR400.xml'],
+    ['model/DR400 120.txt'],
+  ])('rejects the checklist path %s as corrupt', async (path) => {
+    const bundle = await encryptVault(
+      { ...PAYLOAD, checklists: { [path]: '<checklist id="model"/>' } },
+      'p',
+      FAST,
+    )
+    const key = await deriveBundleKey('p', bundle)
+    await expect(decryptVault(bundle, key)).rejects.toMatchObject({ reason: 'corrupt' })
+  })
+
+  it('only grants the key the usage it needs', async () => {
+    const bundle = await encryptVault(PAYLOAD, 'p', FAST)
+    expect((await deriveBundleKey('p', bundle)).usages).toEqual(['decrypt'])
   })
 
   it('refuses something that is not a bundle', async () => {
