@@ -15,7 +15,11 @@
  *   limitations under the License.
  */
 
-import type { ChecklistDocumentSource, ChecklistTier } from '@/domain/ports/checklistDocumentSource'
+import type {
+  ChecklistDocumentSource,
+  ChecklistTier,
+  ChecklistXmlElement,
+} from '@/domain/ports/checklistDocumentSource'
 
 // The general (fallback) checklist holds no club data and ships in clear. The
 // model and plane tiers are the club's and come from the unlocked vault.
@@ -26,6 +30,20 @@ const generalModules = import.meta.glob<string>('/src/fixed-data/checklists/gene
   import: 'default',
   eager: true,
 })
+
+/**
+ * Parses a checklist XML text with the browser `DOMParser`, whose elements
+ * already match {@link ChecklistXmlElement}.
+ * @throws Error if the XML is malformed
+ */
+export function parseChecklistXml(xmlText: string): ChecklistXmlElement {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml')
+  const parserError = doc.getElementsByTagName('parsererror')[0]
+  if (parserError) {
+    throw new Error(`Invalid checklist XML: ${parserError.textContent}`)
+  }
+  return doc.documentElement
+}
 
 /**
  * Driven adapter for {@link ChecklistDocumentSource}. Tries the locale-specific
@@ -46,5 +64,14 @@ export class ChecklistXmlSource implements ChecklistDocumentSource {
     }
     const path = `${tier}/${key}`
     return this.tiers[`${path}.${locale}.xml`] ?? this.tiers[`${path}.xml`]
+  }
+
+  getRootElement(
+    tier: ChecklistTier,
+    key: string,
+    locale: string,
+  ): ChecklistXmlElement | undefined {
+    const raw = this.getRawXml(tier, key, locale)
+    return raw ? parseChecklistXml(raw) : undefined
   }
 }

@@ -15,6 +15,8 @@
  *   limitations under the License.
  */
 
+import type { ChecklistXmlElement } from '@/domain/ports/checklistDocumentSource'
+
 export type ChecklistItem = ChecklistRow | ChecklistChoice | ChecklistInfo
 
 /** A single checkable action. */
@@ -79,7 +81,7 @@ const STICKY_FLAGS = ['emergency', 'collapsed', 'dolist'] as const
 type StickyFlag = (typeof STICKY_FLAGS)[number]
 type StickyFlags = Readonly<Record<StickyFlag, boolean>>
 
-function parseStickyFlags(element: Element): StickyFlags {
+function parseStickyFlags(element: ChecklistXmlElement): StickyFlags {
   const flags = {} as Record<StickyFlag, boolean>
   for (const flag of STICKY_FLAGS) {
     flags[flag] = element.getAttribute(flag) === 'true'
@@ -115,7 +117,7 @@ export class ChecklistSection {
   }
 }
 
-function requireAttr(element: Element, name: string): string {
+function requireAttr(element: ChecklistXmlElement, name: string): string {
   const value = element.getAttribute(name)
   if (!value) {
     throw new Error(`<${element.tagName}> element is missing a "${name}" attribute`)
@@ -123,11 +125,11 @@ function requireAttr(element: Element, name: string): string {
   return value
 }
 
-function childrenByTag(element: Element, tagName: string): Element[] {
+function childrenByTag(element: ChecklistXmlElement, tagName: string): ChecklistXmlElement[] {
   return Array.from(element.children).filter((el) => el.tagName === tagName)
 }
 
-function parseItems(parent: Element): ChecklistItem[] {
+function parseItems(parent: ChecklistXmlElement): ChecklistItem[] {
   const items: ChecklistItem[] = []
   for (const child of Array.from(parent.children)) {
     switch (child.tagName) {
@@ -145,7 +147,7 @@ function parseItems(parent: Element): ChecklistItem[] {
   return items
 }
 
-function parseRow(element: Element): ChecklistRow {
+function parseRow(element: ChecklistXmlElement): ChecklistRow {
   return new ChecklistRow(
     requireAttr(element, 'id'),
     element.textContent?.trim() ?? '',
@@ -153,7 +155,7 @@ function parseRow(element: Element): ChecklistRow {
   )
 }
 
-function parseInfo(element: Element): ChecklistInfo {
+function parseInfo(element: ChecklistXmlElement): ChecklistInfo {
   return new ChecklistInfo(
     requireAttr(element, 'id'),
     element.textContent?.trim() ?? '',
@@ -161,7 +163,7 @@ function parseInfo(element: Element): ChecklistInfo {
   )
 }
 
-function parseBranch(element: Element): ChecklistBranch {
+function parseBranch(element: ChecklistXmlElement): ChecklistBranch {
   return new ChecklistBranch(
     requireAttr(element, 'id'),
     element.getAttribute('label') ?? '',
@@ -169,7 +171,7 @@ function parseBranch(element: Element): ChecklistBranch {
   )
 }
 
-function parseChoice(element: Element): ChecklistChoice {
+function parseChoice(element: ChecklistXmlElement): ChecklistChoice {
   return new ChecklistChoice(
     requireAttr(element, 'id'),
     element.getAttribute('prompt') ?? '',
@@ -177,7 +179,7 @@ function parseChoice(element: Element): ChecklistChoice {
   )
 }
 
-function parseSection(element: Element): ChecklistSection {
+function parseSection(element: ChecklistXmlElement): ChecklistSection {
   return new ChecklistSection(
     requireAttr(element, 'id'),
     element.getAttribute('title') ?? '',
@@ -192,14 +194,7 @@ export class ChecklistDocument {
   readonly replace: boolean
   readonly sections: ChecklistSection[]
 
-  constructor(xmlText: string) {
-    const doc = new DOMParser().parseFromString(xmlText, 'application/xml')
-    const parserError = doc.getElementsByTagName('parsererror')[0]
-    if (parserError) {
-      throw new Error(`Invalid checklist XML: ${parserError.textContent}`)
-    }
-
-    const root = doc.documentElement
+  constructor(root: ChecklistXmlElement) {
     if (root.tagName !== 'checklist') {
       throw new Error('Checklist XML must have a <checklist> root element')
     }
