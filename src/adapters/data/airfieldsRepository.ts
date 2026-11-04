@@ -16,6 +16,7 @@
  */
 
 import { Airfield } from '@/domain/airfields'
+import type { AirfieldLookup } from '@/domain/ports/airfieldLookup'
 import AirfieldsFr from '../../fixed-data/airfields_fr.json' with { type: 'json' }
 
 const TypedAirfieldsFr: Record<string, (number | null)[]> = AirfieldsFr
@@ -28,5 +29,7 @@ for (const icao in TypedAirfieldsFr) {
     KnownAirfields[icao] = new Airfield(icao, data[0]!, data[1]!, data[2] ?? null)
   }
 }
+
+export const bundledAirfields: AirfieldLookup = { find: (icao) => KnownAirfields[icao] }
 
 export default KnownAirfields

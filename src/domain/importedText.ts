@@ -16,6 +16,7 @@
  */
 
 import { parseNotams, type NOTAM } from './notam'
+import type { AirfieldLookup } from './ports/airfieldLookup'
 
 export interface SplitText {
   /** NOTAMs found in the text, in order of appearance */
@@ -34,8 +35,8 @@ const SECTION_LINE = /^\W*[A-GQ]\)/
  * blank lines) whose section lines all belong to a NOTAM is removed from the
  * AIP text, to avoid drawing the NOTAM coordinates twice.
  */
-export function splitNotamsAndAip(fullText: string): SplitText {
-  const notams = parseNotams(fullText)
+export function splitNotamsAndAip(fullText: string, airfields: AirfieldLookup): SplitText {
+  const notams = parseNotams(fullText, airfields)
   const notamLines = new Set<string>()
   for (const notam of notams) {
     for (const line of notam.text.split('\n')) {

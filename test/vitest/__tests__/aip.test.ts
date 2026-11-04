@@ -7,12 +7,13 @@
 
 import { describe, expect, it } from 'vitest'
 
+import { bundledBorders } from '../../../src/adapters/data/bordersRepository'
 import { AIP } from '../../../src/domain/aip'
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
 
 describe('AIP location parsing', () => {
   it('parses degrees-only coordinates', () => {
-    const aip = new AIP('Reference point 45°N 005°E on the chart.')
+    const aip = new AIP('Reference point 45°N 005°E on the chart.', bundledBorders)
     expect(aip.polygons.length).toEqual(1)
     expect(aip.polygons[0]).toBeInstanceOf(Position)
     const position = aip.polygons[0] as Position
@@ -21,7 +22,7 @@ describe('AIP location parsing', () => {
   })
 
   it('parses degrees and minutes', () => {
-    const aip = new AIP("Reference point 45°30'N, 005°45'E on the chart.")
+    const aip = new AIP("Reference point 45°30'N, 005°45'E on the chart.", bundledBorders)
     expect(aip.polygons.length).toEqual(1)
     const position = aip.polygons[0] as Position
     expect(position.location.lat).toBeCloseTo(45.5)
@@ -29,7 +30,7 @@ describe('AIP location parsing', () => {
   })
 
   it('parses degrees, minutes and seconds', () => {
-    const aip = new AIP('Reference point 45°30\'30"N, 005°45\'45"E on the chart.')
+    const aip = new AIP('Reference point 45°30\'30"N, 005°45\'45"E on the chart.', bundledBorders)
     expect(aip.polygons.length).toEqual(1)
     const position = aip.polygons[0] as Position
     expect(position.location.lat).toBeCloseTo(45.508, 3)
@@ -37,23 +38,23 @@ describe('AIP location parsing', () => {
   })
 
   it('returns an empty list when there is no AIP-formatted location', () => {
-    const aip = new AIP('No coordinates in this text.')
+    const aip = new AIP('No coordinates in this text.', bundledBorders)
     expect(aip.polygons).toEqual([])
   })
 
   it('returns an empty list for undefined text', () => {
-    const aip = new AIP('')
+    const aip = new AIP('', bundledBorders)
     expect(aip.findAIPPolygons(undefined)).toEqual([])
   })
 
   it('treats an isolated point as a single Position', () => {
-    const aip = new AIP("Located near 45°30'N005°45'E in the valley.")
+    const aip = new AIP("Located near 45°30'N005°45'E in the valley.", bundledBorders)
     expect(aip.polygons.length).toEqual(1)
     expect(aip.polygons[0]).toBeInstanceOf(Position)
   })
 
   it('groups two dash-separated points into a Line', () => {
-    const aip = new AIP("45°30'N005°45'E-46°00'N006°00'E")
+    const aip = new AIP("45°30'N005°45'E-46°00'N006°00'E", bundledBorders)
     expect(aip.polygons.length).toEqual(1)
     expect(aip.polygons[0]).toBeInstanceOf(Line)
     const line = aip.polygons[0] as Line
@@ -65,7 +66,7 @@ describe('AIP location parsing', () => {
   })
 
   it('groups 3+ dash-separated points into a Polygon', () => {
-    const aip = new AIP("45°30'N005°45'E-46°00'N006°00'E-46°30'N006°30'E")
+    const aip = new AIP("45°30'N005°45'E-46°00'N006°00'E-46°30'N006°30'E", bundledBorders)
     expect(aip.polygons.length).toEqual(1)
     expect(aip.polygons[0]).toBeInstanceOf(Polygon)
     const polygon = aip.polygons[0] as Polygon
@@ -75,7 +76,10 @@ describe('AIP location parsing', () => {
   })
 
   it('parses a circle around a center', () => {
-    const aip = new AIP("Zone: cercle de 3 NM de rayon centré sur 45°30'N 005°45'E.")
+    const aip = new AIP(
+      "Zone: cercle de 3 NM de rayon centré sur 45°30'N 005°45'E.",
+      bundledBorders,
+    )
     expect(aip.polygons.length).toEqual(1)
     const circle = aip.polygons[0] as Circle
     expect(circle).toBeInstanceOf(Circle)
@@ -87,6 +91,7 @@ describe('AIP location parsing', () => {
   it('expands an arc into a polygon outline without the center point', () => {
     const aip = new AIP(
       "45°00'N 005°00'E-45°00'N 005°20'E-arc de cercle de 10 NM de rayon centré sur 45°00'N 005°10'E dans le sens horaire-45°10'N 005°10'E",
+      bundledBorders,
     )
     expect(aip.polygons.length).toEqual(1)
     const polygon = aip.polygons[0] as Polygon
@@ -108,6 +113,7 @@ describe('AIP location parsing', () => {
     (before, after, min, max, uncertain) => {
       const aip = new AIP(
         `45°00'N 005°24'08"E-45°10'N 005°10'E-${before} 45°00'N 005°10'E${after} jusqu'au point de départ`,
+        bundledBorders,
       )
       expect(aip.polygons.length).toEqual(1)
       const polygon = aip.polygons[0] as Polygon
@@ -124,7 +130,7 @@ describe('AIP location parsing', () => {
     ["Reference point 45°00'75\"N 005°00'E on the chart.", 0],
     ["45°00'N 005°00'E-45°00'N 185°00'E-45°10'N 005°10'E-45°10'N 005°00'E", 2],
   ])('rejects the out of range coordinates of "%s"', (text, count) => {
-    const aip = new AIP(text)
+    const aip = new AIP(text, bundledBorders)
     expect(aip.polygons.length).toEqual(count)
     expect(aip.geometryUncertain).toBe(true)
     for (const feature of aip.polygons) {
@@ -133,34 +139,43 @@ describe('AIP location parsing', () => {
   })
 
   it('keeps an outline in one piece across a border stretch', () => {
-    const aip = new AIP(`43°29'00'' N,001°08'00'' W
+    const aip = new AIP(
+      `43°29'00'' N,001°08'00'' W
 43°13'00'' N,001°13'43'' W
 43°03'17'' N,001°15'02'' W
 frontière franco-espagnole
 43°13'46'' N,001°23'20'' W
 
-LIMITES VERTICALES`)
+LIMITES VERTICALES`,
+      bundledBorders,
+    )
     expect(aip.polygons.length).toEqual(1)
     expect((aip.polygons[0] as Polygon).locations.length).toBeGreaterThanOrEqual(4)
   })
 
   it('keeps an outline in one piece across a multi-line coast stretch', () => {
-    const aip = new AIP(`44°58'05'' N,001°31'31'' W
+    const aip = new AIP(
+      `44°58'05'' N,001°31'31'' W
 44°28'32'' N,001°32'57'' W
 limite des eaux territoriales
 atlantique françaises
 44°23'19'' N,001°33'45'' W
-44°58'05'' N,001°31'31'' W`)
+44°58'05'' N,001°31'31'' W`,
+      bundledBorders,
+    )
     expect(aip.polygons.length).toEqual(1)
     expect((aip.polygons[0] as Polygon).locations.length).toBeGreaterThan(4)
   })
 
   it('still splits shapes on unrelated text', () => {
-    const aip = new AIP(`43°29'00'' N,001°08'00'' W
+    const aip = new AIP(
+      `43°29'00'' N,001°08'00'' W
 43°13'00'' N,001°13'43'' W
 LIMITES LATÉRALES
 43°03'17'' N,001°15'02'' W
-43°13'46'' N,001°23'20'' W`)
+43°13'46'' N,001°23'20'' W`,
+      bundledBorders,
+    )
     expect(aip.polygons.length).toEqual(2)
   })
 
@@ -172,8 +187,8 @@ LIMITES LATÉRALES
 arc ${dir} de 5 nm de rayon centré
 sur 043°46'32'' N,007°04'53'' E
 43°47'20.62'' N,006°58'01.12'' E`
-    const clockwise = new AIP(text('horaire'))
-    const counter = new AIP(text('anti-horaire'))
+    const clockwise = new AIP(text('horaire'), bundledBorders)
+    const counter = new AIP(text('anti-horaire'), bundledBorders)
     expect(clockwise.polygons.length).toEqual(1)
     expect(counter.polygons.length).toEqual(1)
     const cw = (clockwise.polygons[0] as Polygon).locations.length
@@ -185,20 +200,23 @@ sur 043°46'32'' N,007°04'53'' E
   })
 
   it('gives negative values to west longitudes and south latitudes', () => {
-    const aip = new AIP("Reference point 45°30'S, 005°45'W on the chart.")
+    const aip = new AIP("Reference point 45°30'S, 005°45'W on the chart.", bundledBorders)
     const position = aip.polygons[0] as Position
     expect(position.location.lat).toBeCloseTo(-45.5)
     expect(position.location.lng).toBeCloseTo(-5.75)
   })
 
   it('follows the real border between two points on it', () => {
-    const aip = new AIP(`43°29'00'' N,001°08'00'' W
+    const aip = new AIP(
+      `43°29'00'' N,001°08'00'' W
 43°13'00'' N,001°13'43'' W
 43°03'17'' N,001°15'02'' W
 frontière franco-espagnole
 43°13'46'' N,001°23'20'' W
 
-LIMITES VERTICALES`)
+LIMITES VERTICALES`,
+      bundledBorders,
+    )
     expect(aip.polygons.length).toEqual(1)
     const polygon = aip.polygons[0] as Polygon
     // 4 listed points, plus the vertices of the border between the last two
@@ -207,7 +225,7 @@ LIMITES VERTICALES`)
   })
 
   it('keeps the decimals of the seconds', () => {
-    const aip = new AIP('Point 45°30\'30.6"N, 005°45\'45.9"E here')
+    const aip = new AIP('Point 45°30\'30.6"N, 005°45\'45.9"E here', bundledBorders)
     const position = aip.polygons[0] as Position
     expect(position.location.lat).toBeCloseTo(45 + 30 / 60 + 30.6 / 3600, 6)
     expect(position.location.lng).toBeCloseTo(5 + 45 / 60 + 45.9 / 3600, 6)
@@ -215,7 +233,7 @@ LIMITES VERTICALES`)
 
   it('splits points separated by a single non-space character', () => {
     // The character right before the second point used to be ignored
-    const aip = new AIP("45°30'N005°45'E/46°00'N006°00'E")
+    const aip = new AIP("45°30'N005°45'E/46°00'N006°00'E", bundledBorders)
     expect(aip.polygons.length).toEqual(2)
     expect(aip.polygons[0]).toBeInstanceOf(Position)
     expect(aip.polygons[1]).toBeInstanceOf(Position)

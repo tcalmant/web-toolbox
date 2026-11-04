@@ -26,6 +26,8 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { bundledAirfields } from '../../../src/adapters/data/airfieldsRepository'
+import { bundledBorders } from '../../../src/adapters/data/bordersRepository'
 import { removePageChrome } from '../../../src/adapters/pdf/pdfTextExtractor'
 import { captureShare, takeShare } from '../../../src/composables/shareTarget'
 import { AIP } from '../../../src/domain/aip'
@@ -45,39 +47,42 @@ const SUP_AIP_TEXT = `LIMITES LATERALES
 
 describe('splitNotamsAndAip', () => {
   it('returns nothing for an empty text', () => {
-    const result = splitNotamsAndAip('')
+    const result = splitNotamsAndAip('', bundledAirfields)
     expect(result.notams).toEqual([])
     expect(result.aipText).toEqual('')
   })
 
   it('treats a text without Q section as AIP content', () => {
-    const result = splitNotamsAndAip(SUP_AIP_TEXT)
+    const result = splitNotamsAndAip(SUP_AIP_TEXT, bundledAirfields)
     expect(result.notams).toEqual([])
     expect(result.aipText).toEqual(SUP_AIP_TEXT)
   })
 
   it('finds a NOTAM and leaves no AIP content', () => {
-    const result = splitNotamsAndAip(NOTAM_TEXT)
+    const result = splitNotamsAndAip(NOTAM_TEXT, bundledAirfields)
     expect(result.notams.length).toEqual(1)
     expect(result.aipText).toEqual('')
   })
 
   it('separates NOTAMs from AIP content, whatever the order', () => {
-    const result = splitNotamsAndAip(`${SUP_AIP_TEXT}\n\n${NOTAM_TEXT}\n\nLIMITES\n45°N 005°E`)
+    const result = splitNotamsAndAip(
+      `${SUP_AIP_TEXT}\n\n${NOTAM_TEXT}\n\nLIMITES\n45°N 005°E`,
+      bundledAirfields,
+    )
     expect(result.notams.length).toEqual(1)
     expect(result.aipText).toContain("50°21'12''N")
     expect(result.aipText).toContain('LIMITES')
     expect(result.aipText).not.toContain('QRDCA')
 
     // Both lists of coordinates are still found
-    expect(new AIP(result.aipText).polygons.length).toEqual(2)
+    expect(new AIP(result.aipText, bundledBorders).polygons.length).toEqual(2)
   })
 
   it('does not draw the NOTAM coordinates as AIP', () => {
     const withCoords = `${NOTAM_TEXT}\nE) ZONE 45°30'N 005°45'E`
-    const result = splitNotamsAndAip(withCoords)
+    const result = splitNotamsAndAip(withCoords, bundledAirfields)
     expect(result.notams.length).toEqual(1)
-    expect(new AIP(result.aipText).polygons).toEqual([])
+    expect(new AIP(result.aipText, bundledBorders).polygons).toEqual([])
   })
 })
 
@@ -85,13 +90,13 @@ describe('splitNotamsAndAip on a Sofia Briefing copy', () => {
   const text = readFileSync('test/vitest/fixtures/sofia_pib_excerpt.txt', 'utf8')
 
   it('finds the same NOTAMs as the NOTAM parser', () => {
-    const ids = splitNotamsAndAip(text).notams.map((n) => n.id)
+    const ids = splitNotamsAndAip(text, bundledAirfields).notams.map((n) => n.id)
     expect(ids.length).toBeGreaterThan(0)
-    expect(ids).toEqual(parseNotams(text).map((n) => n.id))
+    expect(ids).toEqual(parseNotams(text, bundledAirfields).map((n) => n.id))
   })
 
   it('leaves no NOTAM section in the AIP content', () => {
-    const { aipText } = splitNotamsAndAip(text)
+    const { aipText } = splitNotamsAndAip(text, bundledAirfields)
     expect(aipText).not.toMatch(/^\s*Q\)/m)
     expect(aipText).not.toContain('QFATT')
   })
