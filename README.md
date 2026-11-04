@@ -2,7 +2,7 @@
 
 A Quasar-based project featuring various tools useful for its developer @tcalmant.
 
-Project released under the terms of the [Apache 2.0 licence](./LICENSE).
+Project released under the terms of the [Apache 2.0 licence](./LICENSE). The bundled data has its own terms, see [DATA-LICENCES.md](./DATA-LICENCES.md).
 
 ## Command lines
 
