@@ -67,11 +67,11 @@ registerRoute(
   ({ url }) => url.href === new URL('share-target', self.registration.scope).href,
   async ({ request }) => {
     const target = new URL(self.registration.scope)
+    // Cache Storage is per origin, not per scope: the same name is derived
+    // from the page path in composables/shareTarget.ts
+    const cacheName = `shared-files:${target.pathname}`
     try {
       const data = await request.formData()
-      // Cache Storage is per origin, not per scope: the same name is derived
-      // from the page path in composables/shareTarget.ts
-      const cacheName = `shared-files:${target.pathname}`
       await caches.delete(cacheName)
       const cache = await caches.open(cacheName)
 
@@ -103,6 +103,8 @@ registerRoute(
     } catch (error) {
       // Not a form post: open the app anyway rather than a network error page
       console.error('Invalid share', error)
+      // Nothing half written is left for the app
+      await caches.delete(cacheName)
     }
     return Response.redirect(target.href, 303)
   },
