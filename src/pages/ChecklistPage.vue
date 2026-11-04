@@ -70,6 +70,17 @@ under the License.
             @click="onCollapseAll"
           />
           <q-btn
+            flat
+            dense
+            :icon="keepAwake ? 'brightness_high' : 'brightness_low'"
+            :color="keepAwake ? 'primary' : undefined"
+            :label="isMobile ? undefined : $t('checklistKeepAwakeLabel')"
+            :round="isMobile"
+            :aria-label="$t('checklistKeepAwakeLabel')"
+            :aria-pressed="keepAwake"
+            @click="keepAwake = !keepAwake"
+          />
+          <q-btn
             v-if="checklist"
             flat
             dense
@@ -98,7 +109,7 @@ under the License.
         </div>
       </div>
 
-      <div v-if="checklist">
+      <div v-if="checklist" class="checklist-sections">
         <q-expansion-item
           v-for="section in checklist.sections"
           :key="section.id"
@@ -142,6 +153,7 @@ import { ChecklistXmlSource } from '@/adapters/data/checklistXmlSource'
 import AcdUnlockCard from '@/components/AcdUnlockCard.vue'
 import { useAcdVault } from '@/composables/useAcdVault'
 import { useKnownAirplanes } from '@/composables/useKnownAirplanes'
+import { useWakeLock } from '@/composables/useWakeLock'
 import { ChecklistLocalStorageStore } from '@/adapters/storage/checklistLocalStorageStore'
 import ChecklistItemList from '@/components/ChecklistItemList.vue'
 import { checklistChangeKey, checklistStateKey } from '@/composables/useChecklistState'
@@ -192,6 +204,11 @@ onMounted(() => {
 onUnmounted(() => {
   clearInterval(clockTimer)
 })
+
+// Keep the screen on in the cockpit, unless the pilot turns it off to save the battery
+const keepAwake = ref($q.localStorage.getItem<boolean>('checklist.keepAwake') ?? true)
+watch(keepAwake, (on) => $q.localStorage.setItem('checklist.keepAwake', on))
+useWakeLock(keepAwake)
 
 // Checklist resolution
 const checklist = ref<Checklist | null>(null)
@@ -340,11 +357,36 @@ function collectItemIds(section: ChecklistSection): string[] {
   return ids
 }
 
+// One tap, no confirmation: an undo toast instead, as a section is quick to clear by mistake
 function onClearSection(section: ChecklistSection) {
+  const previous: Record<string, string> = {}
   for (const id of collectItemIds(section)) {
-    delete checkedState[id]
+    if (Object.hasOwn(checkedState, id)) {
+      previous[id] = checkedState[id]!
+      delete checkedState[id]
+    }
+  }
+  if (!Object.keys(previous).length) {
+    return
   }
   saveState()
+  const plane = planeIdent.value
+  $q.notify({
+    message: t('checklistSectionClearedMessage', { section: section.title }),
+    actions: [
+      {
+        label: t('checklistUndoLabel'),
+        color: 'yellow',
+        handler: () => {
+          // The pilot may have switched to another plane meanwhile
+          if (planeIdent.value === plane) {
+            Object.assign(checkedState, previous)
+            saveState()
+          }
+        },
+      },
+    ],
+  })
 }
 
 function onClearAll() {
@@ -386,5 +428,10 @@ watch(knownAirplanes, syncPlaneSelection)
   position: sticky;
   /* top is set inline, offset below the app's own fixed header */
   z-index: 10;
+}
+
+/* A tap or swipe in turbulence must scroll or check, not zoom the list */
+.checklist-sections {
+  touch-action: pan-y;
 }
 </style>
