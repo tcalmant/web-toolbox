@@ -65,7 +65,29 @@ if (import.meta.env.QUASAR_PROD) {
 // adds them after the service worker (in HTTP-network-or-cache fetch), so the
 // app only imports a share once the user confirms it.
 const SHARE_MAX_FILES = 10
-const SHARE_MAX_SIZE = 50 * 1024 * 1024
+const SHARE_MAX_BYTES = 20 * 1024 * 1024
+
+/**
+ * Reads a shared form, failing as soon as it is too large. The size cannot be
+ * known in advance: Fetch adds Content-Length after the service worker too, and
+ * formData() would buffer the whole body.
+ */
+async function readShare(request: Request): Promise<FormData> {
+  const reader = request.body!.getReader()
+  const chunks: Uint8Array<ArrayBuffer>[] = []
+  let size = 0
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+    size += chunk.value.byteLength
+    if (size > SHARE_MAX_BYTES) {
+      await reader.cancel()
+      throw new Error(`Share larger than ${SHARE_MAX_BYTES} bytes`)
+    }
+    chunks.push(chunk.value)
+  }
+  const type = request.headers.get('Content-Type') ?? ''
+  return new Response(new Blob(chunks), { headers: { 'Content-Type': type } }).formData()
+}
+
 registerRoute(
   ({ url }) => url.href === new URL('share-target', self.registration.scope).href,
   async ({ request }) => {
@@ -74,7 +96,7 @@ registerRoute(
     // from the page path in composables/shareTarget.ts
     const cacheName = `shared-files:${target.pathname}`
     try {
-      const data = await request.formData()
+      const data = await readShare(request)
       await caches.delete(cacheName)
       const cache = await caches.open(cacheName)
 
@@ -94,9 +116,7 @@ registerRoute(
         .getAll('files')
         .filter(
           (file) =>
-            file instanceof File &&
-            (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) &&
-            file.size <= SHARE_MAX_SIZE,
+            file instanceof File && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)),
         )
         .slice(0, SHARE_MAX_FILES) as File[]
       for (const [index, file] of files.entries()) {
