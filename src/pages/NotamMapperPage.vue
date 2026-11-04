@@ -110,6 +110,7 @@ import NotamOptions from '@/components/NotamOptions.vue'
 import NotamTable from '@/components/NotamTable.vue'
 import NotamImportDialog from '@/components/NotamImportDialog.vue'
 import { useOrientation } from '@/composables/useOrientation'
+import { appendSharedText } from '@/composables/useShareTarget'
 import { AIP } from '@/domain/aip'
 import { splitNotamsAndAip } from '@/domain/importedText'
 import { formatNotamDate, type NOTAM } from '@/domain/notam'
@@ -240,6 +241,8 @@ onMounted(() => {
   // Reload data from session storage: the watcher below parses it
   inputText.value =
     $q.sessionStorage.getItem('notam.input.text') ?? loadLegacyInput() ?? inputText.value
+  // Text shared from another app is shown for review
+  showImport.value = appendSharedText(inputText)
 })
 // Parsing is only needed when the text changes, not when filters do
 watch(inputText, (newText) => {

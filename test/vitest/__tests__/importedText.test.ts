@@ -27,7 +27,7 @@ import { describe, expect, it } from 'vitest'
 
 import { removePageChrome } from '../../../src/adapters/pdf/pdfTextExtractor'
 import { AIP } from '../../../src/domain/aip'
-import { splitNotamsAndAip } from '../../../src/domain/importedText'
+import { sharedDataToText, splitNotamsAndAip } from '../../../src/domain/importedText'
 import { parseNotams } from '../../../src/domain/notam'
 
 const NOTAM_TEXT = `A1234/26 NOTAMN
@@ -92,6 +92,39 @@ describe('splitNotamsAndAip on a Sofia Briefing copy', () => {
     const { aipText } = splitNotamsAndAip(text)
     expect(aipText).not.toMatch(/^\s*Q\)/m)
     expect(aipText).not.toContain('QFATT')
+  })
+})
+
+describe('sharedDataToText', () => {
+  const URL = 'https://www.sia.aviation-civile.gouv.fr/sup.pdf'
+
+  it.each([
+    ['nothing', {}, ''],
+    ['empty fields', { title: ' ', text: '', url: null }, ''],
+    ['only the text', { text: ` ${NOTAM_TEXT}\n` }, NOTAM_TEXT],
+    [
+      'title, text and URL',
+      { title: 'SUP 123', text: 'LIMITES', url: URL },
+      `SUP 123\nLIMITES\n${URL}`,
+    ],
+    [
+      'URL put in the text',
+      { title: 'SUP 123', text: `LIMITES ${URL}` },
+      `SUP 123\nLIMITES ${URL}`,
+    ],
+    [
+      'title repeated in the text',
+      { title: 'SUP 123', text: 'SUP 123 LIMITES' },
+      'SUP 123 LIMITES',
+    ],
+    ['only a URL', { url: URL }, URL],
+  ])('builds the text from %s', (_, shared, expected) => {
+    expect(sharedDataToText(shared)).toEqual(expected)
+  })
+
+  it('keeps a shared NOTAM readable by the import', () => {
+    const text = sharedDataToText({ title: 'Sofia', text: NOTAM_TEXT })
+    expect(splitNotamsAndAip(text).notams.length).toEqual(1)
   })
 })
 

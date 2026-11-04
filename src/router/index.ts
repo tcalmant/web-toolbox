@@ -15,6 +15,7 @@
  *   limitations under the License.
  */
 
+import { captureSharedText } from '@/composables/useShareTarget'
 import { defineRouter } from '#q-app'
 import {
   createMemoryHistory,
@@ -39,6 +40,8 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     : import.meta.env.QUASAR_VUE_ROUTER_MODE === 'history'
       ? createWebHistory
       : createWebHashHistory
+
+  captureSharedText()
 
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),

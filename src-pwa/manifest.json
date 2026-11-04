@@ -10,6 +10,15 @@
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#1976d2",
+  "share_target": {
+    "action": ".",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "icons": [
     {
       "src": "icons/icon-128x128.png",
