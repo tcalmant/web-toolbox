@@ -88,6 +88,8 @@ export default {
   notamValidityLabel: 'Validité',
   notamRawText: 'Texte original',
   notamEstimated: 'estimée',
+  notamGeometryUncertain: "Géométrie incertaine (sens de l'arc non précisé) : lire le texte",
+  aipGeometryUncertain: "Géométrie AIP incertaine (sens de l'arc non précisé) : lire le texte",
   notamPasteLabel: 'Coller depuis le presse-papiers',
   notamPasteFailed: 'Presse-papiers indisponible : collez le texte manuellement',
   notamParsedCount: '{count} NOTAM détectés',

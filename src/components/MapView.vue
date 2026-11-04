@@ -35,8 +35,10 @@ import { useAcdVault } from '@/composables/useAcdVault'
 import type { AIP } from '@/domain/aip'
 import type { NOTAM } from '@/domain/notam'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 export interface MapProps {
   center?: LatLngTuple
@@ -249,6 +251,10 @@ const aipLayer = computed<FeatureGroup>(() => {
   const groupLayer = new FeatureGroup()
   if (mapRef.value && aip.value && aip.value.polygons) {
     featuresToLayers(aip.value.polygons).forEach((l) => groupLayer.addLayer(l))
+    if (aip.value.geometryUncertain) {
+      // Bound to every member layer; sticky so it follows the cursor over large areas
+      groupLayer.bindTooltip(t('notamGeometryUncertain'), { sticky: true })
+    }
   }
   return groupLayer
 })
@@ -289,6 +295,9 @@ const notamLayerDict = computed<Map<string, FeatureGroup>>(() => {
     }
 
     if (layer.getLayers().length != 0) {
+      if (notam.geometryUncertain) {
+        layer.bindTooltip(t('notamGeometryUncertain'), { sticky: true })
+      }
       layer.on('click', () => {
         focusedNotam.value = notam
       })

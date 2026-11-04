@@ -88,6 +88,8 @@ export default {
   notamValidityLabel: 'Validity',
   notamRawText: 'Original text',
   notamEstimated: 'estimated',
+  notamGeometryUncertain: 'Geometry uncertain (arc direction not stated): read the text',
+  aipGeometryUncertain: 'AIP geometry uncertain (arc direction not stated): read the text',
   notamPasteLabel: 'Paste from clipboard',
   notamPasteFailed: 'Clipboard unavailable: paste the text manually',
   notamParsedCount: '{count} NOTAM detected',

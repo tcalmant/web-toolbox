@@ -28,6 +28,9 @@ under the License.
     <div class="text-caption">
       {{ $t('importSummary', { notams: notamCount, areas: aipAreaCount }) }}
     </div>
+    <div v-if="aipGeometryUncertain" class="text-caption text-warning">
+      <q-icon name="warning" /> {{ $t('aipGeometryUncertain') }}
+    </div>
   </div>
   <div :class="{ row: !isPortrait, col: isPortrait }">
     <q-checkbox
@@ -93,10 +96,11 @@ withDefaults(
   defineProps<{
     notamCount: number
     aipAreaCount: number
+    aipGeometryUncertain?: boolean
     totalCount?: number
     shownCount?: number
   }>(),
-  { totalCount: 0, shownCount: 0 },
+  { totalCount: 0, shownCount: 0, aipGeometryUncertain: false },
 )
 const emit = defineEmits(['showImport'])
 
