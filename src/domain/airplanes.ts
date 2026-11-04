@@ -15,37 +15,6 @@
  *   limitations under the License.
  */
 
-export class InputFuel {
-  public readonly capacity: number
-  public readonly consumable: number
-  public readonly hourlyConsumption: number
-  public readonly unit: string
-
-  public constructor(
-    capacity: number,
-    consumable: number,
-    hourlyConsumption: number,
-    unit: string,
-  ) {
-    this.capacity = capacity
-    this.consumable = consumable
-    this.hourlyConsumption = hourlyConsumption
-    this.unit = unit
-  }
-}
-
-export class InputAirplane {
-  public readonly brand: string
-  public readonly model: string
-  public readonly fuel: InputFuel
-
-  public constructor(immatriculation: string, brand: string, model: string, fuel: InputFuel) {
-    this.brand = brand
-    this.model = model
-    this.fuel = fuel
-  }
-}
-
 export class AirPlane {
   public readonly immatriculation: string
   public brand: string
