@@ -120,6 +120,8 @@ import NotamOptions from '@/components/NotamOptions.vue'
 import NotamTable from '@/components/NotamTable.vue'
 import NotamImportDialog from '@/components/NotamImportDialog.vue'
 import { useOrientation } from '@/composables/useOrientation'
+import { bundledAirfields } from '@/adapters/data/airfieldsRepository'
+import { bundledBorders } from '@/adapters/data/bordersRepository'
 import { AIP } from '@/domain/aip'
 import { splitNotamsAndAip } from '@/domain/importedText'
 import { formatNotamDate, type NOTAM } from '@/domain/notam'
@@ -320,9 +322,9 @@ function filterNotams(notams: NOTAM[]): NOTAM[] {
 }
 
 function parseInput(fullText: string): void {
-  const { notams, aipText } = splitNotamsAndAip(fullText)
+  const { notams, aipText } = splitNotamsAndAip(fullText, bundledAirfields)
   allNotams = notams
-  parsedAIP.value = aipText ? new AIP(aipText) : undefined
+  parsedAIP.value = aipText ? new AIP(aipText, bundledBorders) : undefined
   totalCount.value = notams.length
 }
 

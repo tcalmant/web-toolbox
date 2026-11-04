@@ -15,12 +15,12 @@
  *   limitations under the License.
  */
 
-import KnownBorders from '@/adapters/data/bordersRepository'
 import { borderKeyFromText, borderPath } from './borders'
 import type { GeoPoint } from './geo'
 import { arcPoints } from './geo'
 import type { GeometryFeature } from './geometry'
 import { Circle, Line, Polygon, Position } from './geometry'
+import type { BorderSource } from './ports/borderSource'
 import { closeWithArc, findShapeDirectives } from './shapeDirectives'
 
 // A single AIP-formatted lat/lon pair (e.g. 45°30'15"N 005°45'E)
@@ -57,9 +57,11 @@ export class AIP {
   geometryUncertain = false
   /** The features whose outline is concerned, when it is known */
   uncertainFeatures = new Set<GeometryFeature>()
+  private readonly borders: BorderSource
 
-  constructor(fullText: string) {
+  constructor(fullText: string, borders: BorderSource) {
     this.text = fullText
+    this.borders = borders
     this.polygons = this.findAIPPolygons(fullText)
   }
 
@@ -132,6 +134,8 @@ export class AIP {
     text = directives.cleaned
     this.geometryUncertain = directives.arcs.some((a) => a.uncertain)
 
+    const knownBorders = this.borders.borders()
+
     // Look for AIP-formatted locations
     const aipLocation = new RegExp(AIP_LOCATION_SOURCE, 'g')
 
@@ -192,8 +196,8 @@ export class AIP {
         currentList.push(...arcPoints(arc.center, previous, location, arc.clockwise))
       } else if (previous !== undefined && !onlySeparators) {
         // Follow the border between the two points, if we know it
-        const key = borderKeyFromText(between, KnownBorders)
-        const chains = key !== null ? KnownBorders[key] : undefined
+        const key = borderKeyFromText(between, knownBorders)
+        const chains = key !== null ? knownBorders[key] : undefined
         const path = chains !== undefined ? borderPath(chains, previous, location) : null
         if (path !== null) {
           currentList.push(...path)

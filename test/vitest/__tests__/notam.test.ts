@@ -25,6 +25,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+import { bundledAirfields } from '../../../src/adapters/data/airfieldsRepository'
 import { destinationPoint, haversineDistanceMeters } from '../../../src/domain/geo'
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
 import { NOTAM, SectionQ, parseNotamDate, parseNotams } from '../../../src/domain/notam'
@@ -250,7 +251,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
       simpleNotam.replaceAll('- ', ''),
       simpleNotam.replaceAll('- ', '\t'),
     ]) {
-      const notam = new NOTAM(notamText, 0)
+      const notam = new NOTAM(notamText, 0, bundledAirfields)
       // Check basic properties
       expect(notam.idx).toEqual(0)
       expect(notam.text).toEqual(notamText)
@@ -299,7 +300,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
   })
 
   it('should extract crane locations', () => {
-    let notam = new NOTAM(craneNotam, 1)
+    let notam = new NOTAM(craneNotam, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-P2172/24')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('LFMM')
@@ -321,7 +322,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(position.location.lat).toBeCloseTo(45.6, 3)
     expect(position.location.lng).toBeCloseTo(5.868, 3)
 
-    notam = new NOTAM(swissCraneNotam, 2)
+    notam = new NOTAM(swissCraneNotam, 2, bundledAirfields)
     expect(notam.id).toEqual('LSSN-A0094/25')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('LSAS')
@@ -347,7 +348,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
   })
 
   it('should extract wind mill locations', () => {
-    let notam = new NOTAM(windMillsNotam, 3)
+    let notam = new NOTAM(windMillsNotam, 3, bundledAirfields)
     expect(notam.id).toEqual('LFFA-P0227/25')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('LFBB')
@@ -391,7 +392,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
 
     // Note that this NOTAM contains a duplicated location (2 and 8)
     // This is ignored by the parser
-    notam = new NOTAM(belgianWindMillsNotam, 4)
+    notam = new NOTAM(belgianWindMillsNotam, 4, bundledAirfields)
     expect(notam.id).toEqual('EBBR-F0679/25')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('EBBU')
@@ -436,7 +437,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
   })
 
   it('should extract cables and high lines', () => {
-    let notam = new NOTAM(cableNotam, 5)
+    let notam = new NOTAM(cableNotam, 5, bundledAirfields)
     expect(notam.id).toEqual('LFFA-P4430/24')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('LFMM')
@@ -469,7 +470,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
     expect(line.locations[1]!.lat).toBeCloseTo(45.913, 3)
     expect(line.locations[1]!.lng).toBeCloseTo(6.195, 3)
 
-    notam = new NOTAM(highLineNotam, 6)
+    notam = new NOTAM(highLineNotam, 6, bundledAirfields)
     expect(notam.id).toEqual('LFFA-P1487/25')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('LFMM')
@@ -503,7 +504,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
   })
 
   it('should extract border coordinates', () => {
-    const notam = new NOTAM(bordersNotam, 7)
+    const notam = new NOTAM(bordersNotam, 7, bundledAirfields)
     expect(notam.id).toEqual('LFFA-F0670/25')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('LFXX')
@@ -606,7 +607,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
   })
 
   it('should parse the Italian gliders NOTAM', () => {
-    const notam = new NOTAM(italianGlidersNotam, 8)
+    const notam = new NOTAM(italianGlidersNotam, 8, bundledAirfields)
     expect(notam.id).toEqual('LIIA-W1173/25')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('LIMM')
@@ -664,7 +665,7 @@ E) TEMPORARY FLIGHT RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.143, FLT LIMITAT
   })
 
   it('should parse the FAA space launch NOTAM', () => {
-    const notam = new NOTAM(faaSpaceLaunchNotam, 9)
+    const notam = new NOTAM(faaSpaceLaunchNotam, 9, bundledAirfields)
     expect(notam.id).toEqual('1/7006')
     expect(notam.sectionQ).not.toBeNull()
     expect(notam.sectionQ?.fir).toEqual('....')
@@ -733,7 +734,7 @@ DATE DE FIN DE VALIDITE MAINTENUE AU 16 AVR 2026
 CE SUP AIP AIRAC EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
 `
 
-    const notam = new NOTAM(supAipAiracNotam, 1)
+    const notam = new NOTAM(supAipAiracNotam, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-D0929/25')
     expect(notam.linkedIrSera).toEqual([])
     expect(notam.linkedSupAIPs?.length).toEqual(1)
@@ -753,7 +754,7 @@ F)  SFC
 G)  FL115
 `
 
-    const notam = new NOTAM(supAipNotam, 1)
+    const notam = new NOTAM(supAipNotam, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-R2095/25')
     expect(notam.linkedIrSera).toEqual([])
     expect(notam.linkedSupAIPs?.length).toEqual(1)
@@ -774,7 +775,7 @@ MODIFICATION DE LA PROCEDURE PANNE RADIO : INTRODUCTION DU NOUVEAU
 CODE D'URGENCE 7601 ET MODIFICATION DE LA REGLE DES 7MIN EN 20MIN.
 REF AIP ENR1.1
 `
-    const notam = new NOTAM(notamWithIrSeraReference, 1)
+    const notam = new NOTAM(notamWithIrSeraReference, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-F0627/25')
     // No SUP AIP reference
     expect(notam.linkedSupAIPs).toEqual([])
@@ -804,7 +805,7 @@ APPLICATION DE LA NOUVELLE REGLEMENTATION EUROPEENNE IR SERA
 F)  SFC
 G)  FL115
 `
-    const notam = new NOTAM(multipleRefsInNotam, 1)
+    const notam = new NOTAM(multipleRefsInNotam, 1, bundledAirfields)
     expect(notam.id).toEqual('XXXX-X0000/00')
     // SUP AIP references are sorted by year then id
     // Duplicates are removed
@@ -837,7 +838,7 @@ LYON INFO: 135.525MHZ
 F) SFC
 G) FL115
 `
-    const notam = new NOTAM(notamText, 1)
+    const notam = new NOTAM(notamText, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-W2003/25')
     expect(notam.text).not.toBeNull()
 
@@ -878,7 +879,7 @@ DATE DE FIN DE VALIDITE MAINTENUE AU 16 AVR 2026
 CE SUP AIP AIRAC EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
 `
 
-    const notam = new NOTAM(supAipAiracNotam, 1)
+    const notam = new NOTAM(supAipAiracNotam, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-D0929/25')
     expect(notam.linkedSupAIPs?.length).toEqual(1)
     expect(notam.linkedSupAIPs?.[0]).toEqual({ year: 2025, id: 4, isAirac: true })
@@ -901,7 +902,7 @@ DANGEREUSE TEMPORAIRE ('ZRT/ZDT SUPERSTAR'), D'UNE FBZ ASSOCIEE ET
 RESTRICTIONS UTILISATION AD.
 CE SUP AIP EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
 `
-    const notam = new NOTAM(notamText, 1)
+    const notam = new NOTAM(notamText, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-D4774/25')
     expect(notam.linkedSupAIPs?.length).toEqual(1)
     expect(notam.linkedSupAIPs?.[0]).toEqual({ year: 2025, id: 144, isAirac: false })
@@ -925,7 +926,7 @@ CE SUP AIP EST DISPONIBLE SUR WWW.SIA.AVIATION-CIVILE.GOUV.FR
     HAUT : 86FT
     BAL : JOUR ET NUIT.
 `
-    const notam = new NOTAM(rdlNotamSection, 1)
+    const notam = new NOTAM(rdlNotamSection, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-P2172/24')
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
@@ -949,7 +950,7 @@ E) ZONE REGLEMENTEE TEMPORAIRE (ZRT) A COUBERT :
 HORS VUE :
 CENTRE ZRT : RDL006/5.8NM ARP LFPM AD.
 `
-    const notam = new NOTAM(rdlNotamSection, 1)
+    const notam = new NOTAM(rdlNotamSection, 1, bundledAirfields)
     expect(notam.id).toEqual('LFFA-R0629/25')
     expect(notam.polygons).not.toBeNull()
     expect(notam.polygons.length).toEqual(1)
@@ -971,7 +972,7 @@ A) LFBB B) 2501010000 C) 2501020000
   it.each(['456500N0050000E', '450075N0050000E', '9100N00500E', '4500N18100E'])(
     'rejects the out of range point %s',
     (point) => {
-      const notam = new NOTAM(header + `E) OBST ${point}.`, 0)
+      const notam = new NOTAM(header + `E) OBST ${point}.`, 0, bundledAirfields)
       expect(notam.polygons).toEqual([])
       expect(notam.geometryUncertain).toBe(true)
     },
@@ -981,7 +982,7 @@ A) LFBB B) 2501010000 C) 2501020000
     ['4530.995N00500.10E', 45.5 + 0.995 / 60, 5 + 0.1 / 60],
     ['455959N0055959E', 45 + 59 / 60 + 59 / 3600, 5 + 59 / 60 + 59 / 3600],
   ])('accepts the point %s', (point, lat, lng) => {
-    const notam = new NOTAM(header + `E) OBST ${point}.`, 0)
+    const notam = new NOTAM(header + `E) OBST ${point}.`, 0, bundledAirfields)
     expect(notam.polygons.length).toEqual(1)
     const position = notam.polygons[0] as Position
     expect(position.location.lat).toBeCloseTo(lat, 3)
@@ -996,7 +997,7 @@ A) LFBB B) 2501010000 C) 2501020000
       'AREA 450000N0050000E TO 450000N0052408E THEN CLOCKWISE VIA A 10 NM ARC CENTERED AT 456500N0051000E TO 451000N0051000E',
     ],
   ])('flags the geometry when %s is rejected', (_, text) => {
-    expect(new NOTAM(header + `E) ${text}.`, 0).geometryUncertain).toBe(true)
+    expect(new NOTAM(header + `E) ${text}.`, 0, bundledAirfields).geometryUncertain).toBe(true)
   })
 
   it.each([
@@ -1004,7 +1005,7 @@ A) LFBB B) 2501010000 C) 2501020000
     ['RDL 067,3/10.48NM ARP LFDC', 67.3, 10.48],
     ['RDL 128/7.20NM LFDC ARP', 128, 7.2],
   ])('places "%s" from the airfield', (text, azimuth, distanceNM) => {
-    const notam = new NOTAM(header + `E) PARC EOLIEN ${text}.`, 0)
+    const notam = new NOTAM(header + `E) PARC EOLIEN ${text}.`, 0, bundledAirfields)
     expect(notam.polygons.length).toEqual(1)
     const position = notam.polygons[0] as Position
     expect(position.kind).toEqual('AREA')
@@ -1028,6 +1029,7 @@ A) LFFF B) 2501010000 C) 2501020000
     const notam = new NOTAM(
       header + 'E) PROHIBITED AREA CIRCLE RADIUS 5 NM CENTERED AT 450000N0050000E.',
       0,
+      bundledAirfields,
     )
     expect(notam.polygons.length).toEqual(1)
     const circle = notam.polygons[0] as Circle
@@ -1038,7 +1040,11 @@ A) LFFF B) 2501010000 C) 2501020000
   })
 
   it('accepts the "5NM RADIUS CIRCLE CENTRED ON" wording', () => {
-    const notam = new NOTAM(header + 'E) AREA 5NM RADIUS CIRCLE CENTRED ON 4500N00500E.', 0)
+    const notam = new NOTAM(
+      header + 'E) AREA 5NM RADIUS CIRCLE CENTRED ON 4500N00500E.',
+      0,
+      bundledAirfields,
+    )
     expect(notam.polygons.length).toEqual(1)
     expect(notam.polygons[0]).toBeInstanceOf(Circle)
   })
@@ -1049,6 +1055,7 @@ A) LFFF B) 2501010000 C) 2501020000
       header +
         `E) AREA 450000N0050000E TO ${from} THEN ${direction} VIA A 10 NM ARC CENTERED AT 450000N0051000E TO 451000N0051000E TO POINT OF ORIGIN.`,
       0,
+      bundledAirfields,
     )
   const arcCenter = { lat: 45, lng: 5 + 10 / 60 }
 
@@ -1086,6 +1093,7 @@ A) LFFF B) 2501010000 C) 2501020000
       header +
         `E) AREA 450000N0050000E TO 450000N0052408E THEN ${before} 450000N0051000E${after} TO 451000N0051000E TO 450000N0050000E.`,
       0,
+      bundledAirfields,
     )
     expect(notam.polygons.length).toEqual(1)
     const polygon = notam.polygons[0] as Polygon
@@ -1102,6 +1110,7 @@ A) LFFF B) 2501010000 C) 2501020000
       header +
         'E) AREA 450000N0052408E ARC DE CERCLE DE 10 NM DE RAYON CENTRE SUR 450000N0051000E DANS LE SENS ANTI-HORAIRE 451000N0051000E THEN COUNTER-CLOCKWISE VIA A 10 NM ARC CENTERED AT 450000N0051000E TO 450000N0045552E.',
       0,
+      bundledAirfields,
     )
     expect(notam.polygons.length).toEqual(1)
     const polygon = notam.polygons[0] as Polygon
@@ -1129,7 +1138,7 @@ A) LFFF B) 2501010000 C) 2501020000
     // A full turn
     ['after a single point', `451000N0051000E THEN ${closingArc}`, 1, 60, 80],
   ])('closes an outline with an arc %s', (_, text, count, min, max) => {
-    const notam = new NOTAM(header + `E) AREA ${text}`, 0)
+    const notam = new NOTAM(header + `E) AREA ${text}`, 0, bundledAirfields)
     expect(notam.polygons.length).toEqual(count)
     expect(notam.polygons.every((p) => p instanceof Polygon)).toBe(true)
     const polygon = notam.polygons[0] as Polygon
@@ -1164,6 +1173,7 @@ E) TEST
 F) GND
 G) FL195`,
       1,
+      bundledAirfields,
     )
     expect(notam.validity?.from?.getTime()).toEqual(Date.UTC(2025, 1, 26, 16, 0))
     expect(notam.validity?.to?.getTime()).toEqual(Date.UTC(2025, 2, 22, 8, 0))
@@ -1183,6 +1193,7 @@ Q) LFFF/QOBCE/IV/M/E/000/011/4520N00014W002
 A) LFBB B) 2501211522 C) PERM
 E) OBST`,
       1,
+      bundledAirfields,
     )
     expect(notam.validity?.from?.getTime()).toEqual(Date.UTC(2025, 0, 21, 15, 22))
     expect(notam.validity?.to).toBeNull()
@@ -1191,7 +1202,11 @@ E) OBST`,
   })
 
   it('should report unknown status without validity', () => {
-    const notam = new NOTAM('A) LFLG\nQ) LFMM/QFULT/IV/NBO/A/000/999/4513N00551E005\nE) X', 1)
+    const notam = new NOTAM(
+      'A) LFLG\nQ) LFMM/QFULT/IV/NBO/A/000/999/4513N00551E005\nE) X',
+      1,
+      bundledAirfields,
+    )
     expect(notam.validity).toBeNull()
     expect(notam.statusAt(new Date())).toEqual('unknown')
   })
@@ -1312,6 +1327,7 @@ A) LFLL
 Q) LFMM / QRTCA / IV / BO / W / 000/195 / 4515N00748E062
 ${schedule ? `D) ${schedule}\n` : ''}E) TEST`,
       1,
+      bundledAirfields,
     )
   const utc = (y: number, mo: number, d: number, h: number, mi = 0) =>
     new Date(Date.UTC(y, mo - 1, d, h, mi))
@@ -1434,19 +1450,25 @@ Q) LFMM / QFULT / IV / NBO / A / 000/999 / 4513N00551E005
 E) TEXT ${id}`
 
   it('should split on blank lines', () => {
-    const notams = parseNotams(`Page header\n\n${one('D0001/25')}\n\n${one('D0002/25')}\n`)
+    const notams = parseNotams(
+      `Page header\n\n${one('D0001/25')}\n\n${one('D0002/25')}\n`,
+      bundledAirfields,
+    )
     expect(notams.map((n) => n.id)).toEqual(['LFFA-D0001/25', 'LFFA-D0002/25'])
   })
 
   it('should split on identifier lines without blank lines', () => {
-    const notams = parseNotams(`${one('D0001/25')}\n${one('D0002/25')}\r\n${one('D0003/25')}`)
+    const notams = parseNotams(
+      `${one('D0001/25')}\n${one('D0002/25')}\r\n${one('D0003/25')}`,
+      bundledAirfields,
+    )
     expect(notams.map((n) => n.id)).toEqual(['LFFA-D0001/25', 'LFFA-D0002/25', 'LFFA-D0003/25'])
     expect(notams[0]?.rawSections.get('E')).toEqual('TEXT D0001/25')
   })
 
   it('should ignore blocks without Q section', () => {
-    expect(parseNotams('A) LFLG\nE) no Q here')).toEqual([])
-    expect(parseNotams('')).toEqual([])
+    expect(parseNotams('A) LFLG\nE) no Q here', bundledAirfields)).toEqual([])
+    expect(parseNotams('', bundledAirfields)).toEqual([])
   })
 })
 
@@ -1456,7 +1478,7 @@ E) TEXT ${id}`
  */
 describe('Sofia Briefing copy', () => {
   const text = readFileSync('test/vitest/fixtures/sofia_pib_excerpt.txt', 'utf8')
-  const notams = parseNotams(text)
+  const notams = parseNotams(text, bundledAirfields)
 
   it('should find exactly the NOTAMs', () => {
     expect(notams.map((n) => n.id)).toEqual([
@@ -1494,7 +1516,7 @@ describe('Sofia Briefing copy', () => {
   })
 
   it('should not duplicate NOTAMs listed several times', () => {
-    expect(parseNotams(text + '\n\n' + text).length).toEqual(notams.length)
+    expect(parseNotams(text + '\n\n' + text, bundledAirfields).length).toEqual(notams.length)
   })
 })
 
@@ -1502,14 +1524,14 @@ describe('NOTAM regressions', () => {
   const q = 'Q) LFFF/QOBCE/IV/M/E/000/011/4520N00014W002'
 
   it('should take the identifier, not the NOTAMN keyword, from the header', () => {
-    const notam = new NOTAM(`A1234/25 NOTAMN\n${q}\nA) LFBB\nE) OBST`, 1)
+    const notam = new NOTAM(`A1234/25 NOTAMN\n${q}\nA) LFBB\nE) OBST`, 1, bundledAirfields)
     expect(notam.id).toEqual('A1234/25')
   })
 
   it('should keep NOTAMs with distinct identifiers and a NOTAMN header', () => {
     const one = `A1234/25 NOTAMN\n${q}\nA) LFBB\nE) OBST`
     const two = `A1235/25 NOTAMN\n${q}\nA) LFBB\nE) OBST`
-    expect(parseNotams(one + '\n\n' + two).length).toEqual(2)
+    expect(parseNotams(one + '\n\n' + two, bundledAirfields).length).toEqual(2)
   })
 
   it('should reject an invalid day combined with 24:00', () => {
@@ -1522,13 +1544,17 @@ describe('NOTAM regressions', () => {
   })
 
   it('should join points separated by AT without a space', () => {
-    const notam = new NOTAM(`${q}\nA) LFBB\nE) ZONE 450000N0050000E AT460000N0060000E`, 1)
+    const notam = new NOTAM(
+      `${q}\nA) LFBB\nE) ZONE 450000N0050000E AT460000N0060000E`,
+      1,
+      bundledAirfields,
+    )
     expect(notam.polygons.length).toEqual(1)
     expect(notam.polygons[0]).toBeInstanceOf(Line)
   })
 
   it('should fall back to section A when the airfield is past a separator', () => {
-    const notam = new NOTAM(`${q}\nA) LFLG\nE) ZONE RDL 090/5NM ; NOTE LFLB`, 1)
+    const notam = new NOTAM(`${q}\nA) LFLG\nE) ZONE RDL 090/5NM ; NOTE LFLB`, 1, bundledAirfields)
     expect(notam.polygons.length).toEqual(1)
     const position = notam.polygons[0] as Position
     expect(position.kind).toEqual('AREA')

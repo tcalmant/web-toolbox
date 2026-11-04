@@ -16,7 +16,6 @@
  */
 
 import type { Airfield } from './airfields'
-import KnownAirfields from '@/adapters/data/airfieldsRepository'
 import type { GeoPoint } from './geo'
 import { arcPoints, destinationPoint, geoPointsEqual } from './geo'
 import type { GeometryFeature, PositionKind } from './geometry'
@@ -24,6 +23,7 @@ import { Circle, Line, Polygon, Position } from './geometry'
 import { closeWithArc, findShapeDirectives } from './shapeDirectives'
 import type { NotamSchedule } from './notamSchedule'
 import { parseNotamSchedule, scheduleIntersects } from './notamSchedule'
+import type { AirfieldLookup } from './ports/airfieldLookup'
 
 // A single lat/lon pair in Q-code style (e.g. 4500N00500E or 450055N0050055E)
 const LAT_LNG_SOURCE = String.raw`(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:\.\d*)?)(?<lonEW>E|W)`
@@ -589,7 +589,7 @@ export class NOTAM {
   /** Section G: upper limit */
   readonly upperLimit: string | null
 
-  constructor(fullText: string, idx: number) {
+  constructor(fullText: string, idx: number, airfields: AirfieldLookup) {
     this.idx = idx
 
     // Parse block
@@ -618,7 +618,7 @@ export class NOTAM {
     this.upperLimit = this.rawSections.get('G') ?? null
 
     // Find polygons
-    this.polygons = this.findPolygons(this.sectionA?.target, this.rawSections.get('E'))
+    this.polygons = this.findPolygons(this.sectionA?.target, this.rawSections.get('E'), airfields)
 
     // Find linked SUP/AIP references
     this.linkedSupAIPs = this.findSupAIPRefs(this.rawSections.get('E'))
@@ -747,7 +747,11 @@ export class NOTAM {
     return knownPoints.find((p) => geoPointsEqual(p, point)) !== undefined
   }
 
-  findPolygons(target: string | undefined, text: string | undefined): GeometryFeature[] {
+  findPolygons(
+    target: string | undefined,
+    text: string | undefined,
+    airfields: AirfieldLookup,
+  ): GeometryFeature[] {
     if (!text) {
       // No E section given
       return []
@@ -986,7 +990,7 @@ export class NOTAM {
         }
 
         // Check if the base airfield is known
-        const airfieldData = KnownAirfields[baseAirfield]
+        const airfieldData = airfields.find(baseAirfield)
         if (airfieldData === undefined) {
           // Unknown airfield
           continue
@@ -1145,9 +1149,10 @@ const SOFIA_CHROME_LINE = new RegExp(
  * (page headers, footers, ...) are ignored.
  *
  * @param fullText The whole text
+ * @param airfields Known aerodromes, to resolve the positions relative to one
  * @returns The parsed NOTAMs
  */
-export function parseNotams(fullText: string): NOTAM[] {
+export function parseNotams(fullText: string, airfields: AirfieldLookup): NOTAM[] {
   const blocks: string[][] = []
   let current: string[] = []
   let hasSection = false
@@ -1207,7 +1212,7 @@ export function parseNotams(fullText: string): NOTAM[] {
     ) {
       block.pop()
     }
-    const notam = new NOTAM(block.join('\n').trim(), notamIdx + 1)
+    const notam = new NOTAM(block.join('\n').trim(), notamIdx + 1, airfields)
     // The same NOTAM is listed once per aerodrome/route section on Sofia
     if (notam.sectionQ != null && !notams.some((n) => n.id === notam.id)) {
       notamIdx++
