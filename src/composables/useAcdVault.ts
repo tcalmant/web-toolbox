@@ -40,10 +40,11 @@ export interface AcdVaultDeps {
   bundle: VaultBundle | null
   keyStore: VaultKeyStore
   tileCache: TileCache
+  persistStorage: () => Promise<void>
 }
 
 /** Builds the vault state. Exported for tests: the app uses {@link useAcdVault}. */
-export function createAcdVault({ bundle, keyStore, tileCache }: AcdVaultDeps) {
+export function createAcdVault({ bundle, keyStore, tileCache, persistStorage }: AcdVaultDeps) {
   const status = ref<VaultStatus>(bundle ? 'restoring' : 'absent')
   const payload = shallowRef<AcdPayload | null>(null)
   const dialogOpen = ref(false)
@@ -87,7 +88,7 @@ export function createAcdVault({ bundle, keyStore, tileCache }: AcdVaultDeps) {
       if (remember) {
         await keyStore.save(key)
         // Eviction would drop the remembered key, so the device would ask for the passphrase again
-        void usePersistentStorage().request()
+        void persistStorage()
       } else {
         await keyStore.clear()
       }
@@ -132,6 +133,7 @@ export function useAcdVault(): AcdVault {
     bundle: acdVaultBundle,
     keyStore: new IndexedDbVaultKeyStore(),
     tileCache: new ServiceWorkerTileCache(),
+    persistStorage: usePersistentStorage().request,
   })
   return shared
 }

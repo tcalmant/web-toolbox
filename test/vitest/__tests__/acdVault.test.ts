@@ -8,7 +8,7 @@
 
 // @vitest-environment node
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { encryptVault } from '../../../src/adapters/crypto/vaultCrypto'
 import { tileUrlPattern } from '../../../src/adapters/storage/serviceWorkerTileCache'
@@ -55,9 +55,10 @@ class MemoryTileCache implements TileCache {
 }
 
 const vaultOf = (
-  deps: Omit<AcdVaultDeps, 'tileCache'>,
+  deps: Omit<AcdVaultDeps, 'tileCache' | 'persistStorage'>,
   tileCache: TileCache = new MemoryTileCache(),
-) => createAcdVault({ ...deps, tileCache })
+  persistStorage: () => Promise<void> = () => Promise.resolve(),
+) => createAcdVault({ ...deps, tileCache, persistStorage })
 
 const bundleFor = (passphrase: string, salt?: string) =>
   encryptVault(PAYLOAD, passphrase, { iterations: 1000, ...(salt ? { salt } : {}) })
@@ -93,13 +94,10 @@ describe('createAcdVault', () => {
     expect(vault.payload.value).toBeNull()
   })
 
-  afterEach(() => vi.unstubAllGlobals())
-
   it('unlocks with the right passphrase and remembers the key on request', async () => {
-    const persist = vi.fn(() => Promise.resolve(true))
-    vi.stubGlobal('navigator', { storage: { persist } })
+    const persist = vi.fn(() => Promise.resolve())
     const keyStore = new MemoryKeyStore()
-    const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore })
+    const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore }, undefined, persist)
     await vault.restore()
     vault.dialogOpen.value = true
     expect(await vault.unlock('pass', true)).toBe('ok')
@@ -113,10 +111,9 @@ describe('createAcdVault', () => {
   })
 
   it('does not remember the key unless asked, and forgets an older one', async () => {
-    const persist = vi.fn(() => Promise.resolve(true))
-    vi.stubGlobal('navigator', { storage: { persist } })
+    const persist = vi.fn(() => Promise.resolve())
     const keyStore = new MemoryKeyStore()
-    const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore })
+    const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore }, undefined, persist)
     await vault.restore()
     expect(await vault.unlock('pass', false)).toBe('ok')
     expect(keyStore.key).toBeNull()
