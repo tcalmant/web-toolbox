@@ -24,6 +24,7 @@ Export SIA data to JSON files.
 """
 
 import argparse
+import datetime
 import json
 import logging
 import pathlib
@@ -125,6 +126,21 @@ def export_sia(input_file: pathlib.Path, output_file: pathlib.Path) -> int:
         json_file.write("\n}\n")
 
     print("Exported", nb_airfields, "airfields.")
+
+    # The Licence Ouverte asks for the source and the date of last update.
+    # An AIXM 4.5 snapshot carries its dates as attributes of the root element
+    metadata = {
+        "source": "SIA, AIXM 4.5 export",
+        "created": root.get("created"),
+        "effective": root.get("effective"),
+        "generated": datetime.date.today().isoformat(),
+    }
+    metadata_file = output_file.with_suffix(".meta.json")
+    with open(metadata_file, "w", encoding="utf-8") as json_file:
+        json.dump(metadata, json_file, indent=2)
+        json_file.write("\n")
+
+    print("Wrote metadata to", metadata_file)
     return 0
 
 
