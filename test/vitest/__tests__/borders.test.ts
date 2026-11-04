@@ -80,6 +80,52 @@ describe('borderPath', () => {
     expect(path).toEqual([{ lat: 47.1, lng: 5.0 }])
   })
 
+  // A closed square ring (an island), listed anticlockwise from the south-west corner
+  const ring: [number, number][] = [
+    [42.0, 9.0],
+    [42.0, 9.2],
+    [42.2, 9.2],
+    [42.2, 9.0],
+    [42.0, 9.0],
+  ]
+  it.each([
+    [
+      'goes forward the short way',
+      { lat: 42.0, lng: 9.1 },
+      { lat: 42.1, lng: 9.2 },
+      [{ lat: 42.0, lng: 9.2 }],
+    ],
+    [
+      'goes backward the short way',
+      { lat: 42.1, lng: 9.2 },
+      { lat: 42.0, lng: 9.1 },
+      [{ lat: 42.0, lng: 9.2 }],
+    ],
+    [
+      'crosses the seam going forward',
+      { lat: 42.1, lng: 9.0 },
+      { lat: 42.0, lng: 9.1 },
+      [{ lat: 42.0, lng: 9.0 }],
+    ],
+    [
+      'crosses the seam going backward',
+      { lat: 42.0, lng: 9.1 },
+      { lat: 42.1, lng: 9.0 },
+      [{ lat: 42.0, lng: 9.0 }],
+    ],
+    [
+      'takes the shorter side of three corners',
+      { lat: 42.2, lng: 9.1 },
+      { lat: 42.0, lng: 9.15 },
+      [
+        { lat: 42.2, lng: 9.2 },
+        { lat: 42.0, lng: 9.2 },
+      ],
+    ],
+  ])('on a closed ring, %s', (_, from, to, expected) => {
+    expect(borderPath([ring], from, to)).toEqual(expected)
+  })
+
   it('gives up when the points are far from the border', () => {
     expect(borderPath([chain], { lat: 46, lng: 3 }, { lat: 46.5, lng: 3 })).toBeNull()
   })

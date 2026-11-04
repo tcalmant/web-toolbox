@@ -16,6 +16,7 @@
  */
 
 import type { GeoPoint } from './geo'
+import { arcPoints } from './geo'
 
 /**
  * An "arc centered at" phrase found in a text, with its span.
@@ -25,6 +26,10 @@ export interface ArcDirective {
   end: number
   center: GeoPoint
   clockwise: boolean
+  /** No direction stated: drawn clockwise, the text must be read */
+  uncertain: boolean
+  /** The arc goes back to the first point of the outline */
+  closing: boolean
 }
 
 /**
@@ -51,7 +56,37 @@ export interface ShapeDirectives {
 const NUM = String.raw`\d+(?:[.,]\d+)?`
 const UNIT = String.raw`NM|KM|M`
 const CENTERED = String.raw`(?:CENTERED|CENTRED|CENTR[ÉE]E?)\s+(?:AT|ON|SUR|[ÀA])`
-const FR_DIRECTION = String.raw`(?:DANS\s+LE\s+)?SENS\s+(?<frDir>(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE|(?:INVERSE\s+)?DES\s+AIGUILLES\s+D['’]UNE\s+MONTRE|INVERSE)`
+const RADIUS = String.raw`${NUM}\s*(?:${UNIT})`
+const EN_DIRECTION = String.raw`CLOCKWISE|(?:ANTI|COUNTER)-?\s?CLOCKWISE`
+const FR_DIRECTION = String.raw`(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE|(?:INVERSE\s+)?DES\s+AIGUILLES\s+D['’]UNE\s+MONTRE|INVERSE`
+
+/**
+ * Accepted wordings of an arc, up to its center: an open list, add a row for
+ * each phrasing met in real texts. A row may capture the direction in `dir`.
+ */
+const ARC_WORDINGS: string[] = [
+  // "CLOCKWISE VIA A 30 NM ARC", "CLOCKWISE ALONG AN ARC OF 5NM RADIUS",
+  // "ANTICLOCKWISE ARC RADIUS 5NM", "ALONG THE ARC OF A CIRCLE OF 15 NM RADIUS"
+  String.raw`(?:(?<dir>${EN_DIRECTION})\s+)?(?:(?:VIA|ALONG)\s+)?(?:(?:A|AN|THE)\s+)?(?:${RADIUS}\s+(?:RADIUS\s+)?)?ARC(?:\s+OF\s+A\s+CIRCLE)?(?:\s+(?:OF\s+${RADIUS}\s+RADIUS|(?:OF\s+)?RADIUS\s+${RADIUS}|${RADIUS}\s+RADIUS|(?:DE\s+)?${RADIUS}))?`,
+  // "arc de cercle de 5 NM de rayon", "arc horaire de 5 nm de rayon", never
+  // after an English direction that the row above failed to take
+  String.raw`(?<!CLOCKWISE\s+)ARC(?:\s+(?<dir>(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE))?(?:\s+DE\s+CERCLE)?(?:\s+(?:DE\s+)?${RADIUS}(?:\s+DE\s+RAYON)?)?`,
+]
+
+/**
+ * Direction stated after the center: "dans le sens horaire",
+ * "(COUNTER-CLOCKWISE)".
+ */
+const DIRECTION_AFTER = String.raw`(?:\s*,?\s*(?:(?:DANS\s+LE\s+)?SENS\s+(?<dirFr>${FR_DIRECTION})|\(\s*(?<dirEn>${EN_DIRECTION})\s*\)))?`
+
+/**
+ * Wordings of an arc going back to the first point of the outline: an open
+ * list as well.
+ */
+const ARC_CLOSINGS: string[] = [
+  String.raw`(?:BACK\s+)?TO\s+(?:THE\s+)?POINT\s+OF\s+ORIGIN`,
+  String.raw`JUSQU['’]AU\s+POINT\s+(?:DE\s+D[ÉE]PART|D['’]ORIGINE)`,
+]
 
 function toMeters(value: string | undefined, unit: string | undefined): number | null {
   if (value === undefined || unit === undefined) {
@@ -72,8 +107,19 @@ function toMeters(value: string | undefined, unit: string | undefined): number |
 }
 
 function isClockwise(direction: string | undefined): boolean {
-  // Clockwise is the default when nothing is said
   return direction === undefined || !/ANTI|COUNTER|TRIGO|INVERSE/i.test(direction)
+}
+
+/**
+ * Closes an outline with an arc from its last point back to its first one.
+ */
+export function closeWithArc(points: GeoPoint[], arc: ArcDirective): GeoPoint[] {
+  const first = points[0]
+  const last = points[points.length - 1]
+  if (first === undefined || last === undefined) {
+    return points
+  }
+  return [...points, ...arcPoints(arc.center, last, first, arc.clockwise)]
 }
 
 /**
@@ -98,30 +144,34 @@ export function findShapeDirectives(
     cleaned = cleaned.substring(0, start) + char.repeat(end - start) + cleaned.substring(end)
   }
 
-  const arcPattern = new RegExp(
-    String.raw`(?:(?<dirPre>CLOCKWISE|(?:ANTI|COUNTER)-?\s?CLOCKWISE)\s+(?:VIA\s+)?(?:A\s+)?)?` +
-      String.raw`(?:(?:${NUM})\s*(?:${UNIT})\s+(?:RADIUS\s+)?)?` +
-      String.raw`ARC\s+(?:(?<dirArc>(?:ANTI-?)?HORAIRE|TRIGONOM[ÉE]TRIQUE)\s+)?(?:DE\s+CERCLE\s+)?(?:(?:DE\s+)?(?:${NUM})\s*(?:${UNIT})(?:\s+DE\s+RAYON|\s+RADIUS)?\s+)?` +
-      `${CENTERED}\\s+${pointSource}` +
-      String.raw`(?:\s*,?\s*${FR_DIRECTION})?`,
-    'gi',
-  )
   let match
-  while ((match = arcPattern.exec(text)) != null) {
-    const groups = match.groups
-    const center = groups ? parsePoint(groups) : null
-    if (groups === undefined || center === null) {
-      continue
+  for (const wording of ARC_WORDINGS) {
+    const arcPattern = new RegExp(
+      `${wording}\\s+${CENTERED}\\s+${pointSource}${DIRECTION_AFTER}` +
+        String.raw`(?:\s*,?\s*(?<closing>${ARC_CLOSINGS.join('|')}))?`,
+      'gi',
+    )
+    // Searched in the cleaned text: an arc found by a row is not found again
+    while ((match = arcPattern.exec(cleaned)) != null) {
+      const groups = match.groups
+      const center = groups ? parsePoint(groups) : null
+      if (groups === undefined || center === null) {
+        continue
+      }
+      const direction = groups['dir'] ?? groups['dirFr'] ?? groups['dirEn']
+      const end = match.index + match[0].length
+      arcs.push({
+        start: match.index,
+        end,
+        center,
+        clockwise: isClockwise(direction),
+        uncertain: direction === undefined,
+        closing: groups['closing'] !== undefined,
+      })
+      fill(match.index, end, ' ')
     }
-    const end = match.index + match[0].length
-    arcs.push({
-      start: match.index,
-      end,
-      center,
-      clockwise: isClockwise(groups['dirPre'] ?? groups['dirArc'] ?? groups['frDir']),
-    })
-    fill(match.index, end, ' ')
   }
+  arcs.sort((a, b) => a.start - b.start)
 
   // Circles are searched after arcs: "arc de cercle" must not count as a circle
   const circlePattern = new RegExp(

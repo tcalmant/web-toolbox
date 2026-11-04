@@ -16,6 +16,7 @@
  */
 
 import type { GeoPoint } from './geo'
+import { haversineDistanceMeters } from './geo'
 
 /**
  * Border lines by name: each name maps to a list of continuous chains of
@@ -85,6 +86,15 @@ function snapToChain(chain: [number, number][], point: GeoPoint): Snap {
   return best
 }
 
+function pathLength(from: GeoPoint, points: GeoPoint[], to: GeoPoint): number {
+  const all = [from, ...points, to]
+  let length = 0
+  for (let i = 1; i < all.length; i++) {
+    length += haversineDistanceMeters(all[i - 1]!, all[i]!)
+  }
+  return length
+}
+
 /**
  * Points of a border between two locations placed on it, in the order
  * they are met when going from `from` to `to` (both excluded).
@@ -125,6 +135,29 @@ export function borderPath(
     bestTo.distance > MAX_SNAP_DISTANCE_M
   ) {
     return null
+  }
+
+  const chain = bestChain
+  const at = (i: number): GeoPoint => ({ lat: chain[i]![0], lng: chain[i]![1] })
+  const fromIdx = Math.floor(bestFrom.position)
+  const toIdx = Math.floor(bestTo.position)
+  const first = chain[0]!
+  const last = chain[chain.length - 1]!
+  if (chain.length > 3 && first[0] === last[0] && first[1] === last[1]) {
+    // Closed ring (an enclave, an island): both ways round are borders, the
+    // shorter one is meant. The last vertex repeats the first one.
+    const n = chain.length - 1
+    const forward: GeoPoint[] = []
+    const backward: GeoPoint[] = []
+    const forwardEnd = toIdx + (bestTo.position < bestFrom.position ? n : 0)
+    for (let i = fromIdx + 1; i <= forwardEnd; i++) {
+      forward.push(at(i % n))
+    }
+    const backwardEnd = toIdx - (bestTo.position > bestFrom.position ? n : 0)
+    for (let i = fromIdx; i > backwardEnd; i--) {
+      backward.push(at((i + n) % n))
+    }
+    return pathLength(from, forward, to) <= pathLength(from, backward, to) ? forward : backward
   }
 
   const points: GeoPoint[] = []

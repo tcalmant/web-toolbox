@@ -25,9 +25,10 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { haversineDistanceMeters } from '../../../src/domain/geo'
+import { destinationPoint, haversineDistanceMeters } from '../../../src/domain/geo'
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
 import { NOTAM, SectionQ, parseNotamDate, parseNotams } from '../../../src/domain/notam'
+import { parseNotamSchedule } from '../../../src/domain/notamSchedule'
 
 /**
  * Tests for the Q section parser
@@ -961,6 +962,62 @@ CENTRE ZRT : RDL006/5.8NM ARP LFPM AD.
   })
 })
 
+describe('NOTAM coordinates', () => {
+  const header = `A1234/25 NOTAMN
+Q) LFBB/QOBCE/IV/M/E/000/011/4520N00014W002
+A) LFBB B) 2501010000 C) 2501020000
+`
+
+  it.each(['456500N0050000E', '450075N0050000E', '9100N00500E', '4500N18100E'])(
+    'rejects the out of range point %s',
+    (point) => {
+      const notam = new NOTAM(header + `E) OBST ${point}.`, 0)
+      expect(notam.polygons).toEqual([])
+      expect(notam.geometryUncertain).toBe(true)
+    },
+  )
+
+  it.each([
+    ['4530.995N00500.10E', 45.5 + 0.995 / 60, 5 + 0.1 / 60],
+    ['455959N0055959E', 45 + 59 / 60 + 59 / 3600, 5 + 59 / 60 + 59 / 3600],
+  ])('accepts the point %s', (point, lat, lng) => {
+    const notam = new NOTAM(header + `E) OBST ${point}.`, 0)
+    expect(notam.polygons.length).toEqual(1)
+    const position = notam.polygons[0] as Position
+    expect(position.location.lat).toBeCloseTo(lat, 3)
+    expect(position.location.lng).toBeCloseTo(lng, 3)
+    expect(notam.geometryUncertain).toBe(false)
+  })
+
+  it.each([
+    ['an outline vertex', 'AREA 450000N0050000E TO 456500N0052408E TO 451000N0051000E'],
+    [
+      'an arc center',
+      'AREA 450000N0050000E TO 450000N0052408E THEN CLOCKWISE VIA A 10 NM ARC CENTERED AT 456500N0051000E TO 451000N0051000E',
+    ],
+  ])('flags the geometry when %s is rejected', (_, text) => {
+    expect(new NOTAM(header + `E) ${text}.`, 0).geometryUncertain).toBe(true)
+  })
+
+  it.each([
+    ['RDL 067.3/10.48NM ARP LFDC', 67.3, 10.48],
+    ['RDL 067,3/10.48NM ARP LFDC', 67.3, 10.48],
+    ['RDL 128/7.20NM LFDC ARP', 128, 7.2],
+  ])('places "%s" from the airfield', (text, azimuth, distanceNM) => {
+    const notam = new NOTAM(header + `E) PARC EOLIEN ${text}.`, 0)
+    expect(notam.polygons.length).toEqual(1)
+    const position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AREA')
+    const expected = destinationPoint(
+      { lat: 45.273611, lng: -0.453333 },
+      azimuth,
+      distanceNM * 1852,
+    )
+    expect(position.location.lat).toBeCloseTo(expected.lat, 6)
+    expect(position.location.lng).toBeCloseTo(expected.lng, 6)
+  })
+})
+
 describe('NOTAM circles and arcs', () => {
   const header = `A1234/25 NOTAMN
 Q) LFFF/QRDCA/IV/BO/W/000/180/4500N00500E010
@@ -1014,6 +1071,75 @@ A) LFFF B) 2501010000 C) 2501020000
     // Three quarters of a turn
     expect(polygon.locations.length).toBeGreaterThan(50)
   })
+
+  it.each([
+    ['CLOCKWISE ALONG AN ARC OF 10NM RADIUS CENTRED ON', '', true, false],
+    ['ALONG THE ARC OF A CIRCLE OF 10 NM RADIUS CENTRED ON', ' (COUNTER-CLOCKWISE)', false, false],
+    ['ANTICLOCKWISE ARC RADIUS 10NM CENTRED ON', '', false, false],
+    ['COUNTER-CLOCKWISE VIA A 18.52 KM ARC CENTERED AT', '', false, false],
+    ['COUNTER-CLOCKWISE ARC 10NM CENTERED AT', '', false, false],
+    ['ANTICLOCKWISE ARC DE 10NM CENTERED AT', '', false, false],
+    // No direction: drawn clockwise, but flagged
+    ['ALONG AN ARC OF 10 NM RADIUS CENTERED AT', '', true, true],
+  ])('reads the "%s ...%s" arc wording', (before, after, clockwise, uncertain) => {
+    const notam = new NOTAM(
+      header +
+        `E) AREA 450000N0050000E TO 450000N0052408E THEN ${before} 450000N0051000E${after} TO 451000N0051000E TO 450000N0050000E.`,
+      0,
+    )
+    expect(notam.polygons.length).toEqual(1)
+    const polygon = notam.polygons[0] as Polygon
+    expect(polygon).toBeInstanceOf(Polygon)
+    expect(polygon.locations.some((p) => haversineDistanceMeters(arcCenter, p) < 100)).toBe(false)
+    // Clockwise goes three quarters of a turn, counter-clockwise one quarter
+    expect(polygon.locations.length > 50).toBe(clockwise)
+    expect(notam.geometryUncertain).toBe(uncertain)
+  })
+
+  it('follows an English and a French arc in text order', () => {
+    // East to north, then north to west, both counter-clockwise: a half turn
+    const notam = new NOTAM(
+      header +
+        'E) AREA 450000N0052408E ARC DE CERCLE DE 10 NM DE RAYON CENTRE SUR 450000N0051000E DANS LE SENS ANTI-HORAIRE 451000N0051000E THEN COUNTER-CLOCKWISE VIA A 10 NM ARC CENTERED AT 450000N0051000E TO 450000N0045552E.',
+      0,
+    )
+    expect(notam.polygons.length).toEqual(1)
+    const polygon = notam.polygons[0] as Polygon
+    expect(polygon.locations.length).toBeGreaterThan(30)
+    expect(polygon.locations.length).toBeLessThan(45)
+    for (const p of polygon.locations) {
+      expect(Math.abs(haversineDistanceMeters(arcCenter, p) - 10 * 1852)).toBeLessThan(150)
+    }
+    expect(polygon.locations.every((p) => p.lat > 44.99)).toBe(true)
+    expect(notam.geometryUncertain).toBe(false)
+  })
+
+  const closingArc =
+    'CLOCKWISE ALONG AN ARC OF 10NM RADIUS CENTRED ON 450000N0051000E TO POINT OF ORIGIN.'
+  it.each([
+    // Two points, then a quarter turn from north back to east
+    ['after two points', `450000N0052408E TO 451000N0051000E THEN ${closingArc}`, 1, 15, 25],
+    [
+      'followed by another outline',
+      `450000N0052408E TO 451000N0051000E THEN ${closingArc} AREA 2: 460000N0060000E TO 461000N0060000E TO 461000N0061000E.`,
+      2,
+      15,
+      25,
+    ],
+    // A full turn
+    ['after a single point', `451000N0051000E THEN ${closingArc}`, 1, 60, 80],
+  ])('closes an outline with an arc %s', (_, text, count, min, max) => {
+    const notam = new NOTAM(header + `E) AREA ${text}`, 0)
+    expect(notam.polygons.length).toEqual(count)
+    expect(notam.polygons.every((p) => p instanceof Polygon)).toBe(true)
+    const polygon = notam.polygons[0] as Polygon
+    expect(polygon.locations.length).toBeGreaterThan(min)
+    expect(polygon.locations.length).toBeLessThan(max)
+    for (const p of polygon.locations) {
+      expect(Math.abs(haversineDistanceMeters(arcCenter, p) - 10 * 1852)).toBeLessThan(150)
+    }
+    expect(notam.geometryUncertain).toBe(false)
+  })
 })
 
 describe('NOTAM validity', () => {
@@ -1046,7 +1172,7 @@ G) FL195`,
     expect(notam.lowerLimit).toEqual('GND')
     expect(notam.upperLimit).toEqual('FL195')
     expect(notam.statusAt(new Date(Date.UTC(2025, 0, 1)))).toEqual('future')
-    expect(notam.statusAt(new Date(Date.UTC(2025, 2, 1)))).toEqual('active')
+    expect(notam.statusAt(new Date(Date.UTC(2025, 2, 1, 10)))).toEqual('active')
     expect(notam.statusAt(new Date(Date.UTC(2025, 3, 1)))).toEqual('expired')
   })
 
@@ -1067,7 +1193,236 @@ E) OBST`,
   it('should report unknown status without validity', () => {
     const notam = new NOTAM('A) LFLG\nQ) LFMM/QFULT/IV/NBO/A/000/999/4513N00551E005\nE) X', 1)
     expect(notam.validity).toBeNull()
-    expect(notam.statusAt()).toEqual('unknown')
+    expect(notam.statusAt(new Date())).toEqual('unknown')
+  })
+})
+
+describe('NOTAM schedule (field D)', () => {
+  const every = (start: number, end: number) => ({ days: [], except: [], times: [{ start, end }] })
+  const weekdays = (from: number, to: number) => ({ kind: 'weekdays', from, to })
+  const dates = (month: number | null, from: number, to = from) => ({
+    kind: 'dates',
+    from: { month, day: from },
+    to: { month, day: to },
+  })
+
+  it.each([
+    ['H24', [every(0, 1440)]],
+    ['0800-1600', [every(480, 960)]],
+    ['0000-2359', [every(0, 1440)]],
+    ['1500-0400', [every(900, 240)]],
+    ['0800-2400', [every(480, 1440)]],
+    ['FRI-MON 2200-0200', [{ ...every(1320, 120), days: [weekdays(5, 1)] }]],
+    [
+      'DEC 28-JAN 03 0800-1700',
+      [
+        {
+          ...every(480, 1020),
+          days: [{ kind: 'dates', from: { month: 11, day: 28 }, to: { month: 0, day: 3 } }],
+        },
+      ],
+    ],
+    ['DAILY 0600-1800', [every(360, 1080)]],
+    ['MON-FRI 0700-1700', [{ ...every(420, 1020), days: [weekdays(1, 5)] }]],
+    ['MON TUE 0800-1200', [{ ...every(480, 720), days: [weekdays(1, 1), weekdays(2, 2)] }]],
+    [
+      'MON-FRI 0800-1200 1400-1700',
+      [
+        {
+          days: [weekdays(1, 5)],
+          except: [],
+          times: [
+            { start: 480, end: 720 },
+            { start: 840, end: 1020 },
+          ],
+        },
+      ],
+    ],
+    [
+      'MON-FRI 0700-1700 SAT 0800-1200',
+      [
+        { ...every(420, 1020), days: [weekdays(1, 5)] },
+        { ...every(480, 720), days: [weekdays(6, 6)] },
+      ],
+    ],
+    ['DAILY 0700-1700 EXC SUN', [{ ...every(420, 1020), except: [weekdays(0, 0)] }]],
+    ['EXC SAT SUN 0800-1700', [{ ...every(480, 1020), except: [weekdays(6, 6), weekdays(0, 0)] }]],
+    // Italian gliders NOTAM
+    [
+      '18-21 25-27 0900-1730',
+      [{ ...every(540, 1050), days: [dates(null, 18, 21), dates(null, 25, 27)] }],
+    ],
+    [
+      '12 14 16 0800-1200',
+      [{ ...every(480, 720), days: [dates(null, 12), dates(null, 14), dates(null, 16)] }],
+    ],
+    ['NOV 12-15 0800-1700', [{ ...every(480, 1020), days: [dates(10, 12, 15)] }]],
+    [
+      'NOV 28-DEC 03 0800-1700',
+      [
+        {
+          ...every(480, 1020),
+          days: [{ kind: 'dates', from: { month: 10, day: 28 }, to: { month: 11, day: 3 } }],
+        },
+      ],
+    ],
+    [
+      'NOV 12 0800-1200, 14 1300-1700',
+      [
+        { ...every(480, 720), days: [dates(10, 12)] },
+        { ...every(780, 1020), days: [dates(10, 14)] },
+      ],
+    ],
+  ])('parses %s', (text, rules) => {
+    expect(parseNotamSchedule(text)).toEqual({ kind: 'rules', rules })
+  })
+
+  it.each([
+    ['SR-SS', 'needsSunTimes'],
+    ['0600-SS', 'needsSunTimes'],
+    ['SR MINUS30-SS PLUS30', 'needsSunTimes'],
+    ['MON-FRI EXC HOL 0800-1700', 'notUnderstood'],
+    ['NOV 12 0800-NOV 14 1700', 'notUnderstood'],
+    ['MON-FRI', 'notUnderstood'],
+    ['2500-2600', 'notUnderstood'],
+    ['LUN-VEN 0800-1700', 'notUnderstood'],
+    ['0800-1700 EXC SUN 0900-1000', 'notUnderstood'],
+    ['ACT 0800-1700 SEE E)', 'notUnderstood'],
+    ['0800-1200,', 'notUnderstood'],
+    ['2400-0600', 'notUnderstood'],
+    // EXC without days
+    ['MON-FRI EXC 0800-1700', 'notUnderstood'],
+    ['EXC 0800-1700', 'notUnderstood'],
+    ['0800-1700 EXC', 'notUnderstood'],
+    ['0800-1700 EXC, SAT 0900-1200', 'notUnderstood'],
+    // Same month, end before start
+    ['NOV 28-03 0800-1700', 'notUnderstood'],
+    // Full day or nothing
+    ['0000-0000', 'notUnderstood'],
+    ['1200-1200', 'notUnderstood'],
+  ])('does not guess %s', (text, kind) => {
+    expect(parseNotamSchedule(text)).toEqual({ kind })
+  })
+
+  const notam = (validity: string, schedule?: string) =>
+    new NOTAM(
+      `LFFA-R0001/26
+DU: ${validity}
+A) LFLL
+Q) LFMM / QRTCA / IV / BO / W / 000/195 / 4515N00748E062
+${schedule ? `D) ${schedule}\n` : ''}E) TEST`,
+      1,
+    )
+  const utc = (y: number, mo: number, d: number, h: number, mi = 0) =>
+    new Date(Date.UTC(y, mo - 1, d, h, mi))
+  const november = '01 11 2026 00:00 AU: 30 11 2026 23:59'
+
+  it.each([
+    // 2026-11-08 is a Sunday
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 8, 10), utc(2026, 11, 8, 12), 'inactive'],
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 10), utc(2026, 11, 9, 12), 'active'],
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 16), utc(2026, 11, 9, 18), 'active'],
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 17, 30), utc(2026, 11, 9, 19), 'inactive'],
+    // Both bounds included: touching the period start or end counts
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 5), utc(2026, 11, 9, 7), 'active'],
+    [november, 'MON-FRI 0700-1700', utc(2026, 11, 9, 17), utc(2026, 11, 9, 19), 'active'],
+    // 2026-11-07 is a Saturday: the Friday period runs until 02:00
+    [november, 'FRI 2200-0200', utc(2026, 11, 7, 1), utc(2026, 11, 7, 1), 'active'],
+    [november, 'FRI 2200-0200', utc(2026, 11, 7, 2), utc(2026, 11, 7, 2), 'active'],
+    [november, 'FRI 2200-0200', utc(2026, 11, 7, 2, 1), utc(2026, 11, 7, 2, 1), 'inactive'],
+    [
+      '20 12 2026 00:00 AU: 10 01 2027 23:59',
+      'DEC 28-JAN 03 0800-1700',
+      utc(2027, 1, 2, 10),
+      utc(2027, 1, 2, 12),
+      'active',
+    ],
+    [
+      '20 12 2026 00:00 AU: 10 01 2027 23:59',
+      'DEC 28-JAN 03 0800-1700',
+      utc(2027, 1, 5, 10),
+      utc(2027, 1, 5, 12),
+      'inactive',
+    ],
+    // The window straddles B), the period that day is over before B)
+    [
+      '05 11 2026 12:00 AU: 30 11 2026 23:59',
+      '0800-1000',
+      utc(2026, 11, 5, 9),
+      utc(2026, 11, 5, 13),
+      'inactive',
+    ],
+    [november, 'DAILY 0700-1700 EXC SUN', utc(2026, 11, 8, 10), utc(2026, 11, 8, 12), 'inactive'],
+    [november, 'H24', utc(2026, 11, 8, 10), utc(2026, 11, 8, 12), 'active'],
+    [november, 'MON-FRI 0700-1700', utc(2026, 12, 1, 10), utc(2026, 12, 1, 12), 'expired'],
+    // A NOTAM starting at tomorrow's flight is upcoming today, active for that flight
+    [
+      '05 11 2026 08:00 AU: 05 11 2026 12:00',
+      undefined,
+      utc(2026, 11, 4, 13),
+      utc(2026, 11, 4, 15),
+      'future',
+    ],
+    [
+      '05 11 2026 08:00 AU: 05 11 2026 12:00',
+      undefined,
+      utc(2026, 11, 5, 7),
+      utc(2026, 11, 5, 9),
+      'active',
+    ],
+    // Crossing midnight, from the Coubert ZRT
+    [
+      '19 04 2025 15:00 AU: 21 04 2025 04:00',
+      '1500-0400',
+      utc(2025, 4, 20, 2),
+      utc(2025, 4, 20, 3),
+      'active',
+    ],
+    [
+      '19 04 2025 15:00 AU: 21 04 2025 04:00',
+      '1500-0400',
+      utc(2025, 4, 20, 12),
+      utc(2025, 4, 20, 13),
+      'inactive',
+    ],
+    [
+      '18 04 2025 09:00 AU: 27 04 2025 17:30',
+      '18-21 25-27 0900-1730',
+      utc(2025, 4, 22, 10),
+      utc(2025, 4, 22, 12),
+      'inactive',
+    ],
+    [
+      '18 04 2025 09:00 AU: 27 04 2025 17:30',
+      '18-21 25-27 0900-1730',
+      utc(2025, 4, 25, 10),
+      utc(2025, 4, 25, 12),
+      'active',
+    ],
+    [
+      '26 09 2025 06:00 AU: 28 09 2025 17:22',
+      '0600-SS',
+      utc(2025, 9, 27, 10),
+      utc(2025, 9, 27, 12),
+      'unknownSchedule',
+    ],
+    // Days without a month over two months could be either one
+    [
+      '01 11 2026 00:00 AU: 31 12 2026 23:59',
+      '12 14 0800-1200',
+      utc(2026, 11, 12, 9),
+      utc(2026, 11, 12, 10),
+      'unknownSchedule',
+    ],
+    [
+      november,
+      'MON-FRI EXC HOL 0800-1700',
+      utc(2026, 11, 9, 9),
+      utc(2026, 11, 9, 10),
+      'unknownSchedule',
+    ],
+  ])('gives the status of %s / %s over a window', (validity, schedule, from, to, status) => {
+    expect(notam(validity, schedule).statusAt(from, to)).toEqual(status)
   })
 })
 
