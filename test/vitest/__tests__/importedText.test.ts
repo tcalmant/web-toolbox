@@ -176,12 +176,28 @@ describe('takeShare', () => {
 
     const share = await takeShare()
     expect(share?.text ?? null).toEqual(expected)
-    // The cache is only read for a share id, and always emptied then
+    // The cache is only read for a share id, and emptied once in any case:
+    // at start when there is no share id, after reading it otherwise
     const read = query.includes('share=') && !query.endsWith('share=')
     expect(caches.open.mock.calls).toEqual(read ? [[CACHE_NAME]] : [])
-    expect(caches.delete.mock.calls).toEqual(read ? [[CACHE_NAME]] : [])
+    expect(caches.delete.mock.calls).toEqual([[CACHE_NAME]])
     // Only once
     expect(await takeShare()).toBeNull()
+  })
+
+  it.each([
+    [
+      'a rejected deletion',
+      () => vi.stubGlobal('caches', { delete: () => Promise.reject(new Error('KO')) }),
+    ],
+    ['no Cache Storage', () => vi.stubGlobal('caches', undefined)],
+  ])('only logs %s of the shared files at start', async (_, stub) => {
+    stub()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    window.history.replaceState(null, '', '/app/#/notam')
+    expect(() => captureShare()).not.toThrow()
+    await vi.waitFor(() => expect(error).toHaveBeenCalledOnce())
+    error.mockRestore()
   })
 
   it('returns the shared files with their names', async () => {

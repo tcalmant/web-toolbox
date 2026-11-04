@@ -34,6 +34,11 @@ export interface SharedImport {
 
 let shareId: string | null = null
 
+/** Cache Storage is per origin: the cache is named after the app scope */
+function shareCacheName(): string {
+  return `shared-files:${new URL('.', window.location.href).pathname}`
+}
+
 /**
  * Takes the share id out of the page URL. It must run before the router is
  * created: with a relative publicPath, the hash history takes the page path
@@ -41,6 +46,13 @@ let shareId: string | null = null
  */
 export function captureShare(): void {
   shareId = new URLSearchParams(window.location.search).get('share')
+  if (!shareId) {
+    // A share never opened, or posted by another site, must not stay in storage
+    // (async, so that a missing Cache Storage only logs an error)
+    void (async () => caches.delete(shareCacheName()))().catch((error: unknown) =>
+      console.error('Cannot delete the shared files', error),
+    )
+  }
   if (!window.location.search) {
     return
   }
@@ -63,7 +75,7 @@ export function captureShare(): void {
 export async function takeShare(): Promise<SharedImport | null> {
   const id = shareId
   shareId = null
-  const cacheName = `shared-files:${new URL('.', window.location.href).pathname}`
+  const cacheName = shareCacheName()
   // Opening a cache creates it
   if (!id || !(await caches.has(cacheName))) {
     return null
