@@ -25,7 +25,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { haversineDistanceMeters } from '../../../src/domain/geo'
+import { destinationPoint, haversineDistanceMeters } from '../../../src/domain/geo'
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
 import { NOTAM, SectionQ, parseNotamDate, parseNotams } from '../../../src/domain/notam'
 
@@ -958,6 +958,38 @@ CENTRE ZRT : RDL006/5.8NM ARP LFPM AD.
     // RDL are not very precise, so we use 1 decimal place
     expect(position.location.lat).toBeCloseTo(48.7, 1)
     expect(position.location.lng).toBeCloseTo(2.7, 1)
+  })
+})
+
+describe('NOTAM coordinates', () => {
+  const header = `A1234/25 NOTAMN
+Q) LFBB/QOBCE/IV/M/E/000/011/4520N00014W002
+A) LFBB B) 2501010000 C) 2501020000
+`
+
+  it.each(['456500N0050000E', '450075N0050000E', '9100N00500E', '4500N18100E'])(
+    'rejects the out of range point %s',
+    (point) => {
+      expect(new NOTAM(header + `E) OBST ${point}.`, 0).polygons).toEqual([])
+    },
+  )
+
+  it.each([
+    ['RDL 067.3/10.48NM ARP LFDC', 67.3, 10.48],
+    ['RDL 067,3/10.48NM ARP LFDC', 67.3, 10.48],
+    ['RDL 128/7.20NM LFDC ARP', 128, 7.2],
+  ])('places "%s" from the airfield', (text, azimuth, distanceNM) => {
+    const notam = new NOTAM(header + `E) PARC EOLIEN ${text}.`, 0)
+    expect(notam.polygons.length).toEqual(1)
+    const position = notam.polygons[0] as Position
+    expect(position.kind).toEqual('AREA')
+    const expected = destinationPoint(
+      { lat: 45.273611, lng: -0.453333 },
+      azimuth,
+      distanceNM * 1852,
+    )
+    expect(position.location.lat).toBeCloseTo(expected.lat, 6)
+    expect(position.location.lng).toBeCloseTo(expected.lng, 6)
   })
 })
 
