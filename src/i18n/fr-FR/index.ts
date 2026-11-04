@@ -302,6 +302,8 @@ export default {
   acdCorrupt: 'Les données ACD sont endommagées',
   acdUnlockDrawer: 'Déverrouiller les données ACD',
   acdLockDrawer: 'Verrouiller les données ACD',
+  storagePersisted: 'Stockage persistant : le navigateur conserve les données hors ligne',
+  storageNotPersisted: 'Stockage non garanti : le navigateur peut effacer les données hors ligne',
   acdFuelBanner: "Les avions de l'ACD sont verrouillés : seuls vos propres avions sont listés.",
 
   // Offline app

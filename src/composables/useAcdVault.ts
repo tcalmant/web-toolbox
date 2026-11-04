@@ -21,6 +21,7 @@ import { acdVaultBundle } from '@/adapters/data/acdVaultBundle'
 import { decryptVault, deriveBundleKey, VaultError } from '@/adapters/crypto/vaultCrypto'
 import { IndexedDbVaultKeyStore } from '@/adapters/storage/indexedDbVaultKeyStore'
 import { ServiceWorkerTileCache } from '@/adapters/storage/serviceWorkerTileCache'
+import { usePersistentStorage } from '@/composables/usePersistentStorage'
 import type { AcdPayload, VaultBundle } from '@/domain/acdVault'
 import type { TileCache } from '@/domain/ports/tileCache'
 import type { VaultKeyStore } from '@/domain/ports/vaultKeyStore'
@@ -85,6 +86,8 @@ export function createAcdVault({ bundle, keyStore, tileCache }: AcdVaultDeps) {
       await open(key)
       if (remember) {
         await keyStore.save(key)
+        // Eviction would drop the remembered key, so the device would ask for the passphrase again
+        void usePersistentStorage().request()
       } else {
         await keyStore.clear()
       }

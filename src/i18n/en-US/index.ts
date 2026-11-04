@@ -300,6 +300,8 @@ export default {
   acdCorrupt: 'The ACD data is damaged',
   acdUnlockDrawer: 'Unlock ACD data',
   acdLockDrawer: 'Lock ACD data',
+  storagePersisted: 'Persistent storage: the browser keeps the offline data',
+  storageNotPersisted: 'Best-effort storage: the browser may delete the offline data',
   acdFuelBanner: 'The ACD aircraft are locked: only your own aircraft are listed.',
 
   // Offline app

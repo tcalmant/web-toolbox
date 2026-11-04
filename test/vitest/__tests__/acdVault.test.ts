@@ -8,7 +8,7 @@
 
 // @vitest-environment node
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { encryptVault } from '../../../src/adapters/crypto/vaultCrypto'
 import { tileUrlPattern } from '../../../src/adapters/storage/serviceWorkerTileCache'
@@ -93,7 +93,11 @@ describe('createAcdVault', () => {
     expect(vault.payload.value).toBeNull()
   })
 
+  afterEach(() => vi.unstubAllGlobals())
+
   it('unlocks with the right passphrase and remembers the key on request', async () => {
+    const persist = vi.fn(() => Promise.resolve(true))
+    vi.stubGlobal('navigator', { storage: { persist } })
     const keyStore = new MemoryKeyStore()
     const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore })
     await vault.restore()
@@ -104,14 +108,19 @@ describe('createAcdVault', () => {
     expect(vault.payload.value).toEqual(PAYLOAD)
     expect(vault.dialogOpen.value).toBe(false)
     expect(keyStore.saves).toBe(1)
+    // Eviction would make the device forget the key
+    expect(persist).toHaveBeenCalledOnce()
   })
 
   it('does not remember the key unless asked, and forgets an older one', async () => {
+    const persist = vi.fn(() => Promise.resolve(true))
+    vi.stubGlobal('navigator', { storage: { persist } })
     const keyStore = new MemoryKeyStore()
     const vault = vaultOf({ bundle: await bundleFor('pass'), keyStore })
     await vault.restore()
     expect(await vault.unlock('pass', false)).toBe('ok')
     expect(keyStore.key).toBeNull()
+    expect(persist).not.toHaveBeenCalled()
   })
 
   it('unlocks silently on the next visit with the remembered key', async () => {
