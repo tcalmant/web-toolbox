@@ -76,6 +76,16 @@ under the License.
             <q-item-label v-if="report.qnhHpa !== null">
               {{ $t('decoderQnh') }}: {{ report.qnhHpa }} hPa
             </q-item-label>
+            <q-item-label v-if="report.recentWeather.length">
+              {{ $t('decoderRecentWeather') }}: {{ recentWeatherText(report) }}
+            </q-item-label>
+            <q-item-label v-if="report.windShear" class="text-negative">
+              <q-icon name="warning" class="q-mr-xs" />
+              {{ $t('decoderWindShear') }}: {{ windShearText(report) }}
+            </q-item-label>
+            <q-item-label v-if="report.missing.length" caption class="text-orange-9">
+              {{ $t('decoderMissing') }}: {{ missingText(report) }}
+            </q-item-label>
             <q-item-label v-if="report.trend" caption class="monospace">
               {{ report.trend }}
             </q-item-label>
@@ -157,7 +167,16 @@ import { computed, ref } from 'vue'
 
 const emit = defineEmits<{ useWind: [metar: Metar]; useDensity: [metar: Metar] }>()
 
-const { windText, visibilityText, skyText, weatherListText, dayTimeText } = useWeatherFormat()
+const {
+  windText,
+  visibilityText,
+  skyText,
+  weatherListText,
+  recentWeatherText,
+  windShearText,
+  missingText,
+  dayTimeText,
+} = useWeatherFormat()
 
 const text = ref('')
 const reports = computed(() => parseReports(text.value ?? ''))
