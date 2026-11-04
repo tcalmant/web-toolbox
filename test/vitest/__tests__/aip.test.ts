@@ -98,6 +98,22 @@ describe('AIP location parsing', () => {
     ).toBe(false)
   })
 
+  it.each([
+    ['arc horaire de 10 NM de rayon centré sur', false],
+    ['arc de cercle de 10 NM de rayon centré sur', true],
+  ])('closes an outline with "%s ... jusqu\'au point de départ"', (arc, uncertain) => {
+    const aip = new AIP(
+      `45°00'N 005°24'08"E-45°10'N 005°10'E-${arc} 45°00'N 005°10'E jusqu'au point de départ`,
+    )
+    expect(aip.polygons.length).toEqual(1)
+    const polygon = aip.polygons[0] as Polygon
+    expect(polygon).toBeInstanceOf(Polygon)
+    // Two points, then a quarter turn from north back to east (clockwise is the default)
+    expect(polygon.locations.length).toBeGreaterThan(15)
+    expect(polygon.locations.length).toBeLessThan(25)
+    expect(aip.geometryUncertain).toBe(uncertain)
+  })
+
   it('keeps an outline in one piece across a border stretch', () => {
     const aip = new AIP(`43°29'00'' N,001°08'00'' W
 43°13'00'' N,001°13'43'' W

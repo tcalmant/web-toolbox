@@ -1014,6 +1014,46 @@ A) LFFF B) 2501010000 C) 2501020000
     // Three quarters of a turn
     expect(polygon.locations.length).toBeGreaterThan(50)
   })
+
+  it.each([
+    ['CLOCKWISE ALONG AN ARC OF 10NM RADIUS CENTRED ON', '', true, false],
+    ['ALONG THE ARC OF A CIRCLE OF 10 NM RADIUS CENTRED ON', ' (COUNTER-CLOCKWISE)', false, false],
+    ['ANTICLOCKWISE ARC RADIUS 10NM CENTRED ON', '', false, false],
+    ['COUNTER-CLOCKWISE VIA A 18.52 KM ARC CENTERED AT', '', false, false],
+    // No direction: drawn clockwise, but flagged
+    ['ALONG AN ARC OF 10 NM RADIUS CENTERED AT', '', true, true],
+  ])('reads the "%s ...%s" arc wording', (before, after, clockwise, uncertain) => {
+    const notam = new NOTAM(
+      header +
+        `E) AREA 450000N0050000E TO 450000N0052408E THEN ${before} 450000N0051000E${after} TO 451000N0051000E TO 450000N0050000E.`,
+      0,
+    )
+    expect(notam.polygons.length).toEqual(1)
+    const polygon = notam.polygons[0] as Polygon
+    expect(polygon).toBeInstanceOf(Polygon)
+    expect(polygon.locations.some((p) => haversineDistanceMeters(arcCenter, p) < 100)).toBe(false)
+    // Clockwise goes three quarters of a turn, counter-clockwise one quarter
+    expect(polygon.locations.length > 50).toBe(clockwise)
+    expect(notam.geometryUncertain).toBe(uncertain)
+  })
+
+  it('closes an outline with an arc back to the point of origin', () => {
+    const notam = new NOTAM(
+      header +
+        'E) AREA 450000N0052408E TO 451000N0051000E THEN CLOCKWISE ALONG AN ARC OF 10NM RADIUS CENTRED ON 450000N0051000E TO POINT OF ORIGIN.',
+      0,
+    )
+    expect(notam.polygons.length).toEqual(1)
+    const polygon = notam.polygons[0] as Polygon
+    expect(polygon).toBeInstanceOf(Polygon)
+    // Two points, then a quarter turn from north back to east
+    expect(polygon.locations.length).toBeGreaterThan(15)
+    expect(polygon.locations.length).toBeLessThan(25)
+    for (const p of polygon.locations) {
+      expect(Math.abs(haversineDistanceMeters(arcCenter, p) - 10 * 1852)).toBeLessThan(150)
+    }
+    expect(notam.geometryUncertain).toBe(false)
+  })
 })
 
 describe('NOTAM validity', () => {

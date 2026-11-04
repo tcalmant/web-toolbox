@@ -21,7 +21,7 @@ import type { GeoPoint } from './geo'
 import { arcPoints, geoPointsEqual } from './geo'
 import type { GeometryFeature, PositionKind } from './geometry'
 import { Circle, Line, Polygon, Position } from './geometry'
-import { findShapeDirectives } from './shapeDirectives'
+import { closeWithArc, findShapeDirectives } from './shapeDirectives'
 
 // A single lat/lon pair in Q-code style (e.g. 4500N00500E or 450055N0050055E)
 const LAT_LNG_SOURCE = String.raw`(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:\.\d*)?)(?<lonEW>E|W)`
@@ -576,6 +576,8 @@ export class NOTAM {
   readonly text: string
   readonly rawSections: Map<string, string>
   readonly polygons: GeometryFeature[]
+  /** An arc has no stated direction: the drawing must be checked against the text */
+  geometryUncertain = false
   readonly sectionA: SectionA | null
   readonly sectionQ: SectionQ | null
   readonly linkedSupAIPs: SupAipRef[] = []
@@ -745,6 +747,7 @@ export class NOTAM {
     // Circles and arcs: their centers must not be taken for outline points
     const directives = findShapeDirectives(text, LAT_LNG_SOURCE, latLngFromGroups)
     text = directives.cleaned
+    this.geometryUncertain = directives.arcs.some((a) => a.uncertain)
     for (const circle of directives.circles) {
       features.push(new Circle(circle.center, circle.radiusMeters))
     }
@@ -830,7 +833,14 @@ export class NOTAM {
 
       const separator = text.substring(lastEndIdx, match.index).trim()
       // Consider spaces, commas and "TO" as polygon separators
-      if (
+      if (arc?.closing === true) {
+        // The arc ended the previous outline, this point starts a new one
+        const closed = closeWithArc(currentList, arc)
+        if (closed.length > 2) {
+          features.push(new Polygon(closed))
+        }
+        currentList = []
+      } else if (
         arc === undefined &&
         lastEndIdx != 0 &&
         separator.length != 0 &&
@@ -876,6 +886,10 @@ export class NOTAM {
     }
 
     // Handle what's left
+    const closing = directives.arcs.find((a) => a.closing && a.start >= lastEndIdx)
+    if (closing !== undefined) {
+      currentList = closeWithArc(currentList, closing)
+    }
     if (currentList.length == 1) {
       features.push(new Position('POINT', currentList[0]!))
     } else if (currentList.length == 2) {

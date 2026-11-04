@@ -21,7 +21,7 @@ import type { GeoPoint } from './geo'
 import { arcPoints } from './geo'
 import type { GeometryFeature } from './geometry'
 import { Circle, Line, Polygon, Position } from './geometry'
-import { findShapeDirectives } from './shapeDirectives'
+import { closeWithArc, findShapeDirectives } from './shapeDirectives'
 
 // A single AIP-formatted lat/lon pair (e.g. 45°30'15"N 005°45'E)
 const AIP_LOCATION_SOURCE = String.raw`0?(?<latDeg>\d{2})°(?:(?:(?<latMin>\d{1,2})(?:'|’))(?:(?<latSec>\d{1,2}(?:\.\d+)?)(?:"|(?:'|’){2}))?)?\s*(?<latNS>N|S),?\s*-?\s*(?<lonDeg>\d{1,3}°(?:(?:(?<lonMin>\d{1,2})(?:'|’))(?:(?<lonSec>\d{1,2}(?:\.\d+)?)(?:"|(?:'|’){2}))?)?)\s*(?<lonEW>[EW])`
@@ -50,6 +50,8 @@ function toGeometryFeature(points: GeoPoint[]): GeometryFeature | null {
 export class AIP {
   text: string
   polygons: GeometryFeature[]
+  /** An arc has no stated direction: the drawing must be checked against the text */
+  geometryUncertain = false
 
   constructor(fullText: string) {
     this.text = fullText
@@ -113,6 +115,7 @@ export class AIP {
     // Circles and arcs: their centers must not be taken for outline points
     const directives = findShapeDirectives(text, AIP_LOCATION_SOURCE, (g) => this.parseAIPGroups(g))
     text = directives.cleaned
+    this.geometryUncertain = directives.arcs.some((a) => a.uncertain)
 
     // Look for AIP-formatted locations
     const aipLocation = new RegExp(AIP_LOCATION_SOURCE, 'g')
@@ -141,7 +144,14 @@ export class AIP {
       // Dashes, commas and semicolons only separate the points of a same shape
       const between = text.substring(lastEndIdx, match.index).trim()
       const onlySeparators = between.replace(/[\s,;-]/g, '').length == 0
-      if (arc === undefined && !onlySeparators && !BORDER_TEXT.test(between)) {
+      if (arc?.closing === true) {
+        // The arc ended the previous outline, this point starts a new one
+        const feature = toGeometryFeature(closeWithArc(currentList, arc))
+        if (feature !== null) {
+          features.push(feature)
+        }
+        currentList = []
+      } else if (arc === undefined && !onlySeparators && !BORDER_TEXT.test(between)) {
         // Found text between previous and current number
         const feature = toGeometryFeature(currentList)
         if (feature !== null) {
@@ -169,7 +179,10 @@ export class AIP {
     }
 
     // Handle what's left
-    const feature = toGeometryFeature(currentList)
+    const closing = directives.arcs.find((a) => a.closing && a.start >= lastEndIdx)
+    const feature = toGeometryFeature(
+      closing !== undefined ? closeWithArc(currentList, closing) : currentList,
+    )
     if (feature !== null) {
       features.push(feature)
     }
