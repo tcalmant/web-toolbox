@@ -709,13 +709,15 @@ export class NOTAM {
 
         line = line.substring(match.index + match[0].length).trim()
 
-        // ICAO layout: "A) LFBB B) 2501211522 C) PERM" on a single line
+        // ICAO layout: "A) LFBB B) 2501211522 C) PERM" and "F) SFC G) FL095" on
+        // a single line. Never after E): its free text may contain "G)"
         let inline: RegExpMatchArray | null
         while (
-          'ABC'.includes(currentSection) &&
-          (inline = line.match(/(?:^|\s)(?<next>[B-D])\)\s*/)) != null &&
+          ('ABC'.includes(currentSection) || currentSection === 'F') &&
+          (inline = line.match(/(?:^|\s)(?<next>[B-DG])\)\s*/)) != null &&
           inline.groups?.['next'] !== undefined &&
-          inline.groups['next'] > currentSection
+          inline.groups['next'] > currentSection &&
+          (currentSection === 'F') === (inline.groups['next'] === 'G')
         ) {
           currentBlock.push(line.substring(0, inline.index).trim())
           sections.set(currentSection, currentBlock.filter((s) => s.length != 0).join('\n'))

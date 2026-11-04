@@ -1587,6 +1587,16 @@ describe('NOTAM vertical limits', () => {
     ['500FT AAL', null, null, null, '500FT AAL'],
     ['2500FT AMSL/FL025', null, null, null, '2500FT AMSL/FL025'],
     ['SEE E)', null, null, null, 'SEE E)'],
+    // AIP wording, lower case
+    ['FL 065', 65, 'FL', 'STD', 'FL065'],
+    ['fl95', 95, 'FL', 'STD', 'FL095'],
+    ['2500 ft AMSL', 2500, 'FT', 'AMSL', '2500 FT AMSL'],
+    ['1000 ft ASFC', 1000, 'FT', 'ASFC', '1000 FT ASFC'],
+    ['plafond non défini', null, null, null, 'plafond non défini'],
+    // A height with a surface word or a thousands separator is not guessed
+    ['1500 FT SFC', null, null, null, '1500 FT SFC'],
+    ['1500FT GND', null, null, null, '1500FT GND'],
+    ['1 500 ft AMSL', null, null, null, '1 500 ft AMSL'],
   ])('parses F) %s', (text, value, unit, reference, display) => {
     const limit = parseVerticalLimit(text)
     expect(limit).toEqual({ value, unit, reference, raw: text })
@@ -1615,6 +1625,12 @@ describe('NOTAM vertical limits', () => {
     expect(notam.lower?.reference).toEqual('SFC')
     expect(notam.upper).toEqual({ value: 5900, unit: 'FT', reference: 'AMSL', raw: '5900FT AMSL' })
     expect(parseVerticalLimit('')).toBeNull()
+
+    // ICAO layout with F) and G) on the same line
+    const inline = new NOTAM('A) LFLS\nE) X G) NOT A SECTION\nF) SFC G) FL095', 1, bundledAirfields)
+    expect(inline.lower?.reference).toEqual('SFC')
+    expect(inline.upper?.value).toEqual(95)
+    expect(inline.rawSections.get('E')).toEqual('X G) NOT A SECTION')
     expect(parseQLimit(null)).toBeNull()
   })
 })

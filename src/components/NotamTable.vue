@@ -102,6 +102,14 @@ under the License.
           "
         >
           {{ col.value }}
+          <q-tooltip v-if="col.name === 'limitLow' || col.name === 'limitHigh'">
+            Q)
+            {{
+              col.name === 'limitLow'
+                ? notamRow(props.row).sectionQ?.lower?.raw
+                : notamRow(props.row).sectionQ?.upper?.raw
+            }}
+          </q-tooltip>
         </q-td>
       </q-tr>
       <q-tr v-if="props.expand || props.row == focusedNotam" :props="props">

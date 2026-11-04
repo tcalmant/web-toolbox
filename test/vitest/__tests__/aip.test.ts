@@ -10,7 +10,6 @@ import { describe, expect, it } from 'vitest'
 import { bundledBorders } from '../../../src/adapters/data/bordersRepository'
 import { AIP } from '../../../src/domain/aip'
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
-import { formatVerticalLimit, parseVerticalLimit } from '../../../src/domain/verticalLimit'
 
 describe('AIP location parsing', () => {
   it('parses degrees-only coordinates', () => {
@@ -238,17 +237,5 @@ LIMITES VERTICALES`,
     expect(aip.polygons.length).toEqual(2)
     expect(aip.polygons[0]).toBeInstanceOf(Position)
     expect(aip.polygons[1]).toBeInstanceOf(Position)
-  })
-})
-
-describe('AIP vertical limits', () => {
-  it.each([
-    ['SFC', 'SFC'],
-    ['FL 065', 'FL065'],
-    ['2500 ft AMSL', '2500 FT AMSL'],
-    ['1000 ft ASFC', '1000 FT ASFC'],
-    ['plafond non défini', 'plafond non défini'],
-  ])('formats %s', (text, display) => {
-    expect(formatVerticalLimit(parseVerticalLimit(text)!)).toEqual(display)
   })
 })
