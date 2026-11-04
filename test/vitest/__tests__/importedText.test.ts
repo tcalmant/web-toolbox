@@ -131,7 +131,7 @@ describe('sharedDataToText', () => {
 
   it('keeps a shared NOTAM readable by the import', () => {
     const text = sharedDataToText({ title: 'Sofia', text: NOTAM_TEXT })
-    expect(splitNotamsAndAip(text).notams.length).toEqual(1)
+    expect(splitNotamsAndAip(text, bundledAirfields).notams.length).toEqual(1)
   })
 })
 
