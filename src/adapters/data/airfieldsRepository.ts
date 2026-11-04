@@ -17,6 +17,15 @@
 
 import { Airfield } from '@/domain/airfields'
 import AirfieldsFr from '../../fixed-data/airfields_fr.json' with { type: 'json' }
+import AirfieldsFrMeta from '../../fixed-data/airfields_fr.meta.json' with { type: 'json' }
+
+// Written by data/sia_export.py: dates are ISO 8601, null when the export does not give them
+export const AirfieldsMetadata: {
+  source: string
+  created: string | null
+  effective: string | null
+  generated: string
+} = AirfieldsFrMeta
 
 const TypedAirfieldsFr: Record<string, (number | null)[]> = AirfieldsFr
 

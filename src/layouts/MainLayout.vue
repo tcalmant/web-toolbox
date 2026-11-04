@@ -75,6 +75,8 @@ under the License.
         <q-item-label header> {{ t('projectLinks') }} </q-item-label>
         <EssentialLink v-for="link in projectLinks" :key="link.id" v-bind="link" />
       </q-list>
+      <!-- Room for the language switcher, pinned over the bottom of the drawer -->
+      <DataSourcesList style="padding-bottom: 72px" />
 
       <LanguageSwitcher style="position: absolute; bottom: 0" />
     </q-drawer>
@@ -90,6 +92,7 @@ under the License.
 
 <script setup lang="ts">
 import AcdUnlockDialog from '@/components/AcdUnlockDialog.vue'
+import DataSourcesList from '@/components/DataSourcesList.vue'
 import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { useAcdVault } from '@/composables/useAcdVault'
