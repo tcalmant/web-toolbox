@@ -86,6 +86,8 @@ export default {
   notamFilterExpired: 'Masquer les NOTAM expirés avant le vol',
   notamFlightStart: 'Début du vol (UTC)',
   notamFlightDuration: 'Durée (h)',
+  notamFlightStartInvalid: "Début invalide, l'heure actuelle est utilisée",
+  notamFlightStartPast: 'Cette fenêtre est déjà passée',
   notamCount: '{shown} NOTAM affichés sur {total}',
   notamScheduleLabel: 'Horaires',
   notamLimitsLabel: 'Limites',

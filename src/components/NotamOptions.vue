@@ -58,6 +58,8 @@ under the License.
       type="datetime-local"
       v-model="flightStart"
       :label="$t('notamFlightStart')"
+      :error="!!flightStartError"
+      :error-message="flightStartError"
     />
     <q-input
       class="col-4"
@@ -65,6 +67,7 @@ under the License.
       filled
       type="number"
       min="0"
+      max="24"
       step="0.5"
       v-model.number="flightDuration"
       :label="$t('notamFlightDuration')"
@@ -117,6 +120,7 @@ withDefaults(
     aipAreaCount: number
     totalCount?: number
     shownCount?: number
+    flightStartError?: string | undefined
   }>(),
   { totalCount: 0, shownCount: 0 },
 )

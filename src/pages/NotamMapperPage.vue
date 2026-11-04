@@ -41,6 +41,7 @@ under the License.
         v-model:hide-expired="hideExpired"
         v-model:flight-start="flightStart"
         v-model:flight-duration="flightDuration"
+        :flight-start-error="flightStartError"
         :total-count="totalCount"
         :shown-count="parsedNotams?.length ?? 0"
         v-model:show-area-of-influence="showAreaOfInfluence"
@@ -85,6 +86,7 @@ under the License.
           v-model:hide-expired="hideExpired"
           v-model:flight-start="flightStart"
           v-model:flight-duration="flightDuration"
+          :flight-start-error="flightStartError"
           :total-count="totalCount"
           :shown-count="parsedNotams?.length ?? 0"
           v-model:show-area-of-influence="showAreaOfInfluence"
@@ -159,11 +161,21 @@ const showAreaOfInfluence = ref<boolean>(true)
 // Meant to come from a shared flight context later.
 const flightStart = ref<string>(new Date().toISOString().slice(0, 16))
 const flightDuration = ref<number>(2)
+const flightStartDate = computed(() => new Date(`${flightStart.value}:00Z`))
 const flightWindow = computed<TimeWindow>(() => {
-  const start = new Date(`${flightStart.value}:00Z`)
+  const start = flightStartDate.value
+  // An invalid start is flagged on the field, the status still needs a window
   const from = isNaN(start.getTime()) ? new Date() : start
-  const hours = Math.max(Number(flightDuration.value) || 0, 0)
+  // Bounded: the schedule is checked day by day over the window
+  const hours = Math.min(Math.max(Number(flightDuration.value) || 0, 0), 24)
   return { from, to: new Date(from.getTime() + hours * 3_600_000) }
+})
+// A restored session can hold yesterday's flight
+const flightStartError = computed(() => {
+  if (isNaN(flightStartDate.value.getTime())) {
+    return t('notamFlightStartInvalid')
+  }
+  return flightWindow.value.to.getTime() < Date.now() ? t('notamFlightStartPast') : undefined
 })
 
 // ... search
