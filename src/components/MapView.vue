@@ -31,6 +31,7 @@ import L, { FeatureGroup, type LatLngTuple, type TileLayerOptions } from 'leafle
 import 'leaflet/dist/leaflet.css'
 import { useQuasar } from 'quasar'
 import { featuresToLayers } from '@/adapters/leaflet/geometryLayers'
+import { escapeHtml, safeAttribution } from '@/adapters/leaflet/safeHtml'
 import { useAcdVault } from '@/composables/useAcdVault'
 import type { AIP } from '@/domain/aip'
 import type { NOTAM } from '@/domain/notam'
@@ -184,13 +185,13 @@ watch([layersControlRef, () => vault.payload.value?.tileLayers], ([control, defi
     const layer = L.tileLayer(definition.url, {
       minZoom: definition.minZoom,
       maxZoom: definition.maxZoom,
-      attribution: definition.attribution,
+      attribution: safeAttribution(definition.attribution),
       tileSize: 256,
       crossOrigin: true,
       ...(definition.bounds ? { bounds: L.latLngBounds(definition.bounds) } : {}),
     })
-    control.addBaseLayer(layer, definition.name)
-    if (definition.name === pendingClubLayerName) {
+    control.addBaseLayer(layer, escapeHtml(definition.name))
+    if (escapeHtml(definition.name) === pendingClubLayerName) {
       pendingClubLayerName = undefined
       map.eachLayer((other) => {
         if (other instanceof L.TileLayer) {

@@ -74,11 +74,16 @@ async function pipeThrough(
   return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
-/** Derives the (non-extractable) AES key of a passphrase for the given salt. */
+/**
+ * Derives the (non-extractable) AES key of a passphrase for the given salt.
+ * Non-extractable still lets any script of the origin use the key: only the
+ * usages it needs are granted (the app only decrypts, the CLI only encrypts).
+ */
 export async function deriveVaultKey(
   passphrase: string,
   salt: string,
   iterations: number,
+  usages: KeyUsage[],
 ): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey(
     'raw',
@@ -92,13 +97,13 @@ export async function deriveVaultKey(
     material,
     { name: 'AES-GCM', length: 256 },
     false,
-    ['encrypt', 'decrypt'],
+    usages,
   )
 }
 
 /** Same key derivation, from the parameters stored in a bundle. */
 export function deriveBundleKey(passphrase: string, bundle: VaultBundle): Promise<CryptoKey> {
-  return deriveVaultKey(passphrase, bundle.salt, bundle.iterations)
+  return deriveVaultKey(passphrase, bundle.salt, bundle.iterations, ['decrypt'])
 }
 
 export interface EncryptOptions {
@@ -114,7 +119,7 @@ export async function encryptVault(
 ): Promise<VaultBundle> {
   const salt = options.salt ?? bytesToBase64(crypto.getRandomValues(new Uint8Array(16)))
   const iterations = options.iterations ?? DEFAULT_ITERATIONS
-  const key = await deriveVaultKey(passphrase, salt, iterations)
+  const key = await deriveVaultKey(passphrase, salt, iterations, ['encrypt'])
   // A fresh IV for every encryption is mandatory with AES-GCM, even with a reused key
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const compressed = await pipeThrough(

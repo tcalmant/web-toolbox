@@ -101,10 +101,16 @@ export function isAcdPayload(value: unknown): value is AcdPayload {
   const tileLayers = v['tileLayers']
   return (
     Object.values(planes).every(isAcdPlaneRecord) &&
-    Object.values(checklists).every((xml) => typeof xml === 'string') &&
+    Object.entries(checklists).every(
+      ([path, xml]) => CHECKLIST_PATH.test(path) && typeof xml === 'string',
+    ) &&
     (tileLayers === undefined || (Array.isArray(tileLayers) && tileLayers.every(isAcdTileLayer)))
   )
 }
+
+// "model/<name>.xml" or "plane/<tail>.xml": the CLI writes these paths to disk,
+// so a crafted vault must not be able to name anything outside its folder
+const CHECKLIST_PATH = /^(model|plane)\/(?!\.\.?\.xml$)[^/\\]+\.xml$/
 
 const isFiniteNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value)
 
@@ -120,6 +126,7 @@ function isAcdTileLayer(value: unknown): value is AcdTileLayer {
   return (
     typeof v['name'] === 'string' &&
     typeof v['url'] === 'string' &&
+    v['url'].startsWith('https://') &&
     typeof v['attribution'] === 'string' &&
     isFiniteNumber(v['minZoom']) &&
     isFiniteNumber(v['maxZoom']) &&
