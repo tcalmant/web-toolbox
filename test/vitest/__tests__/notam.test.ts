@@ -30,6 +30,11 @@ import { destinationPoint, haversineDistanceMeters } from '../../../src/domain/g
 import { Circle, Line, Polygon, Position } from '../../../src/domain/geometry'
 import { NOTAM, SectionQ, parseNotamDate, parseNotams } from '../../../src/domain/notam'
 import { parseNotamSchedule } from '../../../src/domain/notamSchedule'
+import {
+  formatVerticalLimit,
+  parseQLimit,
+  parseVerticalLimit,
+} from '../../../src/domain/verticalLimit'
 
 /**
  * Tests for the Q section parser
@@ -1560,5 +1565,56 @@ describe('NOTAM regressions', () => {
     expect(position.kind).toEqual('AREA')
     // LFLG is at 45.218N 5.849E
     expect(position.location.lat).toBeCloseTo(45.218, 1)
+  })
+})
+
+describe('NOTAM vertical limits', () => {
+  it.each([
+    ['SFC', null, null, 'SFC', 'SFC'],
+    ['GND', null, null, 'SFC', 'SFC'],
+    ['UNL', null, null, 'UNL', 'UNL'],
+    ['FL115', 115, 'FL', 'STD', 'FL115'],
+    ['FL 65', 65, 'FL', 'STD', 'FL065'],
+    ['1500FT AMSL', 1500, 'FT', 'AMSL', '1500 FT AMSL'],
+    ['1500 FT AMSL', 1500, 'FT', 'AMSL', '1500 FT AMSL'],
+    ['3000FT MSL', 3000, 'FT', 'AMSL', '3000 FT AMSL'],
+    ['500FT ASFC', 500, 'FT', 'ASFC', '500 FT ASFC'],
+    ['500FT AGL', 500, 'FT', 'ASFC', '500 FT ASFC'],
+    ['150M AGL', 150, 'M', 'ASFC', '150 M ASFC'],
+    ['150 M AMSL', 150, 'M', 'AMSL', '150 M AMSL'],
+    ['2500FT', 2500, 'FT', null, '2500 FT'],
+    // Unknown forms are kept as written
+    ['500FT AAL', null, null, null, '500FT AAL'],
+    ['2500FT AMSL/FL025', null, null, null, '2500FT AMSL/FL025'],
+    ['SEE E)', null, null, null, 'SEE E)'],
+  ])('parses F) %s', (text, value, unit, reference, display) => {
+    const limit = parseVerticalLimit(text)
+    expect(limit).toEqual({ value, unit, reference, raw: text })
+    expect(formatVerticalLimit(limit!)).toEqual(display)
+  })
+
+  it.each([
+    ['000', 0, 'FL', 'STD', 'FL000'],
+    ['059', 59, 'FL', 'STD', 'FL059'],
+    ['999', 999, 'FL', 'STD', 'FL999'],
+    ['59', null, null, null, '59'],
+  ])('parses Q) limit %s', (text, value, unit, reference, display) => {
+    const limit = parseQLimit(text)
+    expect(limit).toEqual({ value, unit, reference, raw: text })
+    expect(formatVerticalLimit(limit!)).toEqual(display)
+  })
+
+  it('reads the limits of the Q, F and G sections', () => {
+    const notam = new NOTAM(
+      'Q) LFMM/QRDCA/IV/BO/W/000/059/4513N00551E005\nA) LFLS\nE) X\nF) GND\nG) 5900FT AMSL',
+      1,
+      bundledAirfields,
+    )
+    expect(notam.sectionQ?.lower?.value).toEqual(0)
+    expect(notam.sectionQ?.upper?.value).toEqual(59)
+    expect(notam.lower?.reference).toEqual('SFC')
+    expect(notam.upper).toEqual({ value: 5900, unit: 'FT', reference: 'AMSL', raw: '5900FT AMSL' })
+    expect(parseVerticalLimit('')).toBeNull()
+    expect(parseQLimit(null)).toBeNull()
   })
 })

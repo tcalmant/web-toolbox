@@ -128,10 +128,20 @@ under the License.
               <strong>{{ $t('notamScheduleLabel') }}</strong
               >: {{ notamRow(props.row).schedule }}
             </div>
-            <div v-if="notamRow(props.row).lowerLimit || notamRow(props.row).upperLimit">
+            <div v-if="notamRow(props.row).lower || notamRow(props.row).upper">
               <strong>{{ $t('notamLimitsLabel') }}</strong
-              >: {{ notamRow(props.row).lowerLimit ?? '?' }} &rarr;
-              {{ notamRow(props.row).upperLimit ?? '?' }}
+              >:
+              <span
+                v-for="(limit, i) in [notamRow(props.row).lower, notamRow(props.row).upper]"
+                :key="i"
+              >
+                <template v-if="i > 0"> &rarr; </template>
+                <span v-if="limit">
+                  {{ formatVerticalLimit(limit) }}
+                  <q-tooltip>{{ limit.raw }}</q-tooltip>
+                </span>
+                <template v-else>?</template>
+              </span>
             </div>
           </div>
           <pre class="notam-text" :aria-label="$t('notamRawText')">{{
@@ -187,6 +197,7 @@ under the License.
 import { type QTableColumn } from 'quasar'
 import { formatNotamDate, type NOTAM, type NotamStatus } from '@/domain/notam'
 import type { TimeWindow } from '@/domain/notamSchedule'
+import { formatVerticalLimit } from '@/domain/verticalLimit'
 import { onMounted, ref, watch } from 'vue'
 
 const notamColumns = defineModel<QTableColumn[]>('notamColumns')

@@ -125,6 +125,7 @@ import { bundledBorders } from '@/adapters/data/bordersRepository'
 import { AIP } from '@/domain/aip'
 import { splitNotamsAndAip } from '@/domain/importedText'
 import { formatNotamDate, type NOTAM } from '@/domain/notam'
+import { formatVerticalLimit, type VerticalLimit } from '@/domain/verticalLimit'
 import type { TimeWindow } from '@/domain/notamSchedule'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -186,6 +187,15 @@ const flightStartError = computed(() => {
 const searchQuery = ref<string>('')
 
 // ... table
+function formatLimit(limit: VerticalLimit | null | undefined): string {
+  return limit ? formatVerticalLimit(limit) : ''
+}
+
+// Q limits are flight levels: unknown forms (no value) come first, by text
+function compareLimits(a: VerticalLimit, b: VerticalLimit): number {
+  return (a.value ?? -1) - (b.value ?? -1) || a.raw.localeCompare(b.raw)
+}
+
 const notamColumns = computed<QTableColumn[]>(() => [
   {
     name: 'id',
@@ -234,13 +244,17 @@ const notamColumns = computed<QTableColumn[]>(() => [
   {
     name: 'limitLow',
     label: t('notamLimitLow'),
-    field: (r: NOTAM) => r.sectionQ?.limitLow,
+    field: (r: NOTAM) => r.sectionQ?.lower,
+    format: formatLimit,
+    sort: compareLimits,
     sortable: true,
   },
   {
     name: 'limitHigh',
     label: t('notamLimitHigh'),
-    field: (r: NOTAM) => r.sectionQ?.limitHigh,
+    field: (r: NOTAM) => r.sectionQ?.upper,
+    format: formatLimit,
+    sort: compareLimits,
     sortable: true,
   },
   {

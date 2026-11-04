@@ -24,6 +24,8 @@ import { closeWithArc, findShapeDirectives } from './shapeDirectives'
 import type { NotamSchedule } from './notamSchedule'
 import { parseNotamSchedule, scheduleIntersects } from './notamSchedule'
 import type { AirfieldLookup } from './ports/airfieldLookup'
+import type { VerticalLimit } from './verticalLimit'
+import { parseQLimit, parseVerticalLimit } from './verticalLimit'
 
 // A single lat/lon pair in Q-code style (e.g. 4500N00500E or 450055N0050055E)
 const LAT_LNG_SOURCE = String.raw`(?<lat>\d{4,6}(?:\.\d*)?)(?<latNS>N|S)\s*(?<lon>\d{5,7}(?:\.\d*)?)(?<lonEW>E|W)`
@@ -366,6 +368,8 @@ export class SectionQ {
   readonly scope: string | null // 'A' | 'E' | 'W' | 'AE' | 'AW'
   readonly limitLow: string | null
   readonly limitHigh: string | null
+  readonly lower: VerticalLimit | null
+  readonly upper: VerticalLimit | null
   readonly center: GeoPoint | null
   readonly radiusNM: number | null
 
@@ -387,6 +391,8 @@ export class SectionQ {
     this.scope = parts[4] ?? null
     this.limitLow = parts[5] ?? null
     this.limitHigh = parts[6] ?? null
+    this.lower = parseQLimit(this.limitLow)
+    this.upper = parseQLimit(this.limitHigh)
 
     const { center, radius } = this.extractCenter(parts[7])
     this.center = center
@@ -588,6 +594,10 @@ export class NOTAM {
   readonly lowerLimit: string | null
   /** Section G: upper limit */
   readonly upperLimit: string | null
+  /** Section F, parsed */
+  readonly lower: VerticalLimit | null
+  /** Section G, parsed */
+  readonly upper: VerticalLimit | null
 
   constructor(fullText: string, idx: number, airfields: AirfieldLookup) {
     this.idx = idx
@@ -616,6 +626,8 @@ export class NOTAM {
     this.parsedSchedule = this.schedule ? parseNotamSchedule(this.schedule) : null
     this.lowerLimit = this.rawSections.get('F') ?? null
     this.upperLimit = this.rawSections.get('G') ?? null
+    this.lower = parseVerticalLimit(this.lowerLimit)
+    this.upper = parseVerticalLimit(this.upperLimit)
 
     // Find polygons
     this.polygons = this.findPolygons(this.sectionA?.target, this.rawSections.get('E'), airfields)
